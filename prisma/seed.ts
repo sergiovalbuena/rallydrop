@@ -110,10 +110,10 @@ async function main() {
     courtRows.push(existing ?? (await db.court.create({ data: { ...c, sortOrder: i } })));
   }
 
-  // Upcoming group sessions (Saturdays 10:00 local) with their machine blocks.
+  // Upcoming group sessions (Wednesdays 18:00 local) with their machine blocks.
   if ((await db.groupSession.count()) === 0) {
     for (let i = 0; i < 3; i++) {
-      const startsAt = nextWeekday(6, i);
+      const startsAt = nextWeekday(3, i, 18 * 60);
       const endsAt = new Date(startsAt.getTime() + HOUR);
       await db.groupSession.create({
         data: {
@@ -150,11 +150,11 @@ async function main() {
   console.log(`Seeded. Admin login: ${email} / ${password === "change-me-please" ? password : "(from env)"}`);
 }
 
-/** Upcoming given weekday (0 = Sun), N weeks out, at 10:00 Victoria time. */
-function nextWeekday(weekday: number, weeksOut = 0): Date {
+/** Upcoming given weekday (0 = Sun), N weeks out, at a local time (minutes). */
+function nextWeekday(weekday: number, weeksOut = 0, minute = 600): Date {
   let date = addLocalDays(toLocalDate(new Date()), 1);
   while (localWeekday(date) !== weekday) date = addLocalDays(date, 1);
-  return localDateMinuteToUtc(addLocalDays(date, weeksOut * 7), 600);
+  return localDateMinuteToUtc(addLocalDays(date, weeksOut * 7), minute);
 }
 
 main()

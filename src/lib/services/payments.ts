@@ -285,7 +285,8 @@ export async function releaseDeposit(bookingId: string, actor: string) {
     data: { status: "RELEASED", releasedAt: new Date(), releasedById: actor, authScheduledFor: null },
   });
   await db.bookingEvent.create({ data: { bookingId, type: "deposit_released", actor } });
-  await notifyDepositReleased(bookingId);
+  // Only tell the customer when something was actually held or saved.
+  if (deposit.status === "HELD" || deposit.status === "CARD_SAVED") await notifyDepositReleased(bookingId);
 }
 
 /**
