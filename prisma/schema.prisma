@@ -1,0 +1,782 @@
+// =============================================================================
+// RallyDrop — tennis ball machine rentals, Victoria BC
+// Prisma 7 schema (PostgreSQL — Neon or Supabase).
+//
+// Conventions
+// - Money is stored as integer cents (CAD). Never floats.
+// - Percentages are stored as basis points (500 = 5.00%).
+// - All timestamps are timestamptz (UTC in the DB); the app converts to
+//   America/Vancouver with date-fns-tz.
+// - No card data is ever stored here: only Stripe IDs.
+// - Double-booking is enforced in Postgres by an EXCLUSION constraint on
+//   `MachineOccupancy` (see prisma/sql/001_occupancy_exclusion.sql), which
+//   Prisma cannot express natively and is appended to the first migration.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -----------------------------------------------------------------------------
+// Settings & content (admin-editable)
+// -----------------------------------------------------------------------------
+
+/// Singleton row (id = "default"). Everything the owner can tweak without a deploy.
+model Settings {
+  id String @id @default("default")
+
+  // Taxes — owner must confirm rates and applicability with their accountant.
+  gstBps Int @default(500) // 5%
+  pstBps Int @default(700) // 7%
+
+  // Booking rules
+  bufferMinutes        Int @default(120) // battery charge + cleaning between rentals
+  holdMinutes          Int @default(10) // temporary hold while the customer pays
+  minLeadTimeHours     Int @default(12) // earliest a booking can start from now
+  maxAdvanceDays       Int @default(90)
+  /// Rentals of up to this many days get a manual-capture card authorization;
+  /// longer ones save the card off-session instead.
+  depositAuthMaxDays   Int @default(6)
+  /// Authorizations expire (~7 days for online card payments), so for rentals
+  /// starting further out than this the card is saved at booking time and the
+  /// hold is placed by a cron job this many hours before pickup.
+  depositAuthLeadHours Int @default(24)
+
+  // Cancellation policy
+  cancelFullRefundHours Int @default(48)
+  cancelLateRefundBps   Int @default(5000) // 50% refund inside the window
+
+  // Delivery
+  deliveryStartMinute   Int     @default(480) // 08:00, minutes from midnight local
+  deliveryEndMinute     Int     @default(1200) // 20:00
+  freeDeliveryCenterLat Decimal @default(48.4284) @db.Decimal(9, 6) // downtown Victoria
+  freeDeliveryCenterLng Decimal @default(-123.3656) @db.Decimal(9, 6)
+  freeDeliveryRadiusKm  Decimal @default(5) @db.Decimal(5, 2)
+
+  // Season (high season only affects messaging/defaults; blackouts block dates)
+  seasonStartMonth Int     @default(4) // April
+  seasonEndMonth   Int     @default(9) // September
+  /// When false, bookings outside the season are refused entirely.
+  allowOffSeason   Boolean @default(true)
+
+  // Notifications
+  smsEnabled Boolean @default(false) // also requires Twilio env vars
+
+  contactEmail String?
+  contactPhone String?
+
+  updatedAt DateTime @updatedAt @db.Timestamptz
+}
+
+/// Editable copy blocks for the marketing site, per locale. Falls back to the
+/// static translation files in /messages when a key is missing here.
+model SiteContent {
+  id        String   @id @default(cuid())
+  key       String // e.g. "home.hero.title"
+  locale    String   @default("en")
+  value     String
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  @@unique([key, locale])
+}
+
+// -----------------------------------------------------------------------------
+// Catalog: machines, products, add-ons, courts
+// -----------------------------------------------------------------------------
+
+enum MachineStatus {
+  AVAILABLE
+  RENTED
+  MAINTENANCE
+  RETIRED
+}
+
+enum Sport {
+  TENNIS
+  PICKLEBALL
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  PRO
+}
+
+model Machine {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  name          String // "PONGBOT Aura"
+  model         String
+  description   String?
+  imageUrl      String?
+  status        MachineStatus @default(AVAILABLE)
+  /// Admin-set colour for the master calendar (hex).
+  calendarColor String        @default("#1d4ed8")
+  sortOrder     Int           @default(0)
+
+  // Spec sheet
+  weightKg     Decimal?     @db.Decimal(5, 2)
+  maxSpeedKmh  Int?
+  ballCapacity Int?
+  batteryHours Decimal?     @db.Decimal(4, 1)
+  sports       Sport[]
+  levels       SkillLevel[]
+  specs        Json? // free-form extra rows: [{ label, value }]
+
+  depositCents Int @default(30000)
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  bookings      Booking[]
+  occupancies   MachineOccupancy[]
+  groupSessions GroupSession[]
+  maintenance   MaintenanceLog[]
+  blackouts     Blackout[]
+}
+
+model MaintenanceLog {
+  id          String   @id @default(cuid())
+  machineId   String
+  machine     Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  performedAt DateTime @db.Timestamptz
+  summary     String
+  costCents   Int?
+  notes       String?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  @@index([machineId, performedAt])
+}
+
+enum ProductKind {
+  DAY
+  WEEKEND
+  WEEK
+  MONTH
+  PACKAGE // monthly subscription of N sessions
+  GROUP_SESSION
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  slug        String      @unique // "day", "weekend", "package-basic"...
+  kind        ProductKind
+  name        String
+  description String?
+  priceCents  Int
+  active      Boolean     @default(true)
+  sortOrder   Int         @default(0)
+
+  /// Rental length for DAY/WEEKEND/WEEK/MONTH (MONTH = 30).
+  durationDays     Int?
+  /// PACKAGE: sessions included per billing month and length of each.
+  sessionsPerMonth Int?
+  sessionMinutes   Int?
+  /// GROUP_SESSION defaults (each session can override).
+  groupCapacity    Int?
+
+  /// Stripe Product/Price (recurring for PACKAGE). Re-created when price changes.
+  stripeProductId String?
+  stripePriceId   String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  bookings      Booking[]
+  subscriptions Subscription[]
+}
+
+enum AddOnKind {
+  BALLS
+  DELIVERY
+}
+
+model AddOn {
+  id          String    @id @default(cuid())
+  kind        AddOnKind @unique
+  name        String
+  description String?
+  priceCents  Int
+  active      Boolean   @default(true)
+
+  bookingAddOns BookingAddOn[]
+}
+
+/// Public courts the customer can pick for delivery.
+model Court {
+  id        String  @id @default(cuid())
+  name      String // "Beacon Hill Park courts"
+  address   String
+  lat       Decimal @db.Decimal(9, 6)
+  lng       Decimal @db.Decimal(9, 6)
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  bookings      Booking[]
+  groupSessions GroupSession[]
+}
+
+// -----------------------------------------------------------------------------
+// Availability
+// -----------------------------------------------------------------------------
+
+enum BlackoutReason {
+  WEATHER
+  MAINTENANCE
+  HOLIDAY
+  OTHER
+}
+
+/// Admin-blocked period. machineId null = all machines. Each blackout also
+/// writes one MachineOccupancy row per affected machine so the exclusion
+/// constraint enforces it.
+model Blackout {
+  id        String         @id @default(cuid())
+  machineId String?
+  machine   Machine?       @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  startsAt  DateTime       @db.Timestamptz
+  endsAt    DateTime       @db.Timestamptz
+  reason    BlackoutReason @default(OTHER)
+  note      String?
+  createdAt DateTime       @default(now()) @db.Timestamptz
+
+  occupancies MachineOccupancy[]
+
+  @@index([startsAt, endsAt])
+}
+
+enum OccupancySource {
+  BOOKING
+  GROUP_SESSION
+  BLACKOUT
+}
+
+/// The single source of truth for "is this machine busy?".
+/// `blockStart/blockEnd` already include the buffer around the real slot.
+/// Postgres EXCLUDE USING gist (machine_id WITH =, tstzrange(...) WITH &&)
+/// WHERE (active) makes overlapping active rows impossible.
+model MachineOccupancy {
+  id            String          @id @default(cuid())
+  machineId     String
+  machine       Machine         @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  source        OccupancySource
+  blockStart    DateTime        @db.Timestamptz
+  blockEnd      DateTime        @db.Timestamptz
+  /// False once the owning booking is cancelled/expired; inactive rows are
+  /// ignored by the constraint and kept for history.
+  active        Boolean         @default(true)
+  /// Pending-payment holds expire; the booking service deactivates expired
+  /// holds inside the same transaction before inserting a new row.
+  holdExpiresAt DateTime?       @db.Timestamptz
+
+  bookingId      String?       @unique
+  booking        Booking?      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  groupSessionId String?       @unique
+  groupSession   GroupSession? @relation(fields: [groupSessionId], references: [id], onDelete: Cascade)
+  blackoutId     String?
+  blackout       Blackout?     @relation(fields: [blackoutId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@index([machineId, blockStart, blockEnd])
+}
+
+// -----------------------------------------------------------------------------
+// Customers (no password) & portal auth
+// -----------------------------------------------------------------------------
+
+model Customer {
+  id         String      @id @default(cuid())
+  name       String
+  /// At least one of email/phone is required (CHECK constraint in SQL).
+  email      String?     @unique // stored lower-cased
+  phone      String?     @unique // stored E.164
+  skillLevel SkillLevel?
+
+  stripeCustomerId String? @unique
+
+  trusted       Boolean @default(false) // e.g. could waive deposit in future
+  blocked       Boolean @default(false)
+  internalNotes String?
+
+  marketingOptIn Boolean @default(false)
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  bookings      Booking[]
+  subscriptions Subscription[]
+  enrollments   GroupEnrollment[]
+  otpCodes      CustomerOtp[]
+  sessions      CustomerSession[]
+}
+
+enum OtpChannel {
+  EMAIL
+  SMS
+}
+
+/// One-time code or magic link token. Only a hash is stored.
+model CustomerOtp {
+  id         String     @id @default(cuid())
+  customerId String
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  channel    OtpChannel
+  codeHash   String
+  expiresAt  DateTime   @db.Timestamptz
+  attempts   Int        @default(0)
+  consumedAt DateTime?  @db.Timestamptz
+  createdAt  DateTime   @default(now()) @db.Timestamptz
+
+  @@index([customerId, createdAt])
+}
+
+/// Portal session (httpOnly cookie holds the raw token; DB holds its hash).
+model CustomerSession {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiresAt  DateTime @db.Timestamptz
+  createdAt  DateTime @default(now()) @db.Timestamptz
+}
+
+// -----------------------------------------------------------------------------
+// Bookings
+// -----------------------------------------------------------------------------
+
+enum BookingStatus {
+  PENDING_PAYMENT // 10-minute hold while paying
+  CONFIRMED
+  CHECKED_OUT // machine is out
+  RETURNED_OK // => deposit released automatically
+  RETURNED_DAMAGED // => admin decides capture amount (note required)
+  COMPLETED
+  CANCELLED
+  EXPIRED // hold timed out
+  NO_SHOW
+}
+
+enum BookingChannel {
+  ONLINE
+  ADMIN // phone booking entered by the owner
+}
+
+enum FulfillmentMethod {
+  PICKUP
+  DELIVERY_COURT
+  DELIVERY_ADDRESS
+}
+
+model Booking {
+  id      String         @id @default(cuid())
+  /// Human-friendly code shown to the customer, e.g. "RLY-7K3Q9".
+  code    String         @unique
+  status  BookingStatus  @default(PENDING_PAYMENT)
+  channel BookingChannel @default(ONLINE)
+
+  customerId     String
+  customer       Customer      @relation(fields: [customerId], references: [id])
+  machineId      String
+  machine        Machine       @relation(fields: [machineId], references: [id])
+  productId      String
+  product        Product       @relation(fields: [productId], references: [id])
+  /// Set when the booking is a session consumed from a monthly package.
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  /// The real rental slot (what the customer sees). Buffer lives on the occupancy.
+  startsAt DateTime @db.Timestamptz
+  endsAt   DateTime @db.Timestamptz
+
+  fulfillment     FulfillmentMethod @default(PICKUP)
+  courtId         String?
+  court           Court?            @relation(fields: [courtId], references: [id])
+  deliveryAddress String?
+  deliveryLat     Decimal?          @db.Decimal(9, 6)
+  deliveryLng     Decimal?          @db.Decimal(9, 6)
+  customerNotes   String?
+
+  // Price snapshot at booking time (cents). Product price changes never
+  // alter existing bookings.
+  subtotalCents Int
+  discountCents Int    @default(0)
+  gstCents      Int
+  pstCents      Int
+  totalCents    Int
+  gstBps        Int
+  pstBps        Int
+  currency      String @default("cad")
+
+  termsAcceptedAt DateTime? @db.Timestamptz
+  termsVersion    String?
+
+  cancelledAt    DateTime? @db.Timestamptz
+  cancelReason   String?
+  reminderSentAt DateTime? @db.Timestamptz
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  addOns      BookingAddOn[]
+  occupancy   MachineOccupancy?
+  deposit     Deposit?
+  payments    Payment[]
+  inspections Inspection[]
+  events      BookingEvent[]
+
+  @@index([status, startsAt])
+  @@index([machineId, startsAt])
+  @@index([customerId])
+}
+
+model BookingAddOn {
+  id         String  @id @default(cuid())
+  bookingId  String
+  booking    Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  addOnId    String
+  addOn      AddOn   @relation(fields: [addOnId], references: [id])
+  quantity   Int     @default(1)
+  /// Snapshot; 0 when delivery falls inside the free zone.
+  priceCents Int
+
+  @@unique([bookingId, addOnId])
+}
+
+/// Audit trail: status changes, reschedules, admin actions, emails sent.
+model BookingEvent {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  type      String // "status_changed", "rescheduled", "deposit_released"...
+  actor     String // "customer", "system", "admin:<userId>", "stripe"
+  data      Json?
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@index([bookingId, createdAt])
+}
+
+enum InspectionKind {
+  CHECK_OUT
+  CHECK_IN
+}
+
+enum MachineCondition {
+  EXCELLENT
+  GOOD
+  MINOR_WEAR
+  DAMAGED
+}
+
+model Inspection {
+  id             String           @id @default(cuid())
+  bookingId      String
+  booking        Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  kind           InspectionKind
+  condition      MachineCondition
+  batteryPercent Int?
+  ballsCount     Int?
+  notes          String?
+  /// Uploaded to Vercel Blob / Supabase Storage; URLs only.
+  photoUrls      String[]
+  performedById  String?
+  performedBy    User?            @relation(fields: [performedById], references: [id])
+  performedAt    DateTime         @default(now()) @db.Timestamptz
+
+  @@unique([bookingId, kind])
+}
+
+// -----------------------------------------------------------------------------
+// Payments & deposits (Stripe)
+// -----------------------------------------------------------------------------
+
+enum DepositStrategy {
+  /// <= depositAuthMaxDays: PaymentIntent with capture_method=manual.
+  AUTH_HOLD
+  /// Longer rentals: card saved (setup_future_usage=off_session); charged
+  /// later only if there is damage.
+  SAVED_CARD
+}
+
+enum DepositStatus {
+  PENDING // waiting for card / scheduled auth
+  CARD_SAVED // SAVED_CARD strategy, nothing charged
+  HELD // authorization active
+  RELEASED // authorization cancelled / nothing charged
+  CAPTURED // fully captured or charged
+  PARTIALLY_CAPTURED
+  FAILED // auth or off-session charge failed — admin follow-up
+  WAIVED
+}
+
+model Deposit {
+  id        String          @id @default(cuid())
+  bookingId String          @unique
+  booking   Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  strategy  DepositStrategy
+  status    DepositStatus   @default(PENDING)
+
+  amountCents   Int // snapshot of machine.depositCents
+  capturedCents Int     @default(0)
+  /// Required whenever capturedCents > 0.
+  captureNote   String?
+
+  stripePaymentIntentId String?   @unique
+  stripePaymentMethodId String?
+  /// When the authorization must be placed (scheduled holds) / expires.
+  authScheduledFor      DateTime? @db.Timestamptz
+  authExpiresAt         DateTime? @db.Timestamptz
+
+  heldAt       DateTime? @db.Timestamptz
+  releasedAt   DateTime? @db.Timestamptz
+  capturedAt   DateTime? @db.Timestamptz
+  releasedById String?
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
+}
+
+enum PaymentKind {
+  RENTAL
+  DEPOSIT_CAPTURE
+  SUBSCRIPTION_INVOICE
+  GROUP_SESSION
+  MANUAL // cash/e-transfer recorded by admin
+}
+
+enum PaymentStatus {
+  PENDING
+  REQUIRES_ACTION
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Payment {
+  id     String        @id @default(cuid())
+  kind   PaymentKind
+  status PaymentStatus @default(PENDING)
+
+  amountCents   Int
+  refundedCents Int    @default(0)
+  currency      String @default("cad")
+
+  bookingId      String?
+  booking        Booking?         @relation(fields: [bookingId], references: [id])
+  subscriptionId String?
+  subscription   Subscription?    @relation(fields: [subscriptionId], references: [id])
+  enrollmentId   String?
+  enrollment     GroupEnrollment? @relation(fields: [enrollmentId], references: [id])
+
+  stripePaymentIntentId String? @unique
+  stripeInvoiceId       String? @unique
+  stripeChargeId        String?
+  receiptUrl            String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  refunds Refund[]
+
+  @@index([createdAt])
+}
+
+model Refund {
+  id             String   @id @default(cuid())
+  paymentId      String
+  payment        Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  amountCents    Int
+  reason         String?
+  stripeRefundId String?  @unique
+  createdById    String? // admin user id, null = policy/automatic
+  createdAt      DateTime @default(now()) @db.Timestamptz
+}
+
+/// Webhook idempotency: every processed Stripe event id is recorded once.
+model StripeEvent {
+  id          String   @id // evt_...
+  type        String
+  processedAt DateTime @default(now()) @db.Timestamptz
+}
+
+// -----------------------------------------------------------------------------
+// Monthly session packages (Stripe subscriptions)
+// -----------------------------------------------------------------------------
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+}
+
+model Subscription {
+  id         String             @id @default(cuid())
+  customerId String
+  customer   Customer           @relation(fields: [customerId], references: [id])
+  productId  String
+  product    Product            @relation(fields: [productId], references: [id])
+  status     SubscriptionStatus @default(INCOMPLETE)
+
+  stripeSubscriptionId String @unique
+
+  /// Current Stripe billing period; sessions remaining =
+  /// product.sessionsPerMonth - bookings in [periodStart, periodEnd) not cancelled.
+  currentPeriodStart DateTime  @db.Timestamptz
+  currentPeriodEnd   DateTime  @db.Timestamptz
+  cancelAtPeriodEnd  Boolean   @default(false)
+  canceledAt         DateTime? @db.Timestamptz
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  bookings Booking[]
+  payments Payment[]
+}
+
+// -----------------------------------------------------------------------------
+// Coached group sessions
+// -----------------------------------------------------------------------------
+
+enum GroupSessionStatus {
+  SCHEDULED
+  CANCELLED
+  COMPLETED
+}
+
+model GroupSession {
+  id          String             @id @default(cuid())
+  title       String
+  description String?
+  status      GroupSessionStatus @default(SCHEDULED)
+  startsAt    DateTime           @db.Timestamptz
+  endsAt      DateTime           @db.Timestamptz
+  capacity    Int                @default(6)
+  priceCents  Int                @default(2000)
+  level       SkillLevel?
+
+  courtId   String
+  court     Court   @relation(fields: [courtId], references: [id])
+  /// The machine used — blocks it via MachineOccupancy.
+  machineId String
+  machine   Machine @relation(fields: [machineId], references: [id])
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  occupancy   MachineOccupancy?
+  enrollments GroupEnrollment[]
+
+  @@index([startsAt])
+}
+
+enum EnrollmentStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  ATTENDED
+  NO_SHOW
+}
+
+model GroupEnrollment {
+  id             String           @id @default(cuid())
+  groupSessionId String
+  groupSession   GroupSession     @relation(fields: [groupSessionId], references: [id], onDelete: Cascade)
+  customerId     String
+  customer       Customer         @relation(fields: [customerId], references: [id])
+  status         EnrollmentStatus @default(PENDING_PAYMENT)
+  /// Seat holds expire like booking holds; capacity checked under row lock.
+  holdExpiresAt  DateTime?        @db.Timestamptz
+  createdAt      DateTime         @default(now()) @db.Timestamptz
+
+  payments Payment[]
+
+  @@unique([groupSessionId, customerId])
+}
+
+// -----------------------------------------------------------------------------
+// Notifications log (idempotent reminders, debugging)
+// -----------------------------------------------------------------------------
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+}
+
+model NotificationLog {
+  id         String              @id @default(cuid())
+  channel    NotificationChannel
+  template   String // "booking_confirmed", "reminder_24h", "receipt", "deposit_released"
+  to         String
+  /// Dedup key, e.g. "reminder_24h:<bookingId>".
+  dedupeKey  String?             @unique
+  providerId String?
+  error      String?
+  createdAt  DateTime            @default(now()) @db.Timestamptz
+}
+
+// -----------------------------------------------------------------------------
+// Admin auth (Auth.js v5 + @auth/prisma-adapter)
+// -----------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  STAFF
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime? @db.Timestamptz
+  image         String?
+  /// bcrypt/argon2 hash; null when the user only uses magic links.
+  passwordHash  String?
+  role          UserRole  @default(ADMIN)
+  createdAt     DateTime  @default(now()) @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @db.Timestamptz
+
+  accounts    Account[]
+  sessions    Session[]
+  inspections Inspection[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime @db.Timestamptz
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime @db.Timestamptz
+
+  @@id([identifier, token])
+}
