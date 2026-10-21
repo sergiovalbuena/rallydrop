@@ -1,4 +1,7 @@
 {
+  "site": {
+    "announcement": ""
+  },
   "common": {
     "bookNow": "Book a machine",
     "seePricing": "See pricing",

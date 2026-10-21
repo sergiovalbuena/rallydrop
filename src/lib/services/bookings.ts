@@ -218,7 +218,8 @@ export async function createBooking(input: CreateBookingInput) {
             create: {
               strategy: deposit.strategy,
               amountCents: q.depositCents,
-              authScheduledFor: deposit.authScheduledFor,
+              // Phone bookings have no card on file: the owner collects the deposit in person.
+              authScheduledFor: isOnline ? deposit.authScheduledFor : null,
             },
           },
           events: {
@@ -234,7 +235,12 @@ export async function createBooking(input: CreateBookingInput) {
     });
   } catch (error) {
     if (isOverlapError(error)) {
-      throw new BookingError("SLOT_TAKEN", "Someone just booked that slot. Please choose another time.");
+      throw new BookingError(
+        "SLOT_TAKEN",
+        isOnline
+          ? "Someone just booked that slot. Please choose another time."
+          : "That machine is busy then (another booking, group session, blocked day or the buffer between rentals).",
+      );
     }
     throw error;
   }

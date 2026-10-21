@@ -8,7 +8,12 @@ import { ThemeToggle } from "./theme-toggle";
 
 export async function SiteHeader() {
   const t = await getTranslations();
+  const announcement = t("site.announcement");
   return (
+    <>
+    {announcement && (
+      <p className="bg-accent px-4 py-2 text-center text-sm font-semibold text-accent-foreground">{announcement}</p>
+    )}
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
       <a
         href="#main"
@@ -33,5 +38,6 @@ export async function SiteHeader() {
         </div>
       </div>
     </header>
+    </>
   );
 }
