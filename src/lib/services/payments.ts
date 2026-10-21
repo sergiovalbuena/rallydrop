@@ -513,3 +513,19 @@ export async function setBookingStatus(bookingId: string, status: BookingStatus,
 
   if (status === "RETURNED_OK" || status === "COMPLETED") await releaseDeposit(bookingId, actor);
 }
+
+/**
+ * Package sessions: use the subscription's card for the deposit, then place
+ * the hold now or leave it to the cron (24 h before).
+ */
+export async function attachSubscriptionCardToDeposit(bookingId: string, stripeSubscriptionId: string) {
+  const sub = await stripe().subscriptions.retrieve(stripeSubscriptionId);
+  const pm = typeof sub.default_payment_method === "string" ? sub.default_payment_method : sub.default_payment_method?.id;
+  const deposit = await db.deposit.findUnique({ where: { bookingId } });
+  if (!deposit || !pm) return;
+  await db.deposit.update({
+    where: { id: deposit.id },
+    data: { stripePaymentMethodId: pm, status: deposit.strategy === "SAVED_CARD" ? "CARD_SAVED" : deposit.status },
+  });
+  if (deposit.strategy === "AUTH_HOLD" && !deposit.authScheduledFor) await placeDepositHold(bookingId, { offSession: true });
+}

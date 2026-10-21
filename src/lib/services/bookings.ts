@@ -34,7 +34,7 @@ export type CreateBookingInput = {
   deliveryPoint?: LatLng | null;
   customerNotes?: string | null;
   channel: BookingChannel;
-  /** Package session: product price is covered by the subscription. */
+  /** Package session: product price (and court delivery) covered by the subscription. */
   subscriptionId?: string | null;
   termsAccepted: boolean;
   now?: Date;
@@ -95,7 +95,8 @@ export async function priceBooking(input: {
       selected: isDelivery && !!deliveryAddOn,
       name: deliveryAddOn?.name ?? "Delivery",
       priceCents: deliveryAddOn?.priceCents ?? 0,
-      inFreeZone,
+      // Package sessions include delivery to the court.
+      inFreeZone: input.productIncluded ? true : inFreeZone,
     },
     taxes: { gstBps: settings.gstBps, pstBps: settings.pstBps },
     depositCents: machine.depositCents,
@@ -161,7 +162,9 @@ export async function createBooking(input: CreateBookingInput) {
 
   const blockEnd = new Date(endsAt.getTime() + settings.bufferMinutes * 60_000);
   const isOnline = input.channel === "ONLINE";
-  const holdExpiresAt = isOnline ? new Date(now.getTime() + settings.holdMinutes * 60_000) : null;
+  // Package sessions with nothing to pay are confirmed straight away.
+  const needsPayment = isOnline && q.totalCents > 0;
+  const holdExpiresAt = needsPayment ? new Date(now.getTime() + settings.holdMinutes * 60_000) : null;
   const addOns = await db.addOn.findMany({ where: { active: true } });
 
   try {
@@ -179,7 +182,7 @@ export async function createBooking(input: CreateBookingInput) {
       return tx.booking.create({
         data: {
           code: await uniqueCode(tx),
-          status: isOnline ? "PENDING_PAYMENT" : "CONFIRMED",
+          status: needsPayment ? "PENDING_PAYMENT" : "CONFIRMED",
           channel: input.channel,
           customer: { connect: { id: customer.id } },
           machine: { connect: { id: machine.id } },
