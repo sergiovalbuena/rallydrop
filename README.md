@@ -134,12 +134,16 @@ Eventos de webhook necesarios:
 4. Ejecuta una vez `npm run db:seed` contra la base de producción, con `SEED_ADMIN_*` propios.
 5. En Stripe (modo live, cuando toque), crea el endpoint `https://TU-DOMINIO/api/stripe/webhook` con los eventos de arriba.
 6. Añade un **Blob store** en Vercel para las fotos de check-in/out. Crea `BLOB_READ_WRITE_TOKEN`.
-7. **Cron** (`vercel.json`): un solo job diario a las **7:00 AM hora de Victoria** (`0 14 * * *` UTC; BC es UTC-7 fijo). Funciona en el plan gratis de Vercel. Hace tres cosas:
+7. **Cron** (GitHub Actions, gratis): [`.github/workflows/daily-jobs.yml`](.github/workflows/daily-jobs.yml) llama `GET /api/cron/all` todos los días a las **7:00 AM de Victoria** (`0 14 * * *` UTC; BC es UTC-7 fijo). Hace tres cosas:
    - **Depósitos**: coloca la retención de los alquileres reservados con antelación (la mañana anterior).
    - **Recordatorios**: envía el aviso de las reservas de mañana.
    - **Limpieza**: libera las reservas temporales sin pagar.
 
-   Puedes lanzarlo a mano con `GET /api/cron/all` y `Authorization: Bearer $CRON_SECRET`.
+   Configúralo en GitHub → *Settings → Secrets and variables → Actions* con dos secretos:
+   - `SITE_URL`: por ejemplo `https://rallydrop.ca`.
+   - `CRON_SECRET`: el mismo valor que en Vercel.
+
+   Para probarlo: pestaña *Actions → Daily jobs → Run workflow*.
 
 ## Pendiente de configurar antes de lanzar
 
