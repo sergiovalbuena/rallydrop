@@ -10,6 +10,7 @@ import {
   Gauge,
   Settings,
   ShoppingBag,
+  TicketPercent,
   Users,
   UsersRound,
   Wrench,
@@ -24,6 +25,7 @@ const ITEMS = [
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/groups", label: "Group sessions", icon: UsersRound },
   { href: "/admin/products", label: "Prices & products", icon: ShoppingBag },
+  { href: "/admin/promo-codes", label: "Promo codes", icon: TicketPercent },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/export", label: "Export", icon: Download },
 ];

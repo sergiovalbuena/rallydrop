@@ -23,6 +23,7 @@ async function loadBooking(bookingId: string) {
       customer: true,
       machine: true,
       product: true,
+      promoCode: { select: { code: true } },
       court: true,
       deposit: true,
       addOns: { include: { addOn: true } },
@@ -57,8 +58,12 @@ export async function notifyBookingConfirmed(bookingId: string) {
   const b = await loadBooking(bookingId);
   if (!b) return;
   const lines = [
-    { label: b.product.name, cents: b.subtotalCents - b.addOns.reduce((s, a) => s + a.priceCents, 0) },
+    {
+      label: b.product.name,
+      cents: b.subtotalCents + b.discountCents - b.addOns.reduce((s, a) => s + a.priceCents, 0),
+    },
     ...b.addOns.map((a) => ({ label: a.addOn.name, cents: a.priceCents })),
+    ...(b.discountCents > 0 ? [{ label: `Promo ${b.promoCode?.code ?? ""}`.trim(), cents: -b.discountCents }] : []),
   ];
   await toAll(
     b,

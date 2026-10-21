@@ -115,6 +115,13 @@ async function main() {
     },
   });
 
+  // A launch code to try the checkout with (deactivate it in Admin → Promo codes).
+  await db.promoCode.upsert({
+    where: { code: "FIRSTSERVE" },
+    update: {},
+    create: { code: "FIRSTSERVE", kind: "PERCENT", percentBps: 1000, description: "Launch: 10% off any rental" },
+  });
+
   const aura = await db.machine.upsert({
     where: { slug: "pongbot-aura" },
     update: {},

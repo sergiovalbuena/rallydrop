@@ -15,19 +15,20 @@ import { geocodeAddress } from "@/lib/services/geocode";
 import { cancelBooking, finalizeRentalPayment, startRentalPayment, type FinalizeResult } from "@/lib/services/payments";
 import type { Quote } from "@/lib/domain/pricing";
 
-export type QuoteResult = { ok: true; quote: Quote; inFreeZone: boolean | null } | { ok: false; error: string };
+export type QuoteResult =
+  { ok: true; quote: Quote; inFreeZone: boolean | null; promoError: string | null } | { ok: false; error: string };
 
 /** Live price summary (server is the source of truth for prices). */
 export async function quoteAction(input: QuoteInput): Promise<QuoteResult> {
   const parsed = quoteSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Incomplete selection." };
-  const { productId, machineId, extras } = parsed.data;
+  const { productId, machineId, extras, promoCode } = parsed.data;
   const point =
     extras.fulfillment === "DELIVERY_ADDRESS" && extras.deliveryAddress
       ? await geocodeAddress(extras.deliveryAddress)
       : null;
   try {
-    const { quote, inFreeZone } = await priceBooking({
+    const { quote, inFreeZone, promoError } = await priceBooking({
       productId,
       machineId,
       balls: extras.balls,
@@ -35,8 +36,9 @@ export async function quoteAction(input: QuoteInput): Promise<QuoteResult> {
       courtId: extras.fulfillment === "DELIVERY_COURT" ? extras.courtId : null,
       deliveryAddress: extras.deliveryAddress,
       deliveryPoint: point,
+      promoCode,
     });
-    return { ok: true, quote, inFreeZone };
+    return { ok: true, quote, inFreeZone, promoError };
   } catch (e) {
     return { ok: false, error: e instanceof BookingError ? e.message : "Couldn't calculate the price." };
   }
@@ -80,6 +82,7 @@ export async function checkoutAction(input: CheckoutInput): Promise<CheckoutResu
       customerNotes: data.notes,
       channel: "ONLINE",
       termsAccepted: data.termsAccepted,
+      promoCode: data.promoCode,
     });
     heldBookingId = booking.id;
     const { clientSecret, amountCents } = await startRentalPayment(booking.id);

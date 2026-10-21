@@ -416,15 +416,17 @@ model Booking {
   customerNotes   String?
 
   // Price snapshot at booking time (cents). Product price changes never
-  // alter existing bookings.
+  // alter existing bookings. subtotalCents is after the promo discount.
   subtotalCents Int
-  discountCents Int    @default(0)
+  discountCents Int        @default(0)
+  promoCodeId   String?
+  promoCode     PromoCode? @relation(fields: [promoCodeId], references: [id])
   gstCents      Int
   pstCents      Int
   totalCents    Int
   gstBps        Int
   pstBps        Int
-  currency      String @default("cad")
+  currency      String     @default("cad")
 
   termsAcceptedAt DateTime? @db.Timestamptz
   termsVersion    String?
@@ -791,4 +793,37 @@ model VerificationToken {
   expires    DateTime @db.Timestamptz
 
   @@id([identifier, token])
+}
+
+// -----------------------------------------------------------------------------
+// Promo codes
+// -----------------------------------------------------------------------------
+
+enum PromoKind {
+  PERCENT
+  FIXED
+}
+
+/// Discount codes entered right before payment. Applied to the rental +
+/// add-ons before taxes. Usage is counted from bookings that went ahead.
+model PromoCode {
+  id             String        @id @default(cuid())
+  /// Stored upper-case; matching is case-insensitive.
+  code           String        @unique
+  description    String?
+  kind           PromoKind
+  /// PERCENT: basis points (1500 = 15%).
+  percentBps     Int?
+  /// FIXED: amount off in cents.
+  amountCents    Int?
+  active         Boolean       @default(true)
+  startsAt       DateTime?     @db.Timestamptz
+  endsAt         DateTime?     @db.Timestamptz
+  maxRedemptions Int?
+  /// Empty = every rental product.
+  productKinds   ProductKind[]
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @db.Timestamptz
+
+  bookings Booking[]
 }

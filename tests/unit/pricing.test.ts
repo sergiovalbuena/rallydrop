@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { quote, withTaxes } from "@/lib/domain/pricing";
+import { promoDiscount, quote, withTaxes } from "@/lib/domain/pricing";
 import { applyBps } from "@/lib/money";
 
 const base = {
@@ -64,5 +64,45 @@ describe("tax rounding", () => {
     expect(applyBps(1010, 500)).toBe(51); // 50.5 → 51
     expect(applyBps(1009, 500)).toBe(50); // 50.45 → 50
     expect(withTaxes(2000, { gstBps: 500, pstBps: 700 }).totalCents).toBe(2240);
+  });
+});
+
+describe("promo codes", () => {
+  it("takes a percent off before tax", () => {
+    const q = quote({
+      ...base,
+      balls: { ...base.balls, selected: true },
+      promo: { code: "SPRING15", kind: "PERCENT", percentBps: 1500 },
+    });
+    // 55.00 − 15% = 46.75
+    expect(q.discountCents).toBe(825);
+    expect(q.subtotalCents).toBe(4675);
+    expect(q.gstCents).toBe(applyBps(4675, 500));
+    expect(q.lines.at(-1)).toMatchObject({ key: "promo", label: "Promo SPRING15", cents: -825 });
+    expect(q.promoCode).toBe("SPRING15");
+  });
+
+  it("takes a fixed amount off", () => {
+    const q = quote({ ...base, promo: { code: "TENOFF", kind: "FIXED", amountCents: 1000 } });
+    expect(q.subtotalCents).toBe(3500);
+  });
+
+  it("never discounts below the minimum online charge", () => {
+    expect(promoDiscount(4500, { code: "FREE", kind: "PERCENT", percentBps: 10_000 })).toBe(4400);
+    expect(promoDiscount(4500, { code: "BIG", kind: "FIXED", amountCents: 99_999 })).toBe(4400);
+    expect(promoDiscount(50, { code: "X", kind: "FIXED", amountCents: 500 })).toBe(0);
+  });
+
+  it("doesn't apply to package sessions (nothing to discount)", () => {
+    const q = quote({ ...base, productIncluded: true, promo: { code: "X", kind: "PERCENT", percentBps: 5000 } });
+    expect(q.discountCents).toBe(0);
+    expect(q.promoCode).toBeNull();
+    expect(q.lines.some((l) => l.key === "promo")).toBe(false);
+  });
+
+  it("has no promo line without a code", () => {
+    const q = quote(base);
+    expect(q.discountCents).toBe(0);
+    expect(q.lines.some((l) => l.key === "promo")).toBe(false);
   });
 });

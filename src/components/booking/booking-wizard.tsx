@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CalendarCheck, Lock, MapPin, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarCheck, Lock, MapPin, ShieldCheck, TicketPercent, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -73,21 +73,31 @@ export function BookingWizard({
   const [quoting, startQuoting] = useTransition();
   const [checkout, setCheckout] = useState<Extract<CheckoutResult, { ok: true }> | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Promo: what's typed vs. the code actually applied to the quote.
+  const [promoInput, setPromoInput] = useState("");
+  const [promo, setPromo] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [applyingPromo, startApplyingPromo] = useTransition();
 
   const product = catalog.products.find((p) => p.id === productId) ?? null;
   const machine = catalog.machines.find((m) => m.id === machineId) ?? null;
   const steps = [t("stepProduct"), t("stepMachine"), t("stepWhen"), t("stepExtras"), t("stepDetails"), t("stepPay")];
 
   // Live price: recompute whenever the selection changes (debounced for typing).
-  const quoteKey = JSON.stringify({ productId, machineId, extras });
+  const quoteKey = JSON.stringify({ productId, machineId, extras, promo });
   useEffect(() => {
     if (!productId || !machineId) return;
     const handle = setTimeout(() => {
       startQuoting(async () => {
-        const r = await quoteAction({ productId, machineId, extras });
+        const r = await quoteAction({ productId, machineId, extras, promoCode: promo });
         if (r.ok) {
           setQuote(r.quote);
           setZone(r.inFreeZone);
+          // A code can stop applying when the selection changes.
+          if (promo && r.promoError) {
+            setPromo(null);
+            setPromoError(r.promoError);
+          }
         }
       });
     }, 400);
@@ -127,6 +137,41 @@ export function BookingWizard({
     [step, checkout],
   );
 
+  function applyPromo() {
+    const code = promoInput.trim();
+    if (!productId || !machineId) return;
+    if (!code) {
+      setPromoError(t("promoEmpty"));
+      return;
+    }
+    startApplyingPromo(async () => {
+      const r = await quoteAction({ productId, machineId, extras, promoCode: code });
+      if (!r.ok) {
+        setPromoError(r.error);
+        return;
+      }
+      if (r.promoError) {
+        setPromoError(r.promoError);
+        return;
+      }
+      if (!r.quote.promoCode) {
+        setPromoError(t("promoNoEffect"));
+        return;
+      }
+      setPromoError(null);
+      setPromo(r.quote.promoCode);
+      setPromoInput(r.quote.promoCode);
+      setQuote(r.quote);
+      setZone(r.inFreeZone);
+    });
+  }
+
+  function removePromo() {
+    setPromo(null);
+    setPromoInput("");
+    setPromoError(null);
+  }
+
   function validateDetails(): boolean {
     const r = contactSchema.safeParse({
       name: contact.name,
@@ -156,6 +201,7 @@ export function BookingWizard({
       },
       notes: contact.notes,
       termsAccepted: contact.termsAccepted as true,
+      promoCode: promo,
     });
     setSubmitting(false);
     if (result.ok) {
@@ -164,7 +210,10 @@ export function BookingWizard({
       return;
     }
     toast.error(result.error);
-    if (result.code === "SLOT_TAKEN" || result.code === "SLOT_NOT_ALLOWED") {
+    if (result.code === "INVALID_PROMO") {
+      setPromo(null);
+      setPromoError(result.error);
+    } else if (result.code === "SLOT_TAKEN" || result.code === "SLOT_NOT_ALLOWED") {
       setWhen({ date: when.date, slot: null });
       setStep(2);
     } else if (result.fields) {
@@ -475,6 +524,62 @@ export function BookingWizard({
                   </p>
                 )}
               </div>
+
+              {/* Promo code — last thing before payment. Not a nested form: Enter applies it. */}
+              <div className="rounded-2xl border border-dashed bg-muted/40 p-4">
+                <Label htmlFor="promo" className="flex items-center gap-2">
+                  <TicketPercent className="size-4 text-primary" aria-hidden /> {t("promoLabel")}
+                </Label>
+                {promo && quote?.promoCode ? (
+                  <div className="mt-3 flex animate-in items-center justify-between gap-3 duration-300 zoom-in-95 fade-in">
+                    <p className="text-sm" role="status">
+                      <Badge variant="accent" className="mr-2 font-mono tracking-wider">
+                        {promo}
+                      </Badge>
+                      <span className="text-success">
+                        {t("promoApplied", { amount: formatCents(quote.discountCents) })}
+                      </span>
+                    </p>
+                    <Button type="button" variant="ghost" size="sm" onClick={removePromo}>
+                      <X /> {t("promoRemove")}
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-3 flex gap-2">
+                      <Input
+                        id="promo"
+                        value={promoInput}
+                        autoComplete="off"
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        placeholder={t("promoPlaceholder")}
+                        className="font-mono uppercase placeholder:font-sans placeholder:normal-case"
+                        aria-invalid={!!promoError}
+                        aria-describedby={promoError ? "promo-error" : undefined}
+                        onChange={(e) => {
+                          setPromoInput(e.target.value);
+                          if (promoError) setPromoError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            applyPromo();
+                          }
+                        }}
+                      />
+                      <Button type="button" variant="outline" onClick={applyPromo} disabled={applyingPromo}>
+                        {applyingPromo ? tc("loading") : t("promoApply")}
+                      </Button>
+                    </div>
+                    {promoError && (
+                      <p id="promo-error" className="mt-2 text-sm text-destructive" role="alert">
+                        {promoError}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
             </form>
           )}
 
@@ -518,11 +623,13 @@ export function BookingWizard({
               )}
             </div>
             {step === 4 ? (
-              <Button type="submit" form="details-form" size="lg" disabled={submitting}>
+              // Distinct keys: reusing the "Continue" node would let the click
+              // that opened this step also submit the form.
+              <Button key="submit" type="submit" form="details-form" size="lg" disabled={submitting}>
                 {submitting ? tc("loading") : t("toPayment")} <ArrowRight />
               </Button>
             ) : (
-              <Button size="lg" onClick={() => go((step + 1) as Step)} disabled={!canContinue}>
+              <Button key="next" size="lg" onClick={() => go((step + 1) as Step)} disabled={!canContinue}>
                 {tc("continue")} <ArrowRight />
               </Button>
             )}

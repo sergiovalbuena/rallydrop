@@ -32,6 +32,7 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
       court: true,
       deposit: true,
       addOns: { include: { addOn: true } },
+      promoCode: { select: { code: true } },
       payments: { include: { refunds: true }, orderBy: { createdAt: "asc" } },
       inspections: true,
       events: { orderBy: { createdAt: "desc" } },
@@ -168,6 +169,9 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
 
           <Panel title="Payment">
             <dl className="space-y-1.5 text-sm">
+              {b.discountCents > 0 && (
+                <Row label={`Promo ${b.promoCode?.code ?? ""}`} value={formatCents(-b.discountCents)} />
+              )}
               <Row label="Subtotal" value={formatCents(b.subtotalCents)} />
               <Row label={`GST ${b.gstBps / 100}%`} value={formatCents(b.gstCents)} />
               <Row label={`PST ${b.pstBps / 100}%`} value={formatCents(b.pstCents)} />

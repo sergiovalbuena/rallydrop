@@ -11,6 +11,7 @@ import { toLocalDate } from "@/lib/time";
 import { productDurationMinutes, rulesFor } from "./availability";
 import { upsertCustomer } from "./customers";
 import { BookingError, isOverlapError, isUniqueViolation } from "./errors";
+import { findValidPromo, promoRedemptions, toPromoInput } from "./promo";
 import { getSettings, type AppSettings } from "./settings";
 
 export const TERMS_VERSION = "2026-10";
@@ -34,6 +35,7 @@ export type CreateBookingInput = {
   now?: Date;
   /** Admin bookings may skip the public slot rules (still no double booking). */
   skipSlotRules?: boolean;
+  promoCode?: string | null;
 };
 
 export type PriceContext = {
@@ -51,7 +53,9 @@ export async function priceBooking(input: {
   deliveryAddress?: string | null;
   deliveryPoint?: LatLng | null;
   productIncluded?: boolean;
-}): Promise<{ quote: Quote; inFreeZone: boolean | null }> {
+  promoCode?: string | null;
+  now?: Date;
+}): Promise<{ quote: Quote; inFreeZone: boolean | null; promoId: string | null; promoError: string | null }> {
   const [settings, product, machine, addOns, court] = await Promise.all([
     getSettings(),
     db.product.findUnique({ where: { id: input.productId } }),
@@ -60,6 +64,8 @@ export async function priceBooking(input: {
     input.courtId ? db.court.findUnique({ where: { id: input.courtId } }) : null,
   ]);
   if (!product || !machine) throw new BookingError("NOT_FOUND", "That product or machine no longer exists.");
+
+  const promo = input.promoCode?.trim() ? await findValidPromo(input.promoCode, product.kind, input.now) : null;
 
   const ballsAddOn = addOns.find((a) => a.kind === "BALLS");
   const deliveryAddOn = addOns.find((a) => a.kind === "DELIVERY");
@@ -95,8 +101,14 @@ export async function priceBooking(input: {
     taxes: { gstBps: settings.gstBps, pstBps: settings.pstBps },
     depositCents: machine.depositCents,
     productIncluded: input.productIncluded,
+    promo: promo?.ok ? toPromoInput(promo.promo) : null,
   });
-  return { quote: q, inFreeZone };
+  return {
+    quote: q,
+    inFreeZone,
+    promoId: promo?.ok && q.discountCents > 0 ? promo.promo.id : null,
+    promoError: promo && !promo.ok ? promo.error : null,
+  };
 }
 
 /**
@@ -135,7 +147,11 @@ export async function createBooking(input: CreateBookingInput) {
     }
   }
 
-  const { quote: q } = await priceBooking({
+  const {
+    quote: q,
+    promoId,
+    promoError,
+  } = await priceBooking({
     productId: product.id,
     machineId: machine.id,
     balls: input.balls,
@@ -144,7 +160,10 @@ export async function createBooking(input: CreateBookingInput) {
     deliveryAddress: input.deliveryAddress,
     deliveryPoint: input.deliveryPoint,
     productIncluded: !!input.subscriptionId,
+    promoCode: input.promoCode,
+    now,
   });
+  if (promoError) throw new BookingError("INVALID_PROMO", promoError);
 
   const deposit = planDeposit({
     startsAt,
@@ -166,9 +185,10 @@ export async function createBooking(input: CreateBookingInput) {
       await lockMachine(tx, machine.id);
       const customer = await upsertCustomer(tx, input.customer);
       await expireStaleHolds(tx, machine.id, startsAt, blockEnd, now);
+      if (promoId) await claimPromo(tx, promoId);
 
       const addOnRows: Prisma.BookingAddOnCreateWithoutBookingInput[] = q.lines
-        .filter((l) => l.key !== "product")
+        .filter((l) => l.key === "balls" || l.key === "delivery")
         .flatMap((l) => {
           const addOn = addOns.find((a) => a.kind === (l.key === "balls" ? "BALLS" : "DELIVERY"));
           return addOn ? [{ addOn: { connect: { id: addOn.id } }, priceCents: l.cents }] : [];
@@ -192,6 +212,8 @@ export async function createBooking(input: CreateBookingInput) {
           deliveryLng: input.deliveryPoint?.lng ?? null,
           customerNotes: input.customerNotes,
           subtotalCents: q.subtotalCents,
+          discountCents: q.discountCents,
+          ...(promoId ? { promoCode: { connect: { id: promoId } } } : {}),
           gstCents: q.gstCents,
           pstCents: q.pstCents,
           totalCents: q.totalCents,
@@ -260,6 +282,19 @@ export async function createBooking(input: CreateBookingInput) {
  */
 export async function lockMachine(tx: Prisma.TransactionClient, machineId: string) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`machine:${machineId}`}))`;
+}
+
+/**
+ * Re-checks a limited promo inside the booking transaction, serialized per
+ * code, so two customers can't both take the last redemption.
+ */
+async function claimPromo(tx: Prisma.TransactionClient, promoId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`promo:${promoId}`}))`;
+  const promo = await tx.promoCode.findUnique({ where: { id: promoId }, select: { maxRedemptions: true } });
+  if (promo?.maxRedemptions == null) return;
+  if ((await promoRedemptions(promoId, undefined, tx)) >= promo.maxRedemptions) {
+    throw new BookingError("INVALID_PROMO", "That code has been fully redeemed.");
+  }
 }
 
 async function uniqueCode(tx: Prisma.TransactionClient): Promise<string> {

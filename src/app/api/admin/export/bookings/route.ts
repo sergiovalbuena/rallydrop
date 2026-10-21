@@ -17,7 +17,14 @@ export async function GET(request: NextRequest) {
       from: p.get("from") ?? undefined,
       to: p.get("to") ?? undefined,
     }),
-    include: { customer: true, machine: true, product: true, court: true, deposit: true },
+    include: {
+      customer: true,
+      machine: true,
+      product: true,
+      court: true,
+      deposit: true,
+      promoCode: { select: { code: true } },
+    },
     orderBy: { startsAt: "asc" },
   });
   const csv = toCsv(
@@ -34,6 +41,8 @@ export async function GET(request: NextRequest) {
       "phone",
       "fulfillment",
       "where",
+      "promo_code",
+      "discount",
       "subtotal",
       "gst",
       "pst",
@@ -56,6 +65,8 @@ export async function GET(request: NextRequest) {
       b.customer.phone,
       b.fulfillment,
       b.court?.name ?? b.deliveryAddress ?? "",
+      b.promoCode?.code ?? "",
+      cents(b.discountCents),
       cents(b.subtotalCents),
       cents(b.gstCents),
       cents(b.pstCents),

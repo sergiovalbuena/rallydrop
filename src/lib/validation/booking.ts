@@ -41,6 +41,13 @@ export const extrasSchema = z
     path: ["deliveryAddress"],
   });
 
+const promoCodeSchema = z
+  .string()
+  .trim()
+  .max(40)
+  .nullish()
+  .transform((v) => (v ? v : null));
+
 export const checkoutSchema = z.object({
   productId: z.string().min(1),
   machineId: z.string().min(1),
@@ -49,6 +56,7 @@ export const checkoutSchema = z.object({
   contact: contactSchema,
   notes: optionalText(500),
   termsAccepted: z.literal(true, { error: "Please accept the rental terms." }),
+  promoCode: promoCodeSchema,
 });
 
 export type CheckoutInput = z.input<typeof checkoutSchema>;
@@ -57,6 +65,7 @@ export const quoteSchema = z.object({
   productId: z.string().min(1),
   machineId: z.string().min(1),
   extras: extrasSchema,
+  promoCode: promoCodeSchema,
 });
 
 export type QuoteInput = z.input<typeof quoteSchema>;

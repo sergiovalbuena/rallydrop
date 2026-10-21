@@ -57,6 +57,7 @@ tests/             unit/ e integration/ (doble reserva concurrente, webhooks Str
   - Con daños, el admin cobra el depósito total o parcialmente, con una nota obligatoria que se envía por email al cliente.
   - Las reservas telefónicas no tienen tarjeta: el depósito se gestiona en persona.
 - **Precios.** Se calculan siempre en el servidor, en centavos, y se guarda una copia en cada reserva.
+- **Códigos promocionales.** Se crean en Admin → Promo codes (% o monto fijo, fechas, usos máximos, tipos de alquiler). El cliente lo escribe justo antes de pagar; el descuento se aplica antes de impuestos, nunca baja el cobro de $1 (el pago con tarjeta es lo que guarda la tarjeta para el depósito) y no afecta el depósito. El seed crea `FIRSTSERVE` (10%) para probar.
   - GST y PST se configuran en el admin. ⚠️ **Confírmalos con tu contador**, sobre todo si el PST aplica al alquiler de equipo.
 - **Hora de BC.** Todo el sitio funciona en hora de Victoria: horarios, calendario, emails y admin se calculan en el servidor.
   - Desde el 1 de noviembre de 2026 BC queda en UTC-7 fijo, sin más cambios de hora.

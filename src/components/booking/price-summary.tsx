@@ -39,7 +39,10 @@ export function PriceSummary({
           aria-busy={loading}
         >
           {quote.lines.map((l) => (
-            <div key={l.key} className="flex justify-between gap-4">
+            <div
+              key={l.key}
+              className={l.key === "promo" ? "flex justify-between gap-4 text-success" : "flex justify-between gap-4"}
+            >
               <dt>
                 {l.label}
                 {l.note && <span className="block text-xs text-success">{l.note}</span>}
