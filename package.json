@@ -15,7 +15,9 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
@@ -56,6 +58,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "prisma": "^7.10.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",

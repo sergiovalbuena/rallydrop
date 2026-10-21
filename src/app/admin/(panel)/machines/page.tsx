@@ -15,7 +15,15 @@ export default async function MachinesPage() {
   await connection();
   const machines = await db.machine.findMany({
     orderBy: { sortOrder: "asc" },
-    include: { _count: { select: { bookings: { where: { status: { in: ["CONFIRMED", "CHECKED_OUT", "RETURNED_OK", "RETURNED_DAMAGED", "COMPLETED"] } } } } } },
+    include: {
+      _count: {
+        select: {
+          bookings: {
+            where: { status: { in: ["CONFIRMED", "CHECKED_OUT", "RETURNED_OK", "RETURNED_DAMAGED", "COMPLETED"] } },
+          },
+        },
+      },
+    },
   });
   return (
     <>
@@ -44,13 +52,18 @@ export default async function MachinesPage() {
             {machines.map((m) => (
               <TableRow key={m.id}>
                 <TableCell>
-                  <Link href={`/admin/machines/${m.id}`} className="flex items-center gap-2 font-semibold hover:underline">
+                  <Link
+                    href={`/admin/machines/${m.id}`}
+                    className="flex items-center gap-2 font-semibold hover:underline"
+                  >
                     <span className="size-3 rounded-full" style={{ background: m.calendarColor }} aria-hidden />
                     {m.name}
                   </Link>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={m.status === "AVAILABLE" ? "success" : m.status === "RENTED" ? "accent" : "warning"}>{m.status.toLowerCase()}</Badge>
+                  <Badge variant={m.status === "AVAILABLE" ? "success" : m.status === "RENTED" ? "accent" : "warning"}>
+                    {m.status.toLowerCase()}
+                  </Badge>
                 </TableCell>
                 <TableCell>{m.bookable ? "Yes" : "Coming soon"}</TableCell>
                 <TableCell>{formatCents(m.depositCents)}</TableCell>

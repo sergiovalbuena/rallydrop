@@ -2,7 +2,13 @@
 
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { checkoutSchema, fieldErrors, quoteSchema, type CheckoutInput, type QuoteInput } from "@/lib/validation/booking";
+import {
+  checkoutSchema,
+  fieldErrors,
+  quoteSchema,
+  type CheckoutInput,
+  type QuoteInput,
+} from "@/lib/validation/booking";
 import { createBooking, priceBooking } from "@/lib/services/bookings";
 import { BookingError } from "@/lib/services/errors";
 import { geocodeAddress } from "@/lib/services/geocode";
@@ -17,7 +23,9 @@ export async function quoteAction(input: QuoteInput): Promise<QuoteResult> {
   if (!parsed.success) return { ok: false, error: "Incomplete selection." };
   const { productId, machineId, extras } = parsed.data;
   const point =
-    extras.fulfillment === "DELIVERY_ADDRESS" && extras.deliveryAddress ? await geocodeAddress(extras.deliveryAddress) : null;
+    extras.fulfillment === "DELIVERY_ADDRESS" && extras.deliveryAddress
+      ? await geocodeAddress(extras.deliveryAddress)
+      : null;
   try {
     const { quote, inFreeZone } = await priceBooking({
       productId,
@@ -87,7 +95,9 @@ export async function checkoutAction(input: CheckoutInput): Promise<CheckoutResu
   } catch (e) {
     // Payment couldn't start → don't leave the slot blocked by our own hold.
     if (heldBookingId) {
-      await cancelBooking(heldBookingId, { actor: "system", refund: "none", reason: "payment_init_failed" }).catch(() => {});
+      await cancelBooking(heldBookingId, { actor: "system", refund: "none", reason: "payment_init_failed" }).catch(
+        () => {},
+      );
     }
     if (e instanceof BookingError) return { ok: false, error: e.message, code: e.code };
     console.error("checkout failed", e);
@@ -95,7 +105,9 @@ export async function checkoutAction(input: CheckoutInput): Promise<CheckoutResu
   }
 }
 
-export async function finalizeAction(bookingId: string): Promise<FinalizeResult | { status: "error"; message: string }> {
+export async function finalizeAction(
+  bookingId: string,
+): Promise<FinalizeResult | { status: "error"; message: string }> {
   const id = z.string().min(1).safeParse(bookingId);
   if (!id.success) return { status: "error", message: "Missing booking." };
   try {

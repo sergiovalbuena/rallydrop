@@ -25,5 +25,7 @@ export function AlertTitle({ className, ...props }: ComponentProps<"div">) {
   return <div className={cn("col-start-2 font-semibold", className)} {...props} />;
 }
 export function AlertDescription({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("col-start-2 text-sm text-muted-foreground [&_p]:leading-relaxed", className)} {...props} />;
+  return (
+    <div className={cn("col-start-2 text-sm text-muted-foreground [&_p]:leading-relaxed", className)} {...props} />
+  );
 }

@@ -60,7 +60,13 @@ export function MachineForm({ machine }: { machine: PublicMachine | null }) {
         <legend className="text-sm font-medium">Sports</legend>
         {(["TENNIS", "PICKLEBALL"] as const).map((s) => (
           <label key={s} className="mr-4 inline-flex items-center gap-2 text-sm">
-            <input type="checkbox" name="sports" value={s} defaultChecked={m?.sports.includes(s) ?? s === "TENNIS"} className="size-4 accent-primary" />
+            <input
+              type="checkbox"
+              name="sports"
+              value={s}
+              defaultChecked={m?.sports.includes(s) ?? s === "TENNIS"}
+              className="size-4 accent-primary"
+            />
             {s.toLowerCase()}
           </label>
         ))}
@@ -69,7 +75,13 @@ export function MachineForm({ machine }: { machine: PublicMachine | null }) {
         <legend className="text-sm font-medium">Levels</legend>
         {(["BEGINNER", "INTERMEDIATE", "ADVANCED", "PRO"] as const).map((l) => (
           <label key={l} className="mr-4 inline-flex items-center gap-2 text-sm">
-            <input type="checkbox" name="levels" value={l} defaultChecked={m?.levels.includes(l)} className="size-4 accent-primary" />
+            <input
+              type="checkbox"
+              name="levels"
+              value={l}
+              defaultChecked={m?.levels.includes(l)}
+              className="size-4 accent-primary"
+            />
             {l.toLowerCase()}
           </label>
         ))}
@@ -78,10 +90,22 @@ export function MachineForm({ machine }: { machine: PublicMachine | null }) {
         <Textarea id="specs" name="specs" defaultValue={m?.specs.map((s) => `${s.label}: ${s.value}`).join("\n")} />
       </F>
       <F label="Deposit (CAD)" htmlFor="deposit">
-        <Input id="deposit" name="deposit" inputMode="decimal" defaultValue={((m?.depositCents ?? 30000) / 100).toFixed(2)} required />
+        <Input
+          id="deposit"
+          name="deposit"
+          inputMode="decimal"
+          defaultValue={((m?.depositCents ?? 30000) / 100).toFixed(2)}
+          required
+        />
       </F>
       <F label="Calendar colour" htmlFor="calendarColor">
-        <Input id="calendarColor" name="calendarColor" type="color" defaultValue={m?.calendarColor ?? "#2563eb"} className="h-11 p-1" />
+        <Input
+          id="calendarColor"
+          name="calendarColor"
+          type="color"
+          defaultValue={m?.calendarColor ?? "#2563eb"}
+          className="h-11 p-1"
+        />
       </F>
       <F label="Photo" htmlFor="image">
         <Input id="image" name="image" type="file" accept="image/*" />
@@ -128,7 +152,17 @@ export function MaintenanceForm({ machineId, today }: { machineId: string; today
   );
 }
 
-function F({ label, htmlFor, children, className }: { label: string; htmlFor: string; children: ReactNode; className?: string }) {
+function F({
+  label,
+  htmlFor,
+  children,
+  className,
+}: {
+  label: string;
+  htmlFor: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div className={`space-y-1.5 ${className ?? ""}`}>
       <Label htmlFor={htmlFor}>{label}</Label>

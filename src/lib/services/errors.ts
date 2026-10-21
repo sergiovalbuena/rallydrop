@@ -36,6 +36,14 @@ export function isOverlapError(error: unknown): boolean {
   return false;
 }
 
+/** True for unique-constraint violations (Prisma P2002 / SQLSTATE 23505). */
+export function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  if ((error as { code?: unknown }).code === "P2002") return true;
+  const text = safeStringify(error);
+  return text.includes("P2002") || text.includes("23505");
+}
+
 function safeStringify(value: object): string {
   try {
     const props = Object.getOwnPropertyNames(value).reduce<Record<string, unknown>>((acc, key) => {

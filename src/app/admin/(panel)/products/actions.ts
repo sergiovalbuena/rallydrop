@@ -12,7 +12,10 @@ const DAYS: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, f
 /** "Sat 09:00, Fri 21:00" → [{weekday:6, minute:540}, {weekday:5, minute:1260}] */
 export async function parseStarts(text: string) {
   const out: { weekday: number; minute: number }[] = [];
-  for (const part of text.split(",").map((p) => p.trim()).filter(Boolean)) {
+  for (const part of text
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)) {
     const m = part.match(/^(sun|mon|tue|wed|thu|fri|sat)\w*\s+(\d{1,2}):(\d{2})$/i);
     if (!m) return null;
     out.push({ weekday: DAYS[m[1].toLowerCase()], minute: Number(m[2]) * 60 + Number(m[3]) });

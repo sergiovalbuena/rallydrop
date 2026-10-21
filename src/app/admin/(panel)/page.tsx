@@ -113,8 +113,18 @@ export default async function AdminDashboard() {
                     {Math.round(o.hours)} h · {o.percent}%
                   </span>
                 </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={o.percent} aria-valuemin={0} aria-valuemax={100} aria-label={`${o.machine.name} occupancy`}>
-                  <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, o.percent)}%`, background: o.machine.calendarColor }} />
+                <div
+                  className="h-2.5 overflow-hidden rounded-full bg-muted"
+                  role="progressbar"
+                  aria-valuenow={o.percent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${o.machine.name} occupancy`}
+                >
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${Math.min(100, o.percent)}%`, background: o.machine.calendarColor }}
+                  />
                 </div>
               </li>
             ))}

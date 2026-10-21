@@ -56,24 +56,40 @@ describe.skipIf(!hasTestDb)("booking concurrency (Postgres)", () => {
   });
 
   it("lets exactly one of many concurrent requests win the same slot", async () => {
-    const attempts = await Promise.allSettled(Array.from({ length: 8 }, () => createBooking(input())));
-    const won = attempts.filter((a) => a.status === "fulfilled");
-    const lost = attempts.filter((a): a is PromiseRejectedResult => a.status === "rejected");
-    expect(won).toHaveLength(1);
-    expect(lost).toHaveLength(7);
-    for (const l of lost) {
-      expect(l.reason).toBeInstanceOf(BookingError);
-      expect((l.reason as BookingError).code).toBe("SLOT_TAKEN");
+    // Several rounds: conflicting concurrent inserts must never deadlock or double book.
+    for (let round = 0; round < 4; round++) {
+      await resetDb();
+      catalog = await seedCatalog();
+      const attempts = await Promise.allSettled(Array.from({ length: 12 }, () => createBooking(input())));
+      const won = attempts.filter((a) => a.status === "fulfilled");
+      const lost = attempts.filter((a): a is PromiseRejectedResult => a.status === "rejected");
+      expect(won).toHaveLength(1);
+      for (const l of lost) {
+        expect(l.reason).toBeInstanceOf(BookingError);
+        expect((l.reason as BookingError).code).toBe("SLOT_TAKEN");
+      }
+      expect(await db.machineOccupancy.count({ where: { active: true } })).toBe(1);
     }
-    expect(await db.machineOccupancy.count({ where: { active: true } })).toBe(1);
+  });
+
+  it("handles a brand-new customer submitting several bookings at once", async () => {
+    const email = "newbie@example.com";
+    const days = ["2027-05-03", "2027-05-06", "2027-05-09", "2027-05-12"];
+    const results = await Promise.allSettled(
+      days.map((d) =>
+        createBooking(input({ customer: { name: "Newbie", email }, startsAt: localDateMinuteToUtc(d, 600) })),
+      ),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(4);
+    expect(await db.customer.count({ where: { email } })).toBe(1);
   });
 
   it("rejects overlaps that only touch the 2 h buffer", async () => {
     await createBooking(input());
     // Previous rental returns Tue 11:00; buffer until 13:00. 12:00 must fail.
-    await expect(
-      createBooking(input({ startsAt: localDateMinuteToUtc("2027-05-04", 720) })),
-    ).rejects.toMatchObject({ code: "SLOT_TAKEN" });
+    await expect(createBooking(input({ startsAt: localDateMinuteToUtc("2027-05-04", 720) }))).rejects.toMatchObject({
+      code: "SLOT_TAKEN",
+    });
     await expect(createBooking(input({ startsAt: localDateMinuteToUtc("2027-05-04", 780) }))).resolves.toBeTruthy();
   });
 
@@ -154,8 +170,8 @@ describe.skipIf(!hasTestDb)("booking concurrency (Postgres)", () => {
 
   it("refuses blocked customers", async () => {
     await db.customer.create({ data: { name: "Nope", email: "blocked@example.com", blocked: true } });
-    await expect(createBooking(input({ customer: { name: "Nope", email: "blocked@example.com" } }))).rejects.toMatchObject(
-      { code: "CUSTOMER_BLOCKED" },
-    );
+    await expect(
+      createBooking(input({ customer: { name: "Nope", email: "blocked@example.com" } })),
+    ).rejects.toMatchObject({ code: "CUSTOMER_BLOCKED" });
   });
 });

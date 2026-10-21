@@ -3,7 +3,13 @@ import { db } from "@/lib/db";
 import type { BookingStatus, Prisma } from "@/generated/prisma/client";
 import { addLocalDays, localDateMinuteToUtc, toLocalDate } from "@/lib/time";
 
-export const ACTIVE_STATUSES: BookingStatus[] = ["CONFIRMED", "CHECKED_OUT", "RETURNED_OK", "RETURNED_DAMAGED", "COMPLETED"];
+export const ACTIVE_STATUSES: BookingStatus[] = [
+  "CONFIRMED",
+  "CHECKED_OUT",
+  "RETURNED_OK",
+  "RETURNED_DAMAGED",
+  "COMPLETED",
+];
 
 export function monthRange(now: Date) {
   const today = toLocalDate(now);
@@ -28,18 +34,22 @@ export async function dashboardStats(now: Date) {
     db.booking.findMany({
       where: {
         status: { in: ACTIVE_STATUSES },
-        OR: [
-          { startsAt: { gte: dayStart, lt: dayEnd } },
-          { endsAt: { gte: dayStart, lt: dayEnd } },
-        ],
+        OR: [{ startsAt: { gte: dayStart, lt: dayEnd } }, { endsAt: { gte: dayStart, lt: dayEnd } }],
       },
       include: { customer: true, machine: true, court: true },
       orderBy: { startsAt: "asc" },
     }),
     db.booking.count({ where: { status: { in: ACTIVE_STATUSES }, startsAt: { gte: dayStart, lt: weekEnd } } }),
-    db.booking.findMany({ where: { status: "CHECKED_OUT" }, include: { customer: true, machine: true }, orderBy: { endsAt: "asc" } }),
+    db.booking.findMany({
+      where: { status: "CHECKED_OUT" },
+      include: { customer: true, machine: true },
+      orderBy: { endsAt: "asc" },
+    }),
     db.deposit.findMany({
-      where: { status: { in: ["HELD", "CARD_SAVED", "FAILED"] }, booking: { status: { notIn: ["CANCELLED", "EXPIRED"] } } },
+      where: {
+        status: { in: ["HELD", "CARD_SAVED", "FAILED"] },
+        booking: { status: { notIn: ["CANCELLED", "EXPIRED"] } },
+      },
       include: { booking: { include: { customer: true } } },
       orderBy: { createdAt: "asc" },
     }),

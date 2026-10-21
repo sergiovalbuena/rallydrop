@@ -3,10 +3,7 @@ import { db } from "@/lib/db";
 import type { Settings } from "@/generated/prisma/client";
 
 /** Settings with Decimal columns converted to plain numbers. */
-export type AppSettings = Omit<
-  Settings,
-  "freeDeliveryCenterLat" | "freeDeliveryCenterLng" | "freeDeliveryRadiusKm"
-> & {
+export type AppSettings = Omit<Settings, "freeDeliveryCenterLat" | "freeDeliveryCenterLng" | "freeDeliveryRadiusKm"> & {
   freeDeliveryCenterLat: number;
   freeDeliveryCenterLng: number;
   freeDeliveryRadiusKm: number;

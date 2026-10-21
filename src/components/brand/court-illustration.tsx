@@ -6,7 +6,12 @@ import { cn } from "@/lib/utils";
  */
 export function CourtIllustration({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 640 520" className={cn("h-auto w-full", className)} role="img" aria-label="A ball machine on a blue hard court feeding balls over the net">
+    <svg
+      viewBox="0 0 640 520"
+      className={cn("h-auto w-full", className)}
+      role="img"
+      aria-label="A ball machine on a blue hard court feeding balls over the net"
+    >
       <defs>
         <linearGradient id="court-surface" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#2a5ee8" />
@@ -44,7 +49,15 @@ export function CourtIllustration({ className }: { className?: string }) {
         </g>
       </g>
       {/* rally arc */}
-      <path d="M318 440 C 300 240, 260 150, 205 175" stroke="#d9f23f" strokeWidth="3" strokeDasharray="2 12" strokeLinecap="round" fill="none" opacity="0.9" />
+      <path
+        d="M318 440 C 300 240, 260 150, 205 175"
+        stroke="#d9f23f"
+        strokeWidth="3"
+        strokeDasharray="2 12"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.9"
+      />
       {[
         [306, 360, 9],
         [287, 262, 8],

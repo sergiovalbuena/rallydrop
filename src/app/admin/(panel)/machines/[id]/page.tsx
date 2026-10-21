@@ -53,7 +53,9 @@ export default async function MachinePage({ params }: PageProps<"/admin/machines
                   <li key={l.id} className="py-2">
                     <p className="font-semibold">
                       {formatLocal(l.performedAt, "MMM d, yyyy")} · {l.summary}
-                      {l.costCents !== null && <span className="font-normal text-muted-foreground"> · {formatCents(l.costCents)}</span>}
+                      {l.costCents !== null && (
+                        <span className="font-normal text-muted-foreground"> · {formatCents(l.costCents)}</span>
+                      )}
                     </p>
                     {l.notes && <p className="text-muted-foreground">{l.notes}</p>}
                   </li>

@@ -75,8 +75,14 @@ export async function PricingGrid({
                   <span className="text-lg font-semibold text-white/70"> {tc("perMonth")}</span>
                 </p>
                 <ul className="mt-4 space-y-2 text-sm text-white/85">
-                  <li className="flex gap-2"><Check className="size-4 text-optic" aria-hidden />{t("sessions", { count: p.sessionsPerMonth ?? 0 })}</li>
-                  <li className="flex gap-2"><Check className="size-4 text-optic" aria-hidden />{t("sessionLength", { minutes: p.sessionMinutes ?? 90 })}</li>
+                  <li className="flex gap-2">
+                    <Check className="size-4 text-optic" aria-hidden />
+                    {t("sessions", { count: p.sessionsPerMonth ?? 0 })}
+                  </li>
+                  <li className="flex gap-2">
+                    <Check className="size-4 text-optic" aria-hidden />
+                    {t("sessionLength", { minutes: p.sessionMinutes ?? 90 })}
+                  </li>
                 </ul>
                 {p.description && <p className="mt-3 flex-1 text-sm text-white/70">{p.description}</p>}
                 <Button asChild variant="accent" className="mt-6 self-start">
@@ -125,7 +131,9 @@ export async function PricingGrid({
 
       <div className="rounded-2xl border border-dashed bg-muted/40 p-6">
         <h2 className="font-display text-xl font-bold uppercase">{t("depositTitle")}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{t("depositBody", { amount: formatCentsShort(depositCents) })}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {t("depositBody", { amount: formatCentsShort(depositCents) })}
+        </p>
         <p className="mt-2 text-xs text-muted-foreground">{tc("taxesNote")}</p>
       </div>
     </div>

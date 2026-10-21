@@ -86,11 +86,19 @@ async function Confirmation({
   const failed = status === "CANCELLED" || status === "EXPIRED";
   return (
     <div className="rounded-3xl border bg-card p-8 text-center">
-      {failed ? <XCircle className="mx-auto size-12 text-destructive" /> : <Clock className="mx-auto size-12 text-primary" />}
-      <h1 className="mt-4 font-display text-4xl font-extrabold uppercase">{failed ? t("failedTitle") : t("pendingTitle")}</h1>
+      {failed ? (
+        <XCircle className="mx-auto size-12 text-destructive" />
+      ) : (
+        <Clock className="mx-auto size-12 text-primary" />
+      )}
+      <h1 className="mt-4 font-display text-4xl font-extrabold uppercase">
+        {failed ? t("failedTitle") : t("pendingTitle")}
+      </h1>
       <p className="mt-3 text-muted-foreground">{failed ? t("failedBody") : t("pendingBody")}</p>
       <Button asChild className="mt-6">
-        <Link href={failed ? "/book" : `/book/confirmation/${booking.code}?b=${booking.id}`}>{failed ? t("title") : "Refresh"}</Link>
+        <Link href={failed ? "/book" : `/book/confirmation/${booking.code}?b=${booking.id}`}>
+          {failed ? t("title") : "Refresh"}
+        </Link>
       </Button>
     </div>
   );

@@ -81,7 +81,9 @@ async function Sessions() {
               <Link href={`/book/group/${s.id}`}>{t("join", { price: formatCentsShort(s.priceCents) })}</Link>
             </Button>
           ) : (
-            <Button disabled variant="secondary">{t("full")}</Button>
+            <Button disabled variant="secondary">
+              {t("full")}
+            </Button>
           )}
         </li>
       ))}

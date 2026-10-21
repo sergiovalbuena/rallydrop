@@ -26,7 +26,11 @@ export function GroupForm({ today, courts, machines }: { today: string; courts: 
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2">
       {field("Title", <Input name="title" defaultValue="Groundstroke rally clinic" required />, "sm:col-span-2")}
-      {field("Description", <Input name="description" placeholder="Machine-fed drills with a coach" />, "sm:col-span-2")}
+      {field(
+        "Description",
+        <Input name="description" placeholder="Machine-fed drills with a coach" />,
+        "sm:col-span-2",
+      )}
       {field("Date", <Input type="date" name="date" defaultValue={today} required />)}
       {field("Start time", <Input type="time" name="time" defaultValue="18:00" required />)}
       {field("Length (min)", <Input type="number" name="minutes" defaultValue={60} min={30} max={240} />)}

@@ -29,7 +29,15 @@ import type { BookingStatus, DepositStatus } from "@/generated/prisma/client";
 import { STATUS_LABEL } from "./ui";
 import { useAdminAction } from "./use-action";
 
-const SELECTABLE: BookingStatus[] = ["CONFIRMED", "CHECKED_OUT", "RETURNED_OK", "RETURNED_DAMAGED", "COMPLETED", "NO_SHOW", "CANCELLED"];
+const SELECTABLE: BookingStatus[] = [
+  "CONFIRMED",
+  "CHECKED_OUT",
+  "RETURNED_OK",
+  "RETURNED_DAMAGED",
+  "COMPLETED",
+  "NO_SHOW",
+  "CANCELLED",
+];
 
 export function StatusSelect({ bookingId, status }: { bookingId: string; status: BookingStatus }) {
   const { run, pending } = useAdminAction();
@@ -82,11 +90,22 @@ export function DepositControls({
           <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
             <div className="space-y-1.5">
               <Label htmlFor="capture-amount">Amount (CAD)</Label>
-              <Input id="capture-amount" inputMode="decimal" value={captureAmount} onChange={(e) => setCaptureAmount(e.target.value)} />
+              <Input
+                id="capture-amount"
+                inputMode="decimal"
+                value={captureAmount}
+                onChange={(e) => setCaptureAmount(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="capture-note">Note for the customer (required)</Label>
-              <Textarea id="capture-note" className="min-h-11" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Describe the damage" />
+              <Textarea
+                id="capture-note"
+                className="min-h-11"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Describe the damage"
+              />
             </div>
           </div>
           <Button
@@ -116,11 +135,22 @@ export function RefundForm({ bookingId, maxCents }: { bookingId: string; maxCent
     <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
       <div className="space-y-1.5">
         <Label htmlFor="refund-amount">Refund (CAD)</Label>
-        <Input id="refund-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="sm:w-32" />
+        <Input
+          id="refund-amount"
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="sm:w-32"
+        />
       </div>
       <div className="flex-1 space-y-1.5">
         <Label htmlFor="refund-reason">Reason</Label>
-        <Input id="refund-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Rain, goodwill…" />
+        <Input
+          id="refund-reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Rain, goodwill…"
+        />
       </div>
       <Button variant="outline" disabled={pending} onClick={() => run(() => refundAction(bookingId, amount, reason))}>
         Refund
@@ -202,11 +232,24 @@ export function InspectionForm({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor={id("battery")}>Battery %</Label>
-          <Input id={id("battery")} name="batteryPercent" type="number" min={0} max={100} defaultValue={defaults?.batteryPercent ?? undefined} />
+          <Input
+            id={id("battery")}
+            name="batteryPercent"
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={defaults?.batteryPercent ?? undefined}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor={id("balls")}>Balls {kind === "CHECK_OUT" ? "delivered" : "returned"}</Label>
-          <Input id={id("balls")} name="ballsCount" type="number" min={0} defaultValue={defaults?.ballsCount ?? undefined} />
+          <Input
+            id={id("balls")}
+            name="ballsCount"
+            type="number"
+            min={0}
+            defaultValue={defaults?.ballsCount ?? undefined}
+          />
         </div>
       </div>
       <div className="space-y-1.5">
@@ -222,7 +265,8 @@ export function InspectionForm({
       </Button>
       {kind === "CHECK_IN" && (
         <p className="text-xs text-muted-foreground">
-          Saving sets the status to “Returned – OK” (deposit released) or “Returned – damage” if the condition is Damaged.
+          Saving sets the status to “Returned – OK” (deposit released) or “Returned – damage” if the condition is
+          Damaged.
         </p>
       )}
     </form>
@@ -236,9 +280,19 @@ export function ManualPaymentForm({ bookingId }: { bookingId: string }) {
     <div className="flex items-end gap-2">
       <div className="space-y-1.5">
         <Label htmlFor="manual-amount">Record cash / e-transfer (CAD)</Label>
-        <Input id="manual-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-40" />
+        <Input
+          id="manual-amount"
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="w-40"
+        />
       </div>
-      <Button variant="outline" disabled={pending || !amount} onClick={() => run(() => recordManualPaymentAction(bookingId, amount))}>
+      <Button
+        variant="outline"
+        disabled={pending || !amount}
+        onClick={() => run(() => recordManualPaymentAction(bookingId, amount))}
+      >
         Record
       </Button>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
@@ -12,13 +13,27 @@ export const NAV = [
   { href: "/contact", key: "contact" },
 ] as const;
 
-export function NavLinks({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
-  const pathname = usePathname();
+type Props = { className?: string; onNavigate?: () => void };
+
+/** Main navigation. The active-link highlight streams in (pathname is request data). */
+export function NavLinks(props: Props) {
+  return (
+    <Suspense fallback={<Links {...props} pathname={null} />}>
+      <ActiveLinks {...props} />
+    </Suspense>
+  );
+}
+
+function ActiveLinks(props: Props) {
+  return <Links {...props} pathname={usePathname()} />;
+}
+
+function Links({ className, onNavigate, pathname }: Props & { pathname: string | null }) {
   const t = useTranslations("nav");
   return (
     <nav aria-label="Main" className={className}>
       {NAV.map((item) => {
-        const active = pathname.startsWith(item.href);
+        const active = !!pathname?.startsWith(item.href);
         return (
           <Link
             key={item.href}

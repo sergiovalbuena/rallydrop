@@ -5,7 +5,16 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { cancelBookingAction } from "@/app/(site)/account/actions";
 
 export function CancelButton({ bookingId, refundLabel }: { bookingId: string; refundLabel: string }) {
@@ -17,7 +26,9 @@ export function CancelButton({ bookingId, refundLabel }: { bookingId: string; re
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">{t("cancel")}</Button>
+        <Button variant="outline" size="sm">
+          {t("cancel")}
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

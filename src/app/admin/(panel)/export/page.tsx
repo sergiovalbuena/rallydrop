@@ -16,7 +16,11 @@ export default async function ExportPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {[
           { title: "Bookings", action: "/api/admin/export/bookings", hint: "Filtered by start date." },
-          { title: "Payments", action: "/api/admin/export/payments", hint: "Rentals, deposits charged, packages, group sessions and refunds — for your bookkeeping." },
+          {
+            title: "Payments",
+            action: "/api/admin/export/payments",
+            hint: "Rentals, deposits charged, packages, group sessions and refunds — for your bookkeeping.",
+          },
         ].map((e) => (
           <Panel key={e.title} title={e.title}>
             <form action={e.action} method="get" className="space-y-4">

@@ -176,7 +176,12 @@ export function DateTimePicker({
                     )}
                   >
                     {Number(date.slice(8))}
-                    {available && !selected && <span className="absolute bottom-1.5 size-1 rounded-full bg-accent-foreground/40 dark:bg-accent" aria-hidden />}
+                    {available && !selected && (
+                      <span
+                        className="absolute bottom-1.5 size-1 rounded-full bg-accent-foreground/40 dark:bg-accent"
+                        aria-hidden
+                      />
+                    )}
                   </button>
                 );
               })}
@@ -191,7 +196,9 @@ export function DateTimePicker({
       <div>
         <h3 className="mb-3 font-display text-2xl font-bold uppercase">{t("chooseTime")}</h3>
         {!value.date ? (
-          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("chooseDate")}</p>
+          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            {t("chooseDate")}
+          </p>
         ) : slots === null ? (
           <div className="grid grid-cols-2 gap-2">
             {Array.from({ length: 6 }, (_, i) => (
@@ -199,9 +206,15 @@ export function DateTimePicker({
             ))}
           </div>
         ) : slots.length === 0 ? (
-          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("noSlots")}</p>
+          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            {t("noSlots")}
+          </p>
         ) : (
-          <div role="radiogroup" aria-label={t("chooseTime")} className="grid max-h-96 grid-cols-2 gap-2 overflow-y-auto pr-1">
+          <div
+            role="radiogroup"
+            aria-label={t("chooseTime")}
+            className="grid max-h-96 grid-cols-2 gap-2 overflow-y-auto pr-1"
+          >
             {slots.map((s) => {
               const selected = value.slot?.start === s.start;
               return (
@@ -217,7 +230,9 @@ export function DateTimePicker({
                   )}
                 >
                   <span className="block font-display text-xl font-bold">{s.startLabel}</span>
-                  <span className={cn("block text-xs", selected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                  <span
+                    className={cn("block text-xs", selected ? "text-primary-foreground/80" : "text-muted-foreground")}
+                  >
                     {t("returnAt", { when: s.endLabel })}
                   </span>
                 </button>

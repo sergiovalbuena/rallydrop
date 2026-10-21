@@ -50,7 +50,10 @@ async function dispatch(event: Stripe.Event): Promise<boolean> {
         data: { status: "FAILED" },
       });
       if (pi.metadata.kind === "deposit") {
-        await db.deposit.updateMany({ where: { stripePaymentIntentId: pi.id, status: "PENDING" }, data: { status: "FAILED" } });
+        await db.deposit.updateMany({
+          where: { stripePaymentIntentId: pi.id, status: "PENDING" },
+          data: { status: "FAILED" },
+        });
       }
       return true;
     }
@@ -72,7 +75,8 @@ async function dispatch(event: Stripe.Event): Promise<boolean> {
     }
     case "charge.refunded": {
       const charge = event.data.object;
-      const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+      const paymentIntentId =
+        typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
       if (!paymentIntentId) return false;
       const payment = await db.payment.findUnique({ where: { stripePaymentIntentId: paymentIntentId } });
       if (!payment) return false;

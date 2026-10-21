@@ -101,7 +101,9 @@ Manage: ${manageUrl}`;
   return { subject: `Booking confirmed · ${d.code}`, html, text };
 }
 
-export function reminderEmail(d: Pick<BookingEmailData, "code" | "customerName" | "machineName" | "startsAt" | "endsAt" | "where">): EmailContent {
+export function reminderEmail(
+  d: Pick<BookingEmailData, "code" | "customerName" | "machineName" | "startsAt" | "endsAt" | "where">,
+): EmailContent {
   const html = layout(
     "See you tomorrow",
     `<p>Hi ${esc(d.customerName)}, a quick reminder about your rental:</p>
@@ -134,7 +136,12 @@ export function depositReleasedEmail(d: { code: string; customerName: string; am
   };
 }
 
-export function depositChargedEmail(d: { code: string; customerName: string; amountCents: number; note: string }): EmailContent {
+export function depositChargedEmail(d: {
+  code: string;
+  customerName: string;
+  amountCents: number;
+  note: string;
+}): EmailContent {
   return {
     subject: `Deposit charge for booking ${d.code}`,
     html: layout(
@@ -160,18 +167,30 @@ export function depositActionNeededEmail(d: { code: string; customerName: string
 }
 
 export function bookingCancelledEmail(d: { code: string; customerName: string; refundCents: number }): EmailContent {
-  const refund = d.refundCents > 0 ? `A refund of ${formatCents(d.refundCents)} is on its way to your card.` : "No refund applies under our cancellation policy.";
+  const refund =
+    d.refundCents > 0
+      ? `A refund of ${formatCents(d.refundCents)} is on its way to your card.`
+      : "No refund applies under our cancellation policy.";
   return {
     subject: `Booking cancelled (${d.code})`,
-    html: layout("Booking cancelled", `<p>Hi ${esc(d.customerName)}, your booking ${esc(d.code)} has been cancelled. ${refund} Any deposit hold has been released.</p>`, {
-      label: "Book another time",
-      url: siteUrl("/book"),
-    }),
+    html: layout(
+      "Booking cancelled",
+      `<p>Hi ${esc(d.customerName)}, your booking ${esc(d.code)} has been cancelled. ${refund} Any deposit hold has been released.</p>`,
+      {
+        label: "Book another time",
+        url: siteUrl("/book"),
+      },
+    ),
     text: `Booking ${d.code} cancelled. ${refund}`,
   };
 }
 
-export function bookingRescheduledEmail(d: { code: string; customerName: string; startsAt: Date; endsAt: Date }): EmailContent {
+export function bookingRescheduledEmail(d: {
+  code: string;
+  customerName: string;
+  startsAt: Date;
+  endsAt: Date;
+}): EmailContent {
   return {
     subject: `Booking updated (${d.code})`,
     html: layout(
@@ -212,7 +231,13 @@ export function otpEmail(d: { code: string; magicLink: string }): EmailContent {
   };
 }
 
-export function groupEnrollmentEmail(d: { customerName: string; title: string; startsAt: Date; court: string; totalCents: number }): EmailContent {
+export function groupEnrollmentEmail(d: {
+  customerName: string;
+  title: string;
+  startsAt: Date;
+  court: string;
+  totalCents: number;
+}): EmailContent {
   return {
     subject: `You're in: ${d.title}`,
     html: layout(
@@ -228,7 +253,11 @@ export function groupEnrollmentEmail(d: { customerName: string; title: string; s
   };
 }
 
-export function subscriptionWelcomeEmail(d: { customerName: string; productName: string; sessions: number }): EmailContent {
+export function subscriptionWelcomeEmail(d: {
+  customerName: string;
+  productName: string;
+  sessions: number;
+}): EmailContent {
   return {
     subject: `Welcome to your ${d.productName}`,
     html: layout(
@@ -243,7 +272,11 @@ export function subscriptionWelcomeEmail(d: { customerName: string; productName:
 export function adminAlertEmail(d: { subject: string; lines: string[]; url?: string }): EmailContent {
   return {
     subject: `[${brand.name}] ${d.subject}`,
-    html: layout(d.subject, d.lines.map((l) => `<p>${esc(l)}</p>`).join(""), d.url ? { label: "Open in admin", url: d.url } : undefined),
+    html: layout(
+      d.subject,
+      d.lines.map((l) => `<p>${esc(l)}</p>`).join(""),
+      d.url ? { label: "Open in admin", url: d.url } : undefined,
+    ),
     text: [d.subject, ...d.lines, d.url ?? ""].join("\n"),
   };
 }

@@ -74,7 +74,17 @@ export default function AdminLoginPage({ searchParams }: PageProps<"/admin/login
 
 async function Messages({ searchParams }: { searchParams: PageProps<"/admin/login">["searchParams"] }) {
   const sp = await searchParams;
-  if (sp.error) return <p className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">Wrong email or password, or this account isn&apos;t an admin.</p>;
-  if (sp.sent) return <p className="mt-4 rounded-md bg-success/10 p-3 text-sm" role="status">Check your email for a sign-in link.</p>;
+  if (sp.error)
+    return (
+      <p className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+        Wrong email or password, or this account isn&apos;t an admin.
+      </p>
+    );
+  if (sp.sent)
+    return (
+      <p className="mt-4 rounded-md bg-success/10 p-3 text-sm" role="status">
+        Check your email for a sign-in link.
+      </p>
+    );
   return null;
 }

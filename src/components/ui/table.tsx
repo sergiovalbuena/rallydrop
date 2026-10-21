@@ -20,7 +20,10 @@ export function TableRow({ className, ...props }: ComponentProps<"tr">) {
 export function TableHead({ className, ...props }: ComponentProps<"th">) {
   return (
     <th
-      className={cn("h-10 px-3 text-left align-middle text-xs font-semibold tracking-wide whitespace-nowrap text-muted-foreground uppercase", className)}
+      className={cn(
+        "h-10 px-3 text-left align-middle text-xs font-semibold tracking-wide whitespace-nowrap text-muted-foreground uppercase",
+        className,
+      )}
       {...props}
     />
   );

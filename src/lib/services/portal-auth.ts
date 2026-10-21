@@ -55,7 +55,10 @@ async function findCustomer(contact: string) {
  * Sends a code + magic link. Always reports success so the form can't be
  * used to discover who is a customer.
  */
-export async function requestLoginCode(contact: string, now = new Date()): Promise<{ sent: boolean; channel: "EMAIL" | "SMS" }> {
+export async function requestLoginCode(
+  contact: string,
+  now = new Date(),
+): Promise<{ sent: boolean; channel: "EMAIL" | "SMS" }> {
   const { phone } = parseContact(contact);
   const channel = phone ? "SMS" : "EMAIL";
   const customer = await findCustomer(contact);
@@ -78,7 +81,11 @@ export async function requestLoginCode(contact: string, now = new Date()): Promi
 
   const magicLink = siteUrl(`/account/magic?token=${magic}`);
   if (channel === "SMS" && customer.phone && (await smsEnabled())) {
-    await sendSms({ to: customer.phone, body: `Your RallyDrop code is ${code}. It expires in 10 minutes.`, template: "otp" });
+    await sendSms({
+      to: customer.phone,
+      body: `Your RallyDrop code is ${code}. It expires in 10 minutes.`,
+      template: "otp",
+    });
   } else if (customer.email) {
     await sendEmail({ to: customer.email, template: "otp", content: otpEmail({ code, magicLink }) });
   }
@@ -124,7 +131,10 @@ export async function verifyMagicLink(token: string, now = new Date()): Promise<
     include: { customer: true },
   });
   if (!otp || otp.customer.blocked) return false;
-  await db.customerOtp.updateMany({ where: { customerId: otp.customerId, consumedAt: null }, data: { consumedAt: now } });
+  await db.customerOtp.updateMany({
+    where: { customerId: otp.customerId, consumedAt: null },
+    data: { consumedAt: now },
+  });
   await startSession(otp.customerId, now);
   return true;
 }

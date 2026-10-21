@@ -16,7 +16,11 @@ export default async function GroupsPage() {
     db.groupSession.findMany({
       where: { startsAt: { gt: new Date(now.getTime() - 30 * 24 * 3_600_000) } },
       orderBy: { startsAt: "asc" },
-      include: { court: true, machine: true, enrollments: { include: { customer: true }, where: { status: { in: ["CONFIRMED", "ATTENDED", "NO_SHOW"] } } } },
+      include: {
+        court: true,
+        machine: true,
+        enrollments: { include: { customer: true }, where: { status: { in: ["CONFIRMED", "ATTENDED", "NO_SHOW"] } } },
+      },
     }),
     db.court.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
     db.machine.findMany({ where: { status: { not: "RETIRED" } }, orderBy: { sortOrder: "asc" } }),
@@ -42,10 +46,14 @@ export default async function GroupsPage() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="font-semibold">
-                        {s.title} <Badge variant={s.status === "SCHEDULED" ? "default" : "secondary"}>{s.status.toLowerCase()}</Badge>
+                        {s.title}{" "}
+                        <Badge variant={s.status === "SCHEDULED" ? "default" : "secondary"}>
+                          {s.status.toLowerCase()}
+                        </Badge>
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {formatLocal(s.startsAt, "EEE MMM d, h:mm a")} · {s.court.name} · {s.machine.name} · {formatCents(s.priceCents)}
+                        {formatLocal(s.startsAt, "EEE MMM d, h:mm a")} · {s.court.name} · {s.machine.name} ·{" "}
+                        {formatCents(s.priceCents)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -59,7 +67,8 @@ export default async function GroupsPage() {
                     <ul className="mt-3 grid gap-1 text-sm sm:grid-cols-2">
                       {s.enrollments.map((e) => (
                         <li key={e.id}>
-                          {e.customer.name} <span className="text-muted-foreground">· {e.customer.email ?? e.customer.phone}</span>
+                          {e.customer.name}{" "}
+                          <span className="text-muted-foreground">· {e.customer.email ?? e.customer.phone}</span>
                         </li>
                       ))}
                     </ul>

@@ -25,18 +25,41 @@ export async function GET(request: NextRequest) {
     orderBy: { createdAt: "asc" },
   });
   const csv = toCsv(
-    ["date", "kind", "status", "amount", "refunded", "net", "booking", "customer", "description", "stripe_payment_intent", "stripe_invoice"],
+    [
+      "date",
+      "kind",
+      "status",
+      "amount",
+      "refunded",
+      "net",
+      "booking",
+      "customer",
+      "description",
+      "stripe_payment_intent",
+      "stripe_invoice",
+    ],
     payments.map((p) => {
       const customer = p.booking?.customer ?? p.subscription?.customer ?? p.enrollment?.customer;
       const description = p.subscription?.product.name ?? p.enrollment?.groupSession.title ?? "";
       return [
-        formatLocal(p.createdAt, "yyyy-MM-dd HH:mm"), p.kind, p.status, cents(p.amountCents), cents(p.refundedCents),
-        cents(p.amountCents - p.refundedCents), p.booking?.code ?? "", customer?.name ?? "", description,
-        p.stripePaymentIntentId ?? "", p.stripeInvoiceId ?? "",
+        formatLocal(p.createdAt, "yyyy-MM-dd HH:mm"),
+        p.kind,
+        p.status,
+        cents(p.amountCents),
+        cents(p.refundedCents),
+        cents(p.amountCents - p.refundedCents),
+        p.booking?.code ?? "",
+        customer?.name ?? "",
+        description,
+        p.stripePaymentIntentId ?? "",
+        p.stripeInvoiceId ?? "",
       ];
     }),
   );
   return new NextResponse(csv, {
-    headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="payments.csv"' },
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": 'attachment; filename="payments.csv"',
+    },
   });
 }

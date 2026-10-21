@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { assertAdmin } from "@/lib/admin/guard";
 import { dollarsToCents } from "@/lib/money";
+import { lockMachine } from "@/lib/services/bookings";
 import { isOverlapError } from "@/lib/services/errors";
 import { getSettings } from "@/lib/services/settings";
 import { localDateMinuteToUtc } from "@/lib/time";
@@ -37,26 +38,29 @@ export async function createGroupAction(_: GroupState, formData: FormData): Prom
   const endsAt = new Date(startsAt.getTime() + d.minutes * 60_000);
   const settings = await getSettings();
   try {
-    await db.groupSession.create({
-      data: {
-        title: d.title,
-        description: d.description || null,
-        startsAt,
-        endsAt,
-        capacity: d.capacity,
-        priceCents,
-        level: d.level || null,
-        court: { connect: { id: d.courtId } },
-        machine: { connect: { id: d.machineId } },
-        occupancy: {
-          create: {
-            machine: { connect: { id: d.machineId } },
-            source: "GROUP_SESSION",
-            blockStart: startsAt,
-            blockEnd: new Date(endsAt.getTime() + settings.bufferMinutes * 60_000),
+    await db.$transaction(async (tx) => {
+      await lockMachine(tx, d.machineId);
+      await tx.groupSession.create({
+        data: {
+          title: d.title,
+          description: d.description || null,
+          startsAt,
+          endsAt,
+          capacity: d.capacity,
+          priceCents,
+          level: d.level || null,
+          court: { connect: { id: d.courtId } },
+          machine: { connect: { id: d.machineId } },
+          occupancy: {
+            create: {
+              machine: { connect: { id: d.machineId } },
+              source: "GROUP_SESSION",
+              blockStart: startsAt,
+              blockEnd: new Date(endsAt.getTime() + settings.bufferMinutes * 60_000),
+            },
           },
         },
-      },
+      });
     });
   } catch (e) {
     if (isOverlapError(e)) return { ok: false, error: "That machine is busy at that time (booking, block or buffer)." };
@@ -76,7 +80,10 @@ export async function cancelGroupAction(id: string): Promise<GroupState> {
   });
   for (const e of session.enrollments) {
     for (const p of e.payments.filter((p) => p.status === "SUCCEEDED" && p.stripePaymentIntentId)) {
-      await stripe().refunds.create({ payment_intent: p.stripePaymentIntentId! }, { idempotencyKey: `group_cancel:${p.id}` });
+      await stripe().refunds.create(
+        { payment_intent: p.stripePaymentIntentId! },
+        { idempotencyKey: `group_cancel:${p.id}` },
+      );
       await db.payment.update({ where: { id: p.id }, data: { status: "REFUNDED", refundedCents: p.amountCents } });
     }
   }

@@ -34,7 +34,9 @@ async function Package({ searchParams }: { searchParams: PageProps<"/book/packag
       <div className="rounded-3xl border bg-card p-8 text-center">
         <CircleCheckBig className="mx-auto size-12 text-success" />
         <h1 className="mt-4 font-display text-4xl font-extrabold uppercase">{t("book.confirmedTitle")}</h1>
-        <p className="mt-2 text-muted-foreground">{product.name} — {t("portal.bookSession")} → {t("nav.myBookings")}</p>
+        <p className="mt-2 text-muted-foreground">
+          {product.name} — {t("portal.bookSession")} → {t("nav.myBookings")}
+        </p>
       </div>
     );
   }

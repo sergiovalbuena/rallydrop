@@ -9,25 +9,46 @@ import en from "../../../../../messages/en.json";
 
 type Messages = { [k: string]: string | Messages };
 const defaultText = (key: string) => {
-  const v = key.split(".").reduce<string | Messages | undefined>((n, p) => (typeof n === "object" ? n[p] : undefined), en as Messages);
+  const v = key
+    .split(".")
+    .reduce<string | Messages | undefined>((n, p) => (typeof n === "object" ? n[p] : undefined), en as Messages);
   return typeof v === "string" ? v : "";
 };
 
 export type SettingsState = { ok: boolean; error?: string; message?: string };
 
-const hhmm = z.string().regex(/^\d{2}:\d{2}$/).transform((v) => Number(v.slice(0, 2)) * 60 + Number(v.slice(3)));
-const percent = z.coerce.number().min(0).max(100).transform((v) => Math.round(v * 100));
+const hhmm = z
+  .string()
+  .regex(/^\d{2}:\d{2}$/)
+  .transform((v) => Number(v.slice(0, 2)) * 60 + Number(v.slice(3)));
+const percent = z.coerce
+  .number()
+  .min(0)
+  .max(100)
+  .transform((v) => Math.round(v * 100));
 
 const settings = z.object({
   gstPercent: percent,
   pstPercent: percent,
-  bufferMinutes: z.coerce.number().int().min(0).max(24 * 60),
+  bufferMinutes: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(24 * 60),
   holdMinutes: z.coerce.number().int().min(5).max(60),
-  minLeadTimeHours: z.coerce.number().int().min(0).max(24 * 14),
+  minLeadTimeHours: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(24 * 14),
   maxAdvanceDays: z.coerce.number().int().min(1).max(365),
   depositAuthMaxDays: z.coerce.number().int().min(1).max(6),
   depositAuthLeadHours: z.coerce.number().int().min(1).max(120),
-  cancelFullRefundHours: z.coerce.number().int().min(0).max(24 * 30),
+  cancelFullRefundHours: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(24 * 30),
   cancelLatePercent: percent,
   deliveryStart: hhmm,
   deliveryEnd: hhmm,
@@ -43,7 +64,8 @@ const settings = z.object({
 export async function saveSettingsAction(_: SettingsState, formData: FormData): Promise<SettingsState> {
   await assertAdmin();
   const parsed = settings.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { ok: false, error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" · ") };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" · ") };
   const d = parsed.data;
   if (d.deliveryEnd <= d.deliveryStart) return { ok: false, error: "Delivery hours: end must be after start." };
   await db.settings.update({

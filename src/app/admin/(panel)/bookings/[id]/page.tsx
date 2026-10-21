@@ -39,13 +39,14 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
   });
   if (!b) notFound();
 
-  const rental = b.payments.filter((p) => p.kind === "RENTAL" && (p.status === "SUCCEEDED" || p.status === "PARTIALLY_REFUNDED"));
+  const rental = b.payments.filter(
+    (p) => p.kind === "RENTAL" && (p.status === "SUCCEEDED" || p.status === "PARTIALLY_REFUNDED"),
+  );
   const refundable = rental.reduce((s, p) => s + p.amountCents - p.refundedCents, 0);
   const checkOut = b.inspections.find((i) => i.kind === "CHECK_OUT");
   const checkIn = b.inspections.find((i) => i.kind === "CHECK_IN");
   const closed = ["CANCELLED", "EXPIRED", "COMPLETED"].includes(b.status);
-  const where =
-    b.fulfillment === "PICKUP" ? "Customer pickup" : b.court ? b.court.name : (b.deliveryAddress ?? "—");
+  const where = b.fulfillment === "PICKUP" ? "Customer pickup" : b.court ? b.court.name : (b.deliveryAddress ?? "—");
 
   return (
     <>
@@ -94,7 +95,9 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
               <div>
                 <dt className="text-muted-foreground">Add-ons</dt>
                 <dd className="font-medium">
-                  {b.addOns.length ? b.addOns.map((a) => `${a.addOn.name} (${formatCents(a.priceCents)})`).join(", ") : "None"}
+                  {b.addOns.length
+                    ? b.addOns.map((a) => `${a.addOn.name} (${formatCents(a.priceCents)})`).join(", ")
+                    : "None"}
                 </dd>
               </div>
               <div>
@@ -109,7 +112,9 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
 
           <Panel title="Check-out">
             {checkOut && (
-              <p className="mb-3 text-xs text-muted-foreground">Last saved {formatLocal(checkOut.performedAt, "MMM d, h:mm a")}</p>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Last saved {formatLocal(checkOut.performedAt, "MMM d, h:mm a")}
+              </p>
             )}
             <InspectionForm bookingId={b.id} kind="CHECK_OUT" defaults={checkOut ?? undefined} />
             <Photos urls={checkOut?.photoUrls ?? []} />
@@ -117,7 +122,9 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
 
           <Panel title="Check-in">
             {checkIn && (
-              <p className="mb-3 text-xs text-muted-foreground">Last saved {formatLocal(checkIn.performedAt, "MMM d, h:mm a")}</p>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Last saved {formatLocal(checkIn.performedAt, "MMM d, h:mm a")}
+              </p>
             )}
             <InspectionForm bookingId={b.id} kind="CHECK_IN" defaults={checkIn ?? undefined} />
             <Photos urls={checkIn?.photoUrls ?? []} />
@@ -130,11 +137,22 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
               <Link href={`/admin/customers/${b.customer.id}`} className="hover:underline">
                 {b.customer.name}
               </Link>
-              {b.customer.trusted && <Badge variant="success" className="ml-2">Trusted</Badge>}
-              {b.customer.blocked && <Badge variant="destructive" className="ml-2">Blocked</Badge>}
+              {b.customer.trusted && (
+                <Badge variant="success" className="ml-2">
+                  Trusted
+                </Badge>
+              )}
+              {b.customer.blocked && (
+                <Badge variant="destructive" className="ml-2">
+                  Blocked
+                </Badge>
+              )}
             </p>
             {b.customer.email && (
-              <a href={`mailto:${b.customer.email}`} className="mt-2 flex items-center gap-2 text-sm hover:text-primary">
+              <a
+                href={`mailto:${b.customer.email}`}
+                className="mt-2 flex items-center gap-2 text-sm hover:text-primary"
+              >
                 <Mail className="size-4" /> {b.customer.email}
               </a>
             )}
@@ -143,7 +161,9 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
                 <Phone className="size-4" /> {b.customer.phone}
               </a>
             )}
-            {b.customer.skillLevel && <p className="mt-2 text-sm text-muted-foreground">Level: {b.customer.skillLevel.toLowerCase()}</p>}
+            {b.customer.skillLevel && (
+              <p className="mt-2 text-sm text-muted-foreground">Level: {b.customer.skillLevel.toLowerCase()}</p>
+            )}
           </Panel>
 
           <Panel title="Payment">
@@ -159,12 +179,20 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
                 <li key={p.id} className="flex flex-wrap items-center justify-between gap-2">
                   <span>
                     {p.kind.replace("_", " ").toLowerCase()} · {formatCents(p.amountCents)}
-                    {p.refundedCents > 0 && <span className="text-muted-foreground"> (−{formatCents(p.refundedCents)})</span>}
+                    {p.refundedCents > 0 && (
+                      <span className="text-muted-foreground"> (−{formatCents(p.refundedCents)})</span>
+                    )}
                   </span>
                   <span className="flex items-center gap-2">
                     <Badge variant={p.status === "SUCCEEDED" ? "success" : "secondary"}>{p.status.toLowerCase()}</Badge>
                     {p.receiptUrl && (
-                      <a href={p.receiptUrl} target="_blank" rel="noreferrer" className="text-primary" aria-label="Receipt">
+                      <a
+                        href={p.receiptUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary"
+                        aria-label="Receipt"
+                      >
                         <ExternalLink className="size-4" />
                       </a>
                     )}
@@ -179,13 +207,13 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
           </Panel>
 
           {b.deposit && (
-            <Panel
-              title="Deposit"
-              actions={<DepositBadge status={b.deposit.status} />}
-            >
+            <Panel title="Deposit" actions={<DepositBadge status={b.deposit.status} />}>
               <dl className="mb-4 space-y-1.5 text-sm">
                 <Row label="Amount" value={formatCents(b.deposit.amountCents)} />
-                <Row label="Method" value={b.deposit.strategy === "AUTH_HOLD" ? "Card hold (manual capture)" : "Saved card"} />
+                <Row
+                  label="Method"
+                  value={b.deposit.strategy === "AUTH_HOLD" ? "Card hold (manual capture)" : "Saved card"}
+                />
                 {b.deposit.authScheduledFor && b.deposit.status === "PENDING" && (
                   <Row label="Hold placed" value={formatLocal(b.deposit.authScheduledFor, "MMM d, h:mm a")} />
                 )}
@@ -208,7 +236,9 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
             <ol className="space-y-3 text-sm">
               {b.events.map((e) => (
                 <li key={e.id} className="flex gap-3">
-                  <span className="w-24 shrink-0 text-xs text-muted-foreground">{formatLocal(e.createdAt, "MMM d h:mm a")}</span>
+                  <span className="w-24 shrink-0 text-xs text-muted-foreground">
+                    {formatLocal(e.createdAt, "MMM d h:mm a")}
+                  </span>
                   <span>
                     <span className="font-medium">{e.type.replaceAll("_", " ")}</span>{" "}
                     <span className="text-muted-foreground">· {e.actor.startsWith("admin:") ? "admin" : e.actor}</span>

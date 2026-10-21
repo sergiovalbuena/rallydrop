@@ -29,7 +29,15 @@ export function OptionCard({
         disabled && "pointer-events-none opacity-50",
       )}
     >
-      <input type="radio" name={name} value={value} checked={selected} onChange={onSelect} disabled={disabled} className="sr-only" />
+      <input
+        type="radio"
+        name={name}
+        value={value}
+        checked={selected}
+        onChange={onSelect}
+        disabled={disabled}
+        className="sr-only"
+      />
       <span
         className={cn(
           "mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border-2",

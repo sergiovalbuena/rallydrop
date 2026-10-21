@@ -62,7 +62,9 @@ export function localMonth(date: string): number {
 
 export function addLocalDays(date: string, days: number): string {
   const [y, m, d] = date.split("-").map(Number);
-  return addDays(new Date(Date.UTC(y, m - 1, d)), days).toISOString().slice(0, 10);
+  return addDays(new Date(Date.UTC(y, m - 1, d)), days)
+    .toISOString()
+    .slice(0, 10);
 }
 
 /** Formats an instant as Victoria wall-clock time (date-fns pattern, no zone tokens). */
@@ -105,5 +107,8 @@ export function todayLocal(now: Date): string {
 
 /** "YYYYMMDDTHHMMSSZ" for calendar files. */
 export function toIcsUtc(d: Date): string {
-  return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  return d
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
 }

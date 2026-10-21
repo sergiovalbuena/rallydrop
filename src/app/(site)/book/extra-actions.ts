@@ -16,9 +16,13 @@ export type StartPaymentResult =
   | { ok: true; clientSecret: string; amountCents: number }
   | { ok: false; error: string; fields?: Record<string, string> };
 
-async function run(raw: unknown, start: (d: z.output<typeof input>) => Promise<{ clientSecret: string; amountCents: number }>): Promise<StartPaymentResult> {
+async function run(
+  raw: unknown,
+  start: (d: z.output<typeof input>) => Promise<{ clientSecret: string; amountCents: number }>,
+): Promise<StartPaymentResult> {
   const parsed = input.safeParse(raw);
-  if (!parsed.success) return { ok: false, error: "Please check the highlighted fields.", fields: fieldErrors(parsed.error) };
+  if (!parsed.success)
+    return { ok: false, error: "Please check the highlighted fields.", fields: fieldErrors(parsed.error) };
   try {
     return { ok: true, ...(await start(parsed.data)) };
   } catch (e) {

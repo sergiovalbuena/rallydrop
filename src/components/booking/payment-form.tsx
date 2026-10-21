@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { formatCents } from "@/lib/money";
 import { getStripe, stripeAppearance } from "./stripe-client";
 
-type Finalize = (id: string) => Promise<
+type Finalize = (
+  id: string,
+) => Promise<
   | { status: "confirmed"; code: string; depositClientSecret?: string }
   | { status: "processing"; code: string }
   | { status: "failed"; code: string; message: string }
@@ -35,7 +37,8 @@ export function PaymentStep(props: {
         <TriangleAlert />
         <AlertTitle>Stripe isn&apos;t configured</AlertTitle>
         <AlertDescription>
-          Add <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> and <code>STRIPE_SECRET_KEY</code> (test keys) to your .env to take payments.
+          Add <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> and <code>STRIPE_SECRET_KEY</code> (test keys) to your
+          .env to take payments.
         </AlertDescription>
       </Alert>
     );

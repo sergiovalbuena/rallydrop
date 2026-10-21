@@ -83,7 +83,9 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
               {t("renews", { date: formatLocal(pkg.usage.periodEnd, "MMM d") })}
             </p>
             {pkg.subscription.status === "PAST_DUE" && (
-              <Badge variant="warning" className="mt-2">Payment issue — update your card</Badge>
+              <Badge variant="warning" className="mt-2">
+                Payment issue — update your card
+              </Badge>
             )}
           </div>
           <div className="flex flex-col gap-2 sm:items-end">
@@ -163,7 +165,12 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
                         bookingId={b.id}
                         refundLabel={t("cancelRefund", {
                           amount: formatCents(b.refundIfCancelled.refundCents),
-                          tier: b.refundIfCancelled.tier === "full" ? "100%" : b.refundIfCancelled.tier === "partial" ? "partial" : "no refund",
+                          tier:
+                            b.refundIfCancelled.tier === "full"
+                              ? "100%"
+                              : b.refundIfCancelled.tier === "partial"
+                                ? "partial"
+                                : "no refund",
                         })}
                       />
                     )}

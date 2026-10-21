@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { assertAdmin } from "@/lib/admin/guard";
 import { notifyRescheduled } from "@/lib/notify/booking-notifications";
-import { createBooking, rescheduleBooking } from "@/lib/services/bookings";
+import { createBooking, lockMachine, rescheduleBooking } from "@/lib/services/bookings";
 import { BookingError, isOverlapError } from "@/lib/services/errors";
 import { geocodeAddress } from "@/lib/services/geocode";
 import { addLocalDays, localDateMinuteToUtc, toLocalMinute } from "@/lib/time";
@@ -52,7 +52,9 @@ const manual = z.object({
 });
 
 /** Phone booking: confirmed immediately; payment collected separately. */
-export async function createManualBookingAction(input: z.input<typeof manual>): Promise<CalResult & { bookingId?: string }> {
+export async function createManualBookingAction(
+  input: z.input<typeof manual>,
+): Promise<CalResult & { bookingId?: string }> {
   try {
     await assertAdmin();
     const d = manual.parse(input);
@@ -120,11 +122,18 @@ export async function createBlackoutAction(input: z.input<typeof blackout>): Pro
     }
 
     await db.$transaction(async (tx) => {
+      for (const id of [...machines].sort()) await lockMachine(tx, id);
       const b = await tx.blackout.create({
         data: { startsAt, endsAt, reason: d.reason, note: d.note || null, machineId: d.machineId || null },
       });
       await tx.machineOccupancy.createMany({
-        data: machines.map((machineId) => ({ machineId, source: "BLACKOUT" as const, blockStart: startsAt, blockEnd: endsAt, blackoutId: b.id })),
+        data: machines.map((machineId) => ({
+          machineId,
+          source: "BLACKOUT" as const,
+          blockStart: startsAt,
+          blockEnd: endsAt,
+          blackoutId: b.id,
+        })),
       });
     });
     revalidatePath("/admin/calendar");

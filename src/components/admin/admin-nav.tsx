@@ -2,7 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, ClipboardList, Download, Gauge, Settings, ShoppingBag, Users, UsersRound, Wrench } from "lucide-react";
+import { Suspense } from "react";
+import {
+  CalendarDays,
+  ClipboardList,
+  Download,
+  Gauge,
+  Settings,
+  ShoppingBag,
+  Users,
+  UsersRound,
+  Wrench,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
@@ -18,11 +29,22 @@ const ITEMS = [
 ];
 
 export function AdminNav() {
-  const pathname = usePathname();
+  return (
+    <Suspense fallback={<Nav pathname={null} />}>
+      <ActiveNav />
+    </Suspense>
+  );
+}
+
+function ActiveNav() {
+  return <Nav pathname={usePathname()} />;
+}
+
+function Nav({ pathname }: { pathname: string | null }) {
   return (
     <nav aria-label="Admin" className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible">
       {ITEMS.map((item) => {
-        const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+        const active = item.exact ? pathname === item.href : !!pathname?.startsWith(item.href);
         return (
           <Link
             key={item.href}

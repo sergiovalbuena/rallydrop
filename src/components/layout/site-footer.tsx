@@ -38,9 +38,13 @@ export async function SiteFooter() {
           <Logo inverted />
           <p className="max-w-xs text-sm text-white/75">{t("footer.blurb")}</p>
           <p className="text-sm text-white/75">
-            <a className="hover:text-optic" href={`mailto:${brand.contact.email}`}>{brand.contact.email}</a>
+            <a className="hover:text-optic" href={`mailto:${brand.contact.email}`}>
+              {brand.contact.email}
+            </a>
             <br />
-            <a className="hover:text-optic" href={`tel:${brand.contact.phone.replace(/[^+\d]/g, "")}`}>{brand.contact.phone}</a>
+            <a className="hover:text-optic" href={`tel:${brand.contact.phone.replace(/[^+\d]/g, "")}`}>
+              {brand.contact.phone}
+            </a>
           </p>
         </div>
         {columns.map((col) => (
@@ -60,7 +64,9 @@ export async function SiteFooter() {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-5 text-xs text-white/60 sm:flex-row sm:justify-between sm:px-6">
-          <p>© {brand.name}. {t("footer.rights")}</p>
+          <p>
+            © {brand.name}. {t("footer.rights")}
+          </p>
           <p>{t("footer.madeIn")}</p>
         </div>
       </div>

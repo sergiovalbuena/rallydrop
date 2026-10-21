@@ -88,11 +88,12 @@ export async function notifyBookingConfirmed(bookingId: string) {
     `RallyDrop: booking ${b.code} confirmed. ${formatRange(b.startsAt, b.endsAt)}. Manage: ${siteUrl("/account")}`,
     `sms_confirmed:${b.id}`,
   );
-  await alertAdmin(`New booking ${b.code}`, [
-    `${b.customer.name} · ${b.machine.name} · ${b.product.name}`,
-    formatRange(b.startsAt, b.endsAt),
-    bookingWhere(b),
-  ], `/admin/bookings/${b.id}`, `admin_new:${b.id}`);
+  await alertAdmin(
+    `New booking ${b.code}`,
+    [`${b.customer.name} · ${b.machine.name} · ${b.product.name}`, formatRange(b.startsAt, b.endsAt), bookingWhere(b)],
+    `/admin/bookings/${b.id}`,
+    `admin_new:${b.id}`,
+  );
 }
 
 export async function notifyReminder(bookingId: string) {
@@ -127,7 +128,11 @@ export async function notifyDepositReleased(bookingId: string) {
       to: b.customer.email!,
       template: "deposit_released",
       dedupeKey: `deposit_released:${b.id}`,
-      content: depositReleasedEmail({ code: b.code, customerName: b.customer.name, amountCents: b.deposit!.amountCents }),
+      content: depositReleasedEmail({
+        code: b.code,
+        customerName: b.customer.name,
+        amountCents: b.deposit!.amountCents,
+      }),
     }),
   );
 }
@@ -159,7 +164,12 @@ export async function notifyDepositFailed(bookingId: string) {
     `RallyDrop: we couldn't place the deposit for booking ${b.code}. Please contact us.`,
     `sms_deposit_failed:${b.id}`,
   );
-  await alertAdmin(`Deposit failed for ${b.code}`, [`${b.customer.name}`, formatRange(b.startsAt, b.endsAt)], `/admin/bookings/${b.id}`, `admin_deposit_failed:${b.id}`);
+  await alertAdmin(
+    `Deposit failed for ${b.code}`,
+    [`${b.customer.name}`, formatRange(b.startsAt, b.endsAt)],
+    `/admin/bookings/${b.id}`,
+    `admin_deposit_failed:${b.id}`,
+  );
 }
 
 export async function notifyCancelled(bookingId: string, refundCents: number) {
@@ -182,7 +192,12 @@ export async function notifyRescheduled(bookingId: string) {
     sendEmail({
       to: b.customer.email!,
       template: "booking_rescheduled",
-      content: bookingRescheduledEmail({ code: b.code, customerName: b.customer.name, startsAt: b.startsAt, endsAt: b.endsAt }),
+      content: bookingRescheduledEmail({
+        code: b.code,
+        customerName: b.customer.name,
+        startsAt: b.startsAt,
+        endsAt: b.endsAt,
+      }),
     }),
   );
 }

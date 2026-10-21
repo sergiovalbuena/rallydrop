@@ -92,7 +92,10 @@ export async function bookSessionAction(input: { startsAt: string; courtId: stri
     if (startsAt >= pkg.subscription.currentPeriodEnd) {
       return { ok: false, error: "Pick a date before your package renews." };
     }
-    const machineIds = await db.machine.findMany({ where: { bookable: true, status: { in: ["AVAILABLE", "RENTED"] } }, select: { id: true } });
+    const machineIds = await db.machine.findMany({
+      where: { bookable: true, status: { in: ["AVAILABLE", "RENTED"] } },
+      select: { id: true },
+    });
     let lastError: unknown = null;
     for (const m of machineIds) {
       try {

@@ -24,7 +24,11 @@ export default async function PricingPage() {
 
 async function Pricing() {
   await connection();
-  const [products, addOns, machines] = await Promise.all([listActiveProducts(), listActiveAddOns(), listPublicMachines()]);
+  const [products, addOns, machines] = await Promise.all([
+    listActiveProducts(),
+    listActiveAddOns(),
+    listPublicMachines(),
+  ]);
   const deposit = machines.find((m) => m.bookable)?.depositCents ?? 30000;
   return <PricingGrid products={products} addOns={addOns} depositCents={deposit} />;
 }

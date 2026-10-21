@@ -1,12 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import type {
-  BookingChannel,
-  BookingStatus,
-  FulfillmentMethod,
-  Prisma,
-  SkillLevel,
-} from "@/generated/prisma/client";
+import type { BookingChannel, BookingStatus, FulfillmentMethod, Prisma, SkillLevel } from "@/generated/prisma/client";
 import { generateBookingCode } from "@/lib/domain/booking-code";
 import { planDeposit } from "@/lib/domain/deposit";
 import { isInFreeZone, type LatLng } from "@/lib/domain/geo";
@@ -16,7 +10,7 @@ import { brand } from "@/config/brand";
 import { toLocalDate } from "@/lib/time";
 import { productDurationMinutes, rulesFor } from "./availability";
 import { upsertCustomer } from "./customers";
-import { BookingError, isOverlapError } from "./errors";
+import { BookingError, isOverlapError, isUniqueViolation } from "./errors";
 import { getSettings, type AppSettings } from "./settings";
 
 export const TERMS_VERSION = "2026-10";
@@ -167,8 +161,9 @@ export async function createBooking(input: CreateBookingInput) {
   const holdExpiresAt = needsPayment ? new Date(now.getTime() + settings.holdMinutes * 60_000) : null;
   const addOns = await db.addOn.findMany({ where: { active: true } });
 
-  try {
-    return await db.$transaction(async (tx) => {
+  const attempt = () =>
+    db.$transaction(async (tx) => {
+      await lockMachine(tx, machine.id);
       const customer = await upsertCustomer(tx, input.customer);
       await expireStaleHolds(tx, machine.id, startsAt, blockEnd, now);
 
@@ -233,6 +228,16 @@ export async function createBooking(input: CreateBookingInput) {
         include: { customer: true, machine: true, product: true, deposit: true, addOns: { include: { addOn: true } } },
       });
     });
+
+  try {
+    try {
+      return await attempt();
+    } catch (error) {
+      // A brand-new customer sending two requests at once: both try to create
+      // the same email/phone. Retry once — the second pass finds the customer.
+      if (isUniqueViolation(error)) return await attempt();
+      throw error;
+    }
   } catch (error) {
     if (isOverlapError(error)) {
       throw new BookingError(
@@ -244,6 +249,17 @@ export async function createBooking(input: CreateBookingInput) {
     }
     throw error;
   }
+}
+
+/**
+ * Serializes writes per machine for the rest of the transaction. The
+ * exclusion constraint already makes double booking impossible; this lock
+ * stops concurrent conflicting inserts from deadlocking each other (a known
+ * Postgres behaviour with exclusion constraints) so the loser gets a clean
+ * "slot taken" instead of a retryable error.
+ */
+export async function lockMachine(tx: Prisma.TransactionClient, machineId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`machine:${machineId}`}))`;
 }
 
 async function uniqueCode(tx: Prisma.TransactionClient): Promise<string> {
@@ -258,13 +274,7 @@ async function uniqueCode(tx: Prisma.TransactionClient): Promise<string> {
  * Frees expired payment holds that overlap a range so a new customer can take
  * the slot. Runs inside the booking transaction, before the insert.
  */
-async function expireStaleHolds(
-  tx: Prisma.TransactionClient,
-  machineId: string,
-  from: Date,
-  to: Date,
-  now: Date,
-) {
+async function expireStaleHolds(tx: Prisma.TransactionClient, machineId: string, from: Date, to: Date, now: Date) {
   const stale = await tx.machineOccupancy.findMany({
     where: {
       machineId,
@@ -317,6 +327,8 @@ export async function confirmBooking(bookingId: string): Promise<boolean> {
       if (!booking) return false;
       if (booking.status === "CONFIRMED") return true;
       if (booking.status !== "PENDING_PAYMENT" && booking.status !== "EXPIRED") return false;
+      const occ = await tx.machineOccupancy.findUnique({ where: { bookingId }, select: { machineId: true } });
+      if (occ) await lockMachine(tx, occ.machineId);
       await tx.machineOccupancy.update({
         where: { bookingId },
         data: { active: true, holdExpiresAt: null },
@@ -361,6 +373,7 @@ export async function rescheduleBooking(input: {
 
   try {
     return await db.$transaction(async (tx) => {
+      for (const id of [...new Set([booking.machineId, machineId])].sort()) await lockMachine(tx, id);
       await tx.machineOccupancy.update({
         where: { bookingId: booking.id },
         data: {

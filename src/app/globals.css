@@ -110,7 +110,7 @@
     scroll-behavior: smooth;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background font-sans text-foreground antialiased;
   }
   h1,
   h2,
@@ -126,9 +126,31 @@
   /* Court lines: white tramlines used as a graphic motif on navy panels. */
   .court-lines {
     background-image:
-      linear-gradient(to right, transparent calc(50% - 1px), oklch(1 0 0 / 0.09) calc(50% - 1px), oklch(1 0 0 / 0.09) calc(50% + 1px), transparent calc(50% + 1px)),
-      linear-gradient(to bottom, transparent calc(62% - 1px), oklch(1 0 0 / 0.09) calc(62% - 1px), oklch(1 0 0 / 0.09) calc(62% + 1px), transparent calc(62% + 1px)),
-      linear-gradient(to right, transparent 12%, oklch(1 0 0 / 0.07) 12%, oklch(1 0 0 / 0.07) calc(12% + 2px), transparent calc(12% + 2px), transparent calc(88% - 2px), oklch(1 0 0 / 0.07) calc(88% - 2px), oklch(1 0 0 / 0.07) 88%, transparent 88%);
+      linear-gradient(
+        to right,
+        transparent calc(50% - 1px),
+        oklch(1 0 0 / 0.09) calc(50% - 1px),
+        oklch(1 0 0 / 0.09) calc(50% + 1px),
+        transparent calc(50% + 1px)
+      ),
+      linear-gradient(
+        to bottom,
+        transparent calc(62% - 1px),
+        oklch(1 0 0 / 0.09) calc(62% - 1px),
+        oklch(1 0 0 / 0.09) calc(62% + 1px),
+        transparent calc(62% + 1px)
+      ),
+      linear-gradient(
+        to right,
+        transparent 12%,
+        oklch(1 0 0 / 0.07) 12%,
+        oklch(1 0 0 / 0.07) calc(12% + 2px),
+        transparent calc(12% + 2px),
+        transparent calc(88% - 2px),
+        oklch(1 0 0 / 0.07) calc(88% - 2px),
+        oklch(1 0 0 / 0.07) 88%,
+        transparent 88%
+      );
   }
   .text-balance {
     text-wrap: balance;

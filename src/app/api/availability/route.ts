@@ -9,10 +9,16 @@ const query = z.object({
   product: z.string().min(1),
   machine: z.string().optional(),
   /** Month view: first date + number of days. */
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   days: z.coerce.number().int().min(1).max(62).optional(),
   /** Day view: one date. */
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   /** When rescheduling, ignore the booking's own block. */
   exclude: z.string().optional(),
 });

@@ -13,7 +13,10 @@ export type FormState = { ok: boolean; error?: string; message?: string };
 
 const machine = z.object({
   name: z.string().trim().min(2),
-  slug: z.string().trim().regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers and dashes."),
+  slug: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers and dashes."),
   model: z.string().trim().min(1),
   description: z.string().trim().optional(),
   status: z.enum(["AVAILABLE", "RENTED", "MAINTENANCE", "RETIRED"]),
@@ -55,7 +58,8 @@ export async function saveMachineAction(_: FormState, formData: FormData): Promi
     imageUrl: blank(formData.get("imageUrl")),
     specs: blank(formData.get("specs")),
   });
-  if (!parsed.success) return { ok: false, error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" · ") };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" · ") };
   const d = parsed.data;
   const depositCents = dollarsToCents(d.deposit);
   if (depositCents === null) return { ok: false, error: "Invalid deposit amount." };
@@ -63,7 +67,8 @@ export async function saveMachineAction(_: FormState, formData: FormData): Promi
   let imageUrl = d.imageUrl ?? null;
   const file = formData.get("image");
   if (file instanceof File && file.size > 0) {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) return { ok: false, error: "Set BLOB_READ_WRITE_TOKEN to upload photos, or paste an image URL." };
+    if (!process.env.BLOB_READ_WRITE_TOKEN)
+      return { ok: false, error: "Set BLOB_READ_WRITE_TOKEN to upload photos, or paste an image URL." };
     imageUrl = (await put(`machines/${d.slug}-${Date.now()}-${file.name}`, file, { access: "public" })).url;
   }
   // Specs: one "Label: value" per line.
@@ -98,7 +103,8 @@ export async function saveMachineAction(_: FormState, formData: FormData): Promi
     if (!id) redirect(`/admin/machines/${saved.id}`);
     return { ok: true, message: "Machine saved." };
   } catch (e) {
-    if (e instanceof Error && e.message.includes("Unique constraint")) return { ok: false, error: "That slug is already used." };
+    if (e instanceof Error && e.message.includes("Unique constraint"))
+      return { ok: false, error: "That slug is already used." };
     throw e;
   }
 }
@@ -108,7 +114,8 @@ export async function addMaintenanceAction(_: FormState, formData: FormData): Pr
   const machineId = String(formData.get("machineId") ?? "");
   const date = String(formData.get("date") ?? "");
   const summary = String(formData.get("summary") ?? "").trim();
-  if (!machineId || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !summary) return { ok: false, error: "Date and summary are required." };
+  if (!machineId || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !summary)
+    return { ok: false, error: "Date and summary are required." };
   const cost = blank(formData.get("cost"));
   await db.maintenanceLog.create({
     data: {

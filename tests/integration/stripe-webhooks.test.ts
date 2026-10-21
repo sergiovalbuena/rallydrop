@@ -61,7 +61,8 @@ describe.skipIf(!hasTestDb)("Stripe payments & webhooks", () => {
 
   it("rejects events with a bad signature", () => {
     const e = fake.event("payment_intent.succeeded", {});
-    expect(() => constructStripeEvent(e.payload, e.header.replace(/v1=\w/, "v1=0"))).toThrow();
+    // Tampered body with the original signature must be rejected.
+    expect(() => constructStripeEvent(e.payload.replace('"type"', '"typ3"'), e.header)).toThrow();
     expect(() => constructStripeEvent(e.payload, null)).toThrow();
   });
 
@@ -77,7 +78,10 @@ describe.skipIf(!hasTestDb)("Stripe payments & webhooks", () => {
     const { booking, pi } = await bookAndPay();
     expect(await deliver("payment_intent.succeeded", pi)).toBe("processed");
 
-    const after = await db.booking.findUniqueOrThrow({ where: { id: booking.id }, include: { deposit: true, payments: true } });
+    const after = await db.booking.findUniqueOrThrow({
+      where: { id: booking.id },
+      include: { deposit: true, payments: true },
+    });
     expect(after.status).toBe("CONFIRMED");
     expect(after.payments[0].status).toBe("SUCCEEDED");
     expect(after.payments[0].receiptUrl).toContain("receipts");
@@ -108,7 +112,9 @@ describe.skipIf(!hasTestDb)("Stripe payments & webhooks", () => {
   it("refunds a late payment when the slot was taken by someone else", async () => {
     const { booking, pi } = await bookAndPay();
     // Hold expires; another customer books the same slot.
-    await createBooking(input({ customer: { name: "Other", email: "o@example.com" }, now: new Date(now.getTime() + 11 * MIN) }));
+    await createBooking(
+      input({ customer: { name: "Other", email: "o@example.com" }, now: new Date(now.getTime() + 11 * MIN) }),
+    );
     await deliver("payment_intent.succeeded", pi);
     const after = await db.booking.findUniqueOrThrow({ where: { id: booking.id } });
     expect(after.status).toBe("CANCELLED");
@@ -159,7 +165,9 @@ describe.skipIf(!hasTestDb)("Stripe payments & webhooks", () => {
 
     const deposit = await db.deposit.findUniqueOrThrow({ where: { bookingId: booking.id } });
     expect(deposit.status).toBe("RELEASED");
-    expect(fake.calls.some((c) => c.method === "paymentIntents.cancel" && c.args[0] === deposit.stripePaymentIntentId)).toBe(true);
+    expect(
+      fake.calls.some((c) => c.method === "paymentIntents.cancel" && c.args[0] === deposit.stripePaymentIntentId),
+    ).toBe(true);
     expect((await db.machine.findUniqueOrThrow({ where: { id: catalog.aura.id } })).status).toBe("AVAILABLE");
   });
 
@@ -171,7 +179,11 @@ describe.skipIf(!hasTestDb)("Stripe payments & webhooks", () => {
     await captureDeposit(booking.id, 5000, "Cracked ball hopper", "admin:test");
 
     const deposit = await db.deposit.findUniqueOrThrow({ where: { bookingId: booking.id } });
-    expect(deposit).toMatchObject({ status: "PARTIALLY_CAPTURED", capturedCents: 5000, captureNote: "Cracked ball hopper" });
+    expect(deposit).toMatchObject({
+      status: "PARTIALLY_CAPTURED",
+      capturedCents: 5000,
+      captureNote: "Cracked ball hopper",
+    });
     const capture = fake.calls.find((c) => c.method === "paymentIntents.capture")!;
     expect(capture.args[1]).toEqual({ amount_to_capture: 5000 });
   });
@@ -180,7 +192,10 @@ describe.skipIf(!hasTestDb)("Stripe payments & webhooks", () => {
     const { booking, pi } = await bookAndPay({ productId: catalog.week.id });
     await deliver("payment_intent.succeeded", pi);
     await captureDeposit(booking.id, 30000, "Machine lost", "admin:test");
-    const charge = fake.calls.filter((c) => c.method === "paymentIntents.create").at(-1)!.args[0] as Record<string, unknown>;
+    const charge = fake.calls.filter((c) => c.method === "paymentIntents.create").at(-1)!.args[0] as Record<
+      string,
+      unknown
+    >;
     expect(charge).toMatchObject({ amount: 30000, off_session: true, confirm: true, payment_method: "pm_card_visa" });
     expect((await db.deposit.findUniqueOrThrow({ where: { bookingId: booking.id } })).status).toBe("CAPTURED");
   });
@@ -197,7 +212,12 @@ describe.skipIf(!hasTestDb)("Stripe payments & webhooks", () => {
   it("mirrors refunds made in the Stripe dashboard", async () => {
     const { pi } = await bookAndPay();
     await deliver("payment_intent.succeeded", pi);
-    await deliver("charge.refunded", { id: "ch_x", object: "charge", payment_intent: pi.id, amount_refunded: pi.amount });
+    await deliver("charge.refunded", {
+      id: "ch_x",
+      object: "charge",
+      payment_intent: pi.id,
+      amount_refunded: pi.amount,
+    });
     expect((await db.payment.findFirstOrThrow({ where: { stripePaymentIntentId: pi.id } })).status).toBe("REFUNDED");
   });
 });

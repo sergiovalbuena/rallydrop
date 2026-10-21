@@ -23,8 +23,16 @@ export async function MachineCards({ machines, detailed = false }: { machines: P
         const stats = [
           m.weightKg !== null && { icon: Weight, label: t("weight"), value: t("kg", { value: m.weightKg }) },
           m.maxSpeedKmh !== null && { icon: Gauge, label: t("maxSpeed"), value: t("kmh", { value: m.maxSpeedKmh }) },
-          m.ballCapacity !== null && { icon: Package, label: t("capacity"), value: t("balls", { value: m.ballCapacity }) },
-          m.batteryHours !== null && { icon: Battery, label: t("battery"), value: t("hours", { value: m.batteryHours }) },
+          m.ballCapacity !== null && {
+            icon: Package,
+            label: t("capacity"),
+            value: t("balls", { value: m.ballCapacity }),
+          },
+          m.batteryHours !== null && {
+            icon: Battery,
+            label: t("battery"),
+            value: t("hours", { value: m.batteryHours }),
+          },
         ].filter((s) => !!s);
         return (
           <article
@@ -34,9 +42,18 @@ export async function MachineCards({ machines, detailed = false }: { machines: P
           >
             <div className="court-lines relative flex aspect-[16/10] items-center justify-center bg-court p-8 text-white">
               {m.imageUrl ? (
-                <Image src={m.imageUrl} alt={m.name} fill className="object-cover" sizes="(min-width: 768px) 50vw, 100vw" />
+                <Image
+                  src={m.imageUrl}
+                  alt={m.name}
+                  fill
+                  className="object-cover"
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                />
               ) : (
-                <MachineIllustration accent={m.calendarColor} className="max-w-56 transition-transform duration-500 group-hover:-translate-y-1" />
+                <MachineIllustration
+                  accent={m.calendarColor}
+                  className="max-w-56 transition-transform duration-500 group-hover:-translate-y-1"
+                />
               )}
               {!m.bookable && (
                 <Badge variant="accent" className="absolute top-4 left-4">
@@ -52,12 +69,12 @@ export async function MachineCards({ machines, detailed = false }: { machines: P
               {stats.length > 0 && (
                 <dl className="grid grid-cols-2 gap-3">
                   {stats.map((s) => (
-                    <div key={s.label} className="flex items-center gap-3 rounded-lg bg-muted/60 p-3">
-                      <s.icon className="size-5 text-primary" aria-hidden />
-                      <div>
-                        <dt className="text-xs text-muted-foreground">{s.label}</dt>
-                        <dd className="font-semibold">{s.value}</dd>
-                      </div>
+                    <div key={s.label} className="rounded-lg bg-muted/60 p-3">
+                      <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <s.icon className="size-4 text-primary" aria-hidden />
+                        {s.label}
+                      </dt>
+                      <dd className="mt-0.5 font-semibold">{s.value}</dd>
                     </div>
                   ))}
                 </dl>
@@ -68,7 +85,9 @@ export async function MachineCards({ machines, detailed = false }: { machines: P
                     <div className="flex flex-wrap items-center gap-2">
                       <dt className="w-20 text-muted-foreground">{t("sports")}</dt>
                       {m.sports.map((s) => (
-                        <dd key={s}><Badge variant="secondary">{t(`sport_${s}`)}</Badge></dd>
+                        <dd key={s}>
+                          <Badge variant="secondary">{t(`sport_${s}`)}</Badge>
+                        </dd>
                       ))}
                     </div>
                   )}
@@ -76,7 +95,9 @@ export async function MachineCards({ machines, detailed = false }: { machines: P
                     <div className="flex flex-wrap items-center gap-2">
                       <dt className="w-20 text-muted-foreground">{t("levels")}</dt>
                       {m.levels.map((l) => (
-                        <dd key={l}><Badge variant="outline">{t(`level_${l}`)}</Badge></dd>
+                        <dd key={l}>
+                          <Badge variant="outline">{t(`level_${l}`)}</Badge>
+                        </dd>
                       ))}
                     </div>
                   )}

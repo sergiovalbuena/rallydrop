@@ -37,7 +37,7 @@ export default async function HomePage() {
       {/* Hero */}
       <div className="court-lines relative overflow-hidden bg-court text-white">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 pt-12 pb-16 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:pt-20 lg:pb-24">
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="animate-in duration-700 fade-in slide-in-from-bottom-4">
             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-optic uppercase">
               {t("eyebrow")}
             </p>
@@ -71,7 +71,7 @@ export default async function HomePage() {
               ))}
             </dl>
           </div>
-          <div className="animate-in fade-in zoom-in-95 duration-1000">
+          <div className="animate-in duration-1000 zoom-in-95 fade-in">
             <CourtIllustration className="mx-auto max-w-xl drop-shadow-2xl" />
           </div>
         </div>
@@ -83,7 +83,10 @@ export default async function HomePage() {
         <SectionHeading eyebrow="01" title={t("howTitle")} subtitle={t("howSubtitle")} />
         <ol className="grid gap-6 md:grid-cols-3">
           {steps.map((s, i) => (
-            <li key={s.title} className="relative rounded-2xl border bg-card p-6 transition-all hover:-translate-y-0.5 hover:shadow-lg">
+            <li
+              key={s.title}
+              className="relative rounded-2xl border bg-card p-6 transition-all hover:-translate-y-0.5 hover:shadow-lg"
+            >
               <span className="absolute top-5 right-6 font-display text-6xl font-extrabold text-muted" aria-hidden>
                 {i + 1}
               </span>
@@ -159,7 +162,9 @@ export default async function HomePage() {
       <Section className="pt-0">
         <div className="relative overflow-hidden rounded-3xl bg-accent p-8 text-accent-foreground sm:p-12">
           <div className="max-w-xl">
-            <h2 className="font-display text-5xl leading-[0.9] font-extrabold uppercase sm:text-6xl">{t("ctaTitle")}</h2>
+            <h2 className="font-display text-5xl leading-[0.9] font-extrabold uppercase sm:text-6xl">
+              {t("ctaTitle")}
+            </h2>
             <p className="mt-4 text-lg">{t("ctaBody")}</p>
             <Button asChild size="lg" className="mt-6">
               <Link href="/book">
@@ -167,7 +172,11 @@ export default async function HomePage() {
               </Link>
             </Button>
           </div>
-          <svg viewBox="0 0 200 200" className="absolute -right-10 -bottom-10 size-64 opacity-30 sm:size-80" aria-hidden>
+          <svg
+            viewBox="0 0 200 200"
+            className="absolute -right-10 -bottom-10 size-64 opacity-30 sm:size-80"
+            aria-hidden
+          >
             <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" strokeWidth="6" />
             <path d="M10 80h180M100 80v110" stroke="currentColor" strokeWidth="6" fill="none" />
           </svg>
@@ -185,7 +194,11 @@ async function HomeMachines() {
 
 async function HomePricing() {
   await connection();
-  const [products, addOns, machines] = await Promise.all([listActiveProducts(), listActiveAddOns(), listPublicMachines()]);
+  const [products, addOns, machines] = await Promise.all([
+    listActiveProducts(),
+    listActiveAddOns(),
+    listPublicMachines(),
+  ]);
   const deposit = machines.find((m) => m.bookable)?.depositCents ?? 30000;
   return <PricingGrid products={products} addOns={addOns} depositCents={deposit} compact />;
 }

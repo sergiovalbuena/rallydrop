@@ -69,7 +69,13 @@ export function ProductRow({
             <Input name="sessionsPerMonth" type="number" min={1} defaultValue={p.sessionsPerMonth ?? undefined} />
           </F>
           <F label="Minutes / session">
-            <Input name="sessionMinutes" type="number" min={30} step={15} defaultValue={p.sessionMinutes ?? undefined} />
+            <Input
+              name="sessionMinutes"
+              type="number"
+              min={30}
+              step={15}
+              defaultValue={p.sessionMinutes ?? undefined}
+            />
           </F>
         </>
       )}

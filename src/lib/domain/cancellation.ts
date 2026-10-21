@@ -14,12 +14,7 @@ export type RefundDecision = {
   hoursBeforeStart: number;
 };
 
-export function refundFor(
-  paidCents: number,
-  startsAt: Date,
-  now: Date,
-  policy: CancellationPolicy,
-): RefundDecision {
+export function refundFor(paidCents: number, startsAt: Date, now: Date, policy: CancellationPolicy): RefundDecision {
   const hoursBeforeStart = (startsAt.getTime() - now.getTime()) / 3_600_000;
   if (hoursBeforeStart <= 0) return { refundCents: 0, tier: "none", hoursBeforeStart };
   if (hoursBeforeStart >= policy.fullRefundHours) {

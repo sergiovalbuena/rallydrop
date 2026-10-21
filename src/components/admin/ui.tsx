@@ -3,7 +3,15 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { BookingStatus, DepositStatus } from "@/generated/prisma/client";
 
-export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+}: {
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+}) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -15,7 +23,17 @@ export function PageHeader({ title, description, actions }: { title: string; des
   );
 }
 
-export function StatCard({ label, value, hint, className }: { label: string; value: ReactNode; hint?: ReactNode; className?: string }) {
+export function StatCard({
+  label,
+  value,
+  hint,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  className?: string;
+}) {
   return (
     <div className={cn("rounded-xl border bg-card p-5", className)}>
       <p className="text-sm text-muted-foreground">{label}</p>
@@ -25,7 +43,17 @@ export function StatCard({ label, value, hint, className }: { label: string; val
   );
 }
 
-export function Panel({ title, children, actions, className }: { title: string; children: ReactNode; actions?: ReactNode; className?: string }) {
+export function Panel({
+  title,
+  children,
+  actions,
+  className,
+}: {
+  title: string;
+  children: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
   return (
     <section className={cn("rounded-xl border bg-card", className)}>
       <div className="flex items-center justify-between gap-3 border-b px-5 py-3">
@@ -53,7 +81,10 @@ export const STATUS_LABEL: Record<BookingStatus, string> = {
   NO_SHOW: "No-show",
 };
 
-const STATUS_VARIANT: Record<BookingStatus, "default" | "secondary" | "accent" | "success" | "warning" | "destructive" | "outline"> = {
+const STATUS_VARIANT: Record<
+  BookingStatus,
+  "default" | "secondary" | "accent" | "success" | "warning" | "destructive" | "outline"
+> = {
   PENDING_PAYMENT: "warning",
   CONFIRMED: "default",
   CHECKED_OUT: "accent",
@@ -69,7 +100,10 @@ export function StatusBadge({ status }: { status: BookingStatus }) {
   return <Badge variant={STATUS_VARIANT[status]}>{STATUS_LABEL[status]}</Badge>;
 }
 
-const DEPOSIT_VARIANT: Record<DepositStatus, "default" | "secondary" | "accent" | "success" | "warning" | "destructive" | "outline"> = {
+const DEPOSIT_VARIANT: Record<
+  DepositStatus,
+  "default" | "secondary" | "accent" | "success" | "warning" | "destructive" | "outline"
+> = {
   PENDING: "outline",
   CARD_SAVED: "secondary",
   HELD: "accent",

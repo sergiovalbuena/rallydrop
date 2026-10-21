@@ -1,10 +1,4 @@
-import {
-  addLocalDays,
-  localDateMinuteToUtc,
-  localMonth,
-  localWeekday,
-  toLocalMinute,
-} from "@/lib/time";
+import { addLocalDays, localDateMinuteToUtc, localMonth, localWeekday, toLocalMinute } from "@/lib/time";
 
 /*
  * Availability engine (pure). The database is the final authority — the
@@ -96,11 +90,7 @@ export function isMachineFree(busy: Interval[], start: Date, end: Date, bufferMi
 }
 
 /** Slots on one date with the machines free for each. */
-export function slotsForDate(
-  date: string,
-  rules: SlotRules,
-  busyByMachine: Map<string, Interval[]>,
-): Slot[] {
+export function slotsForDate(date: string, rules: SlotRules, busyByMachine: Map<string, Interval[]>): Slot[] {
   const slots: Slot[] = [];
   for (const start of candidateStarts(date, rules)) {
     const end = new Date(start.getTime() + rules.durationMinutes * MINUTE);
@@ -126,4 +116,3 @@ export function availabilityByDate(
   }
   return out;
 }
-

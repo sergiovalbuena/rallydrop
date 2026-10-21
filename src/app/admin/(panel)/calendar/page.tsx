@@ -43,11 +43,21 @@ export default async function CalendarPage({ searchParams }: PageProps<"/admin/c
     db.machine.findMany({ where: { status: { not: "RETIRED" } }, orderBy: { sortOrder: "asc" } }),
     db.booking.findMany({
       where: { status: { in: [...ACTIVE_STATUSES, "PENDING_PAYMENT"] }, startsAt: { lt: to }, endsAt: { gt: from } },
-      include: { customer: { select: { name: true } }, product: { select: { name: true } }, court: { select: { name: true } } },
+      include: {
+        customer: { select: { name: true } },
+        product: { select: { name: true } },
+        court: { select: { name: true } },
+      },
     }),
-    db.groupSession.findMany({ where: { status: "SCHEDULED", startsAt: { lt: to }, endsAt: { gt: from } }, include: { _count: { select: { enrollments: true } } } }),
+    db.groupSession.findMany({
+      where: { status: "SCHEDULED", startsAt: { lt: to }, endsAt: { gt: from } },
+      include: { _count: { select: { enrollments: true } } },
+    }),
     db.blackout.findMany({ where: { startsAt: { lt: to }, endsAt: { gt: from } }, include: { machine: true } }),
-    db.product.findMany({ where: { active: true, kind: { in: ["DAY", "WEEKEND", "WEEK", "MONTH", "PACKAGE"] } }, orderBy: { sortOrder: "asc" } }),
+    db.product.findMany({
+      where: { active: true, kind: { in: ["DAY", "WEEKEND", "WEEK", "MONTH", "PACKAGE"] } },
+      orderBy: { sortOrder: "asc" },
+    }),
     listActiveCourts(),
   ]);
   const color = (machineId: string | null) => machines.find((m) => m.id === machineId)?.calendarColor ?? "#64748b";

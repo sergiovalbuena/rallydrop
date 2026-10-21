@@ -12,7 +12,12 @@ export const instant = false;
 type Messages = { [k: string]: string | Messages };
 
 function lookup(messages: Messages, key: string): string {
-  const v = key.split(".").reduce<string | Messages | undefined>((node, part) => (typeof node === "object" ? node[part] : undefined), messages);
+  const v = key
+    .split(".")
+    .reduce<string | Messages | undefined>(
+      (node, part) => (typeof node === "object" ? node[part] : undefined),
+      messages,
+    );
   return typeof v === "string" ? v : "";
 }
 
@@ -58,7 +63,17 @@ export default async function SettingsPage() {
         <Panel title="Courts (delivery list)">
           <div className="space-y-3">
             {courts.map((c) => (
-              <CourtRow key={c.id} court={{ id: c.id, name: c.name, address: c.address, lat: Number(c.lat), lng: Number(c.lng), active: c.active }} />
+              <CourtRow
+                key={c.id}
+                court={{
+                  id: c.id,
+                  name: c.name,
+                  address: c.address,
+                  lat: Number(c.lat),
+                  lng: Number(c.lng),
+                  active: c.active,
+                }}
+              />
             ))}
             <CourtRow court={null} />
           </div>

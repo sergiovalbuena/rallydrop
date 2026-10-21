@@ -37,11 +37,20 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
   });
   return (
     <>
-      <PageHeader title="Customers" description={`${customers.length}${customers.length === 100 ? "+" : ""} customers`} />
+      <PageHeader
+        title="Customers"
+        description={`${customers.length}${customers.length === 100 ? "+" : ""} customers`}
+      />
       <form className="mb-4 flex max-w-md gap-2" role="search">
         <div className="relative flex-1">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input name="q" defaultValue={q} placeholder="Name, email or phone" className="pl-9" aria-label="Search customers" />
+          <Input
+            name="q"
+            defaultValue={q}
+            placeholder="Name, email or phone"
+            className="pl-9"
+            aria-label="Search customers"
+          />
         </div>
         <Button type="submit">Search</Button>
       </form>
@@ -78,7 +87,9 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
                     {c.blocked && <Badge variant="destructive">blocked</Badge>}
                     {c.subscriptions.length > 0 && <Badge variant="accent">package</Badge>}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{formatLocal(c.createdAt, "MMM d, yyyy")}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatLocal(c.createdAt, "MMM d, yyyy")}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -8,13 +8,27 @@ import type { Slot } from "@/components/booking/types";
 import { Button } from "@/components/ui/button";
 import { rescheduleAction } from "@/app/(site)/account/actions";
 
-export function RescheduleClient({ bookingId, productId, machineId }: { bookingId: string; productId: string; machineId: string }) {
+export function RescheduleClient({
+  bookingId,
+  productId,
+  machineId,
+}: {
+  bookingId: string;
+  productId: string;
+  machineId: string;
+}) {
   const router = useRouter();
   const [when, setWhen] = useState<{ date: string | null; slot: Slot | null }>({ date: null, slot: null });
   const [busy, setBusy] = useState(false);
   return (
     <div className="space-y-6">
-      <DateTimePicker productId={productId} machineId={machineId} excludeBookingId={bookingId} value={when} onChange={setWhen} />
+      <DateTimePicker
+        productId={productId}
+        machineId={machineId}
+        excludeBookingId={bookingId}
+        value={when}
+        onChange={setWhen}
+      />
       <Button
         size="lg"
         disabled={!when.slot || busy}

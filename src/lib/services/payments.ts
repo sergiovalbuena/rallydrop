@@ -74,7 +74,8 @@ export async function startRentalPayment(bookingId: string): Promise<{ clientSec
     where: { id: bookingId },
     include: { payments: { where: { kind: "RENTAL" } }, product: true, machine: true },
   });
-  if (booking.status !== "PENDING_PAYMENT") throw new BookingError("INVALID_STATE", "This booking is no longer awaiting payment.");
+  if (booking.status !== "PENDING_PAYMENT")
+    throw new BookingError("INVALID_STATE", "This booking is no longer awaiting payment.");
 
   const existing = booking.payments.find((p) => p.stripePaymentIntentId && p.status === "PENDING");
   if (existing?.stripePaymentIntentId) {
@@ -145,7 +146,9 @@ export async function handleRentalSucceeded(
   const bookingId = pi.metadata.bookingId;
   const chargeId = piId(pi.latest_charge);
   const receiptUrl =
-    pi.latest_charge && typeof pi.latest_charge === "object" ? pi.latest_charge.receipt_url : await receiptFor(chargeId);
+    pi.latest_charge && typeof pi.latest_charge === "object"
+      ? pi.latest_charge.receipt_url
+      : await receiptFor(chargeId);
 
   await db.payment.updateMany({
     where: { stripePaymentIntentId: pi.id, status: { in: ["PENDING", "REQUIRES_ACTION", "FAILED"] } },
@@ -181,7 +184,11 @@ export async function handleRentalSucceeded(
         },
       });
     }
-    if (booking.deposit.strategy === "AUTH_HOLD" && !booking.deposit.authScheduledFor && booking.deposit.status === "PENDING") {
+    if (
+      booking.deposit.strategy === "AUTH_HOLD" &&
+      !booking.deposit.authScheduledFor &&
+      booking.deposit.status === "PENDING"
+    ) {
       const hold = await placeDepositHold(bookingId, { offSession: opts.offSession });
       depositClientSecret = hold.status === "requires_action" ? hold.clientSecret : undefined;
     }
@@ -212,7 +219,10 @@ export type HoldResult =
 
 /** Places the manual-capture authorization for a booking's deposit. */
 export async function placeDepositHold(bookingId: string, opts: { offSession: boolean }): Promise<HoldResult> {
-  const booking = await db.booking.findUniqueOrThrow({ where: { id: bookingId }, include: { deposit: true, customer: true } });
+  const booking = await db.booking.findUniqueOrThrow({
+    where: { id: bookingId },
+    include: { deposit: true, customer: true },
+  });
   const deposit = booking.deposit;
   if (!deposit || deposit.strategy !== "AUTH_HOLD") return { status: "skipped" };
   if (deposit.status === "HELD") return { status: "held" };
@@ -278,7 +288,11 @@ export async function releaseDeposit(bookingId: string, actor: string) {
   if (["RELEASED", "CAPTURED", "PARTIALLY_CAPTURED", "WAIVED"].includes(deposit.status)) return;
 
   if (deposit.status === "HELD" && deposit.stripePaymentIntentId) {
-    await stripe().paymentIntents.cancel(deposit.stripePaymentIntentId, {}, { idempotencyKey: `release:${deposit.id}` });
+    await stripe().paymentIntents.cancel(
+      deposit.stripePaymentIntentId,
+      {},
+      { idempotencyKey: `release:${deposit.id}` },
+    );
   }
   await db.deposit.update({
     where: { id: deposit.id },
@@ -295,7 +309,10 @@ export async function releaseDeposit(bookingId: string, actor: string) {
  * remainder is released automatically by Stripe.
  */
 export async function captureDeposit(bookingId: string, amountCents: number, note: string, actor: string) {
-  const deposit = await db.deposit.findUnique({ where: { bookingId }, include: { booking: { include: { customer: true } } } });
+  const deposit = await db.deposit.findUnique({
+    where: { bookingId },
+    include: { booking: { include: { customer: true } } },
+  });
   if (!deposit) throw new BookingError("NOT_FOUND", "This booking has no deposit.");
   const check = validateCapture({
     amountCents,
@@ -329,7 +346,8 @@ export async function captureDeposit(bookingId: string, amountCents: number, not
       },
       { idempotencyKey: `deposit_charge:${deposit.id}:${deposit.capturedCents}` },
     );
-    if (pi.status !== "succeeded") throw new BookingError("PAYMENT_FAILED", "The card was declined. Contact the customer.");
+    if (pi.status !== "succeeded")
+      throw new BookingError("PAYMENT_FAILED", "The card was declined. Contact the customer.");
     paymentIntentId = pi.id;
   } else {
     throw new BookingError("INVALID_STATE", "There is no card or authorization to charge.");
@@ -451,7 +469,9 @@ export async function cancelBooking(
       where: { id: bookingId },
       data: { status: "CANCELLED", cancelledAt: now, cancelReason: opts.reason ?? null },
     });
-    await tx.bookingEvent.create({ data: { bookingId, type: "cancelled", actor: opts.actor, data: { reason: opts.reason ?? null } } });
+    await tx.bookingEvent.create({
+      data: { bookingId, type: "cancelled", actor: opts.actor, data: { reason: opts.reason ?? null } },
+    });
   });
 
   // Unpaid hold: cancel the open PaymentIntent so it can't be paid later.
@@ -490,7 +510,9 @@ export async function setBookingStatus(bookingId: string, status: BookingStatus,
 
   await db.$transaction(async (tx) => {
     await tx.booking.update({ where: { id: bookingId }, data: { status } });
-    await tx.bookingEvent.create({ data: { bookingId, type: "status_changed", actor, data: { from: booking.status, to: status } } });
+    await tx.bookingEvent.create({
+      data: { bookingId, type: "status_changed", actor, data: { from: booking.status, to: status } },
+    });
 
     if (status === "CHECKED_OUT") {
       await tx.machine.update({ where: { id: booking.machineId }, data: { status: "RENTED" } });
@@ -506,7 +528,10 @@ export async function setBookingStatus(bookingId: string, status: BookingStatus,
         where: { machineId: booking.machineId, status: "CHECKED_OUT", NOT: { id: bookingId } },
       });
       if (stillOut === 0) {
-        await tx.machine.updateMany({ where: { id: booking.machineId, status: "RENTED" }, data: { status: "AVAILABLE" } });
+        await tx.machine.updateMany({
+          where: { id: booking.machineId, status: "RENTED" },
+          data: { status: "AVAILABLE" },
+        });
       }
     }
   });
@@ -520,12 +545,14 @@ export async function setBookingStatus(bookingId: string, status: BookingStatus,
  */
 export async function attachSubscriptionCardToDeposit(bookingId: string, stripeSubscriptionId: string) {
   const sub = await stripe().subscriptions.retrieve(stripeSubscriptionId);
-  const pm = typeof sub.default_payment_method === "string" ? sub.default_payment_method : sub.default_payment_method?.id;
+  const pm =
+    typeof sub.default_payment_method === "string" ? sub.default_payment_method : sub.default_payment_method?.id;
   const deposit = await db.deposit.findUnique({ where: { bookingId } });
   if (!deposit || !pm) return;
   await db.deposit.update({
     where: { id: deposit.id },
     data: { stripePaymentMethodId: pm, status: deposit.strategy === "SAVED_CARD" ? "CARD_SAVED" : deposit.status },
   });
-  if (deposit.strategy === "AUTH_HOLD" && !deposit.authScheduledFor) await placeDepositHold(bookingId, { offSession: true });
+  if (deposit.strategy === "AUTH_HOLD" && !deposit.authScheduledFor)
+    await placeDepositHold(bookingId, { offSession: true });
 }

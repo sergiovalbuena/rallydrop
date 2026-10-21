@@ -20,7 +20,13 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/b
   await connection();
   const sp = await searchParams;
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : (sp[k] as string | undefined));
-  const filters: BookingFilters = { q: one("q"), status: one("status"), machine: one("machine"), from: one("from"), to: one("to") };
+  const filters: BookingFilters = {
+    q: one("q"),
+    status: one("status"),
+    machine: one("machine"),
+    from: one("from"),
+    to: one("to"),
+  };
   const page = Math.max(1, Number(one("page") ?? 1));
   const where = bookingWhere(filters);
   const [bookings, total, machines] = await Promise.all([
@@ -52,7 +58,13 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/b
       <form className="mb-4 grid gap-2 rounded-xl border bg-card p-3 sm:grid-cols-2 lg:grid-cols-6" role="search">
         <div className="relative lg:col-span-2">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input name="q" defaultValue={filters.q} placeholder="Code, name, email, phone" className="pl-9" aria-label="Search" />
+          <Input
+            name="q"
+            defaultValue={filters.q}
+            placeholder="Code, name, email, phone"
+            className="pl-9"
+            aria-label="Search"
+          />
         </div>
         <NativeSelect name="status" defaultValue={filters.status ?? "ALL"} aria-label="Status">
           <option value="ALL">All statuses</option>
@@ -96,7 +108,10 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/b
               {bookings.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell>
-                    <Link href={`/admin/bookings/${b.id}`} className="font-mono font-semibold text-primary hover:underline">
+                    <Link
+                      href={`/admin/bookings/${b.id}`}
+                      className="font-mono font-semibold text-primary hover:underline"
+                    >
                       {b.code}
                     </Link>
                   </TableCell>
@@ -105,7 +120,11 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/b
                     <div className="text-xs text-muted-foreground">{b.customer.email ?? b.customer.phone}</div>
                   </TableCell>
                   <TableCell>
-                    <span className="mr-1.5 inline-block size-2.5 rounded-full" style={{ background: b.machine.calendarColor }} aria-hidden />
+                    <span
+                      className="mr-1.5 inline-block size-2.5 rounded-full"
+                      style={{ background: b.machine.calendarColor }}
+                      aria-hidden
+                    />
                     {b.machine.name} · {b.product.name}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{formatLocal(b.startsAt, "EEE MMM d, h:mm a")}</TableCell>
@@ -122,7 +141,9 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/b
       {total > PAGE_SIZE && (
         <div className="mt-4 flex justify-between">
           <Button asChild variant="outline" disabled={page <= 1}>
-            <Link href={`?${new URLSearchParams({ ...Object.fromEntries(qs), page: String(page - 1) })}`}>Previous</Link>
+            <Link href={`?${new URLSearchParams({ ...Object.fromEntries(qs), page: String(page - 1) })}`}>
+              Previous
+            </Link>
           </Button>
           <span className="text-sm text-muted-foreground">
             Page {page} of {Math.ceil(total / PAGE_SIZE)}

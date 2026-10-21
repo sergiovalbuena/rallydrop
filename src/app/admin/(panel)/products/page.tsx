@@ -18,7 +18,10 @@ export default async function ProductsPage() {
   ]);
   return (
     <>
-      <PageHeader title="Prices & products" description="Prices in CAD before tax. Changes apply to new bookings only." />
+      <PageHeader
+        title="Prices & products"
+        description="Prices in CAD before tax. Changes apply to new bookings only."
+      />
       <div className="space-y-6">
         <Panel title="Products">
           <div className="space-y-4">
@@ -38,9 +41,16 @@ export default async function ProductsPage() {
                     sessionsPerMonth: p.sessionsPerMonth,
                     sessionMinutes: p.sessionMinutes,
                     allowedStarts: starts
-                      ? starts.map((s) => `${DAY[s.weekday]} ${String(Math.floor(s.minute / 60)).padStart(2, "0")}:${String(s.minute % 60).padStart(2, "0")}`).join(", ")
+                      ? starts
+                          .map(
+                            (s) =>
+                              `${DAY[s.weekday]} ${String(Math.floor(s.minute / 60)).padStart(2, "0")}:${String(s.minute % 60).padStart(2, "0")}`,
+                          )
+                          .join(", ")
                       : "",
-                    startsHint: starts ? starts.map((s) => `${DAY[s.weekday]} ${minuteToLabel(s.minute)}`).join(" or ") : "",
+                    startsHint: starts
+                      ? starts.map((s) => `${DAY[s.weekday]} ${minuteToLabel(s.minute)}`).join(" or ")
+                      : "",
                   }}
                 />
               );
@@ -52,7 +62,14 @@ export default async function ProductsPage() {
             {addOns.map((a) => (
               <AddOnRow
                 key={a.id}
-                addOn={{ id: a.id, kind: a.kind, name: a.name, description: a.description ?? "", price: (a.priceCents / 100).toFixed(2), active: a.active }}
+                addOn={{
+                  id: a.id,
+                  kind: a.kind,
+                  name: a.name,
+                  description: a.description ?? "",
+                  price: (a.priceCents / 100).toFixed(2),
+                  active: a.active,
+                }}
               />
             ))}
           </div>

@@ -76,13 +76,15 @@ export async function ensureStripePrice(productId: string): Promise<string> {
 
 export async function startSubscription(input: { productId: string; customer: CustomerInput }) {
   const product = await db.product.findUnique({ where: { id: input.productId } });
-  if (!product || product.kind !== "PACKAGE" || !product.active) throw new BookingError("NOT_FOUND", "Package not found.");
+  if (!product || product.kind !== "PACKAGE" || !product.active)
+    throw new BookingError("NOT_FOUND", "Package not found.");
 
   const customer = await db.$transaction((tx) => upsertCustomer(tx, input.customer));
   const active = await db.subscription.findFirst({
     where: { customerId: customer.id, status: { in: ["ACTIVE", "PAST_DUE"] } },
   });
-  if (active) throw new BookingError("INVALID_STATE", "You already have an active package. Manage it from “My bookings”.");
+  if (active)
+    throw new BookingError("INVALID_STATE", "You already have an active package. Manage it from “My bookings”.");
 
   const stripeCustomerId = await ensureStripeCustomer(customer.id);
   const [priceId, taxRates] = await Promise.all([ensureStripePrice(product.id), ensureTaxRates()]);

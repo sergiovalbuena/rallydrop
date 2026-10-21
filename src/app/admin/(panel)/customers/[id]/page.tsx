@@ -18,13 +18,19 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
   const c = await db.customer.findUnique({
     where: { id },
     include: {
-      bookings: { where: { status: { not: "EXPIRED" } }, orderBy: { startsAt: "desc" }, include: { machine: true, product: true } },
+      bookings: {
+        where: { status: { not: "EXPIRED" } },
+        orderBy: { startsAt: "desc" },
+        include: { machine: true, product: true },
+      },
       subscriptions: { include: { product: true }, orderBy: { createdAt: "desc" } },
       enrollments: { include: { groupSession: true }, orderBy: { createdAt: "desc" } },
     },
   });
   if (!c) notFound();
-  const spent = c.bookings.filter((b) => !["CANCELLED", "PENDING_PAYMENT"].includes(b.status)).reduce((s, b) => s + b.totalCents, 0);
+  const spent = c.bookings
+    .filter((b) => !["CANCELLED", "PENDING_PAYMENT"].includes(b.status))
+    .reduce((s, b) => s + b.totalCents, 0);
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
@@ -42,8 +48,8 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
               {c.bookings.map((b) => (
                 <li key={b.id} className="flex items-center justify-between gap-2 py-2.5">
                   <Link href={`/admin/bookings/${b.id}`} className="hover:underline">
-                    <span className="font-mono font-semibold">{b.code}</span> · {formatLocal(b.startsAt, "MMM d, yyyy")} · {b.product.name} ·{" "}
-                    {b.machine.name}
+                    <span className="font-mono font-semibold">{b.code}</span> · {formatLocal(b.startsAt, "MMM d, yyyy")}{" "}
+                    · {b.product.name} · {b.machine.name}
                   </Link>
                   <StatusBadge status={b.status} />
                 </li>
@@ -64,7 +70,8 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
               ))}
               {c.enrollments.map((e) => (
                 <li key={e.id}>
-                  Group: {e.groupSession.title} · {formatLocal(e.groupSession.startsAt, "MMM d")} · {e.status.toLowerCase()}
+                  Group: {e.groupSession.title} · {formatLocal(e.groupSession.startsAt, "MMM d")} ·{" "}
+                  {e.status.toLowerCase()}
                 </li>
               ))}
               {c.subscriptions.length + c.enrollments.length === 0 && <li className="text-muted-foreground">None.</li>}

@@ -28,7 +28,15 @@ async function run(bookingId: string, fn: (actor: string) => Promise<string | vo
   }
 }
 
-const STATUSES = ["CONFIRMED", "CHECKED_OUT", "RETURNED_OK", "RETURNED_DAMAGED", "COMPLETED", "NO_SHOW", "CANCELLED"] as const;
+const STATUSES = [
+  "CONFIRMED",
+  "CHECKED_OUT",
+  "RETURNED_OK",
+  "RETURNED_DAMAGED",
+  "COMPLETED",
+  "NO_SHOW",
+  "CANCELLED",
+] as const;
 
 export async function setStatusAction(bookingId: string, status: string) {
   return run(bookingId, async (actor) => {
@@ -117,12 +125,21 @@ export async function inspectionAction(formData: FormData): Promise<AdminResult>
         skipped++;
         continue;
       }
-      const blob = await put(`inspections/${d.bookingId}/${d.kind}-${Date.now()}-${file.name}`, file, { access: "public" });
+      const blob = await put(`inspections/${d.bookingId}/${d.kind}-${Date.now()}-${file.name}`, file, {
+        access: "public",
+      });
       photoUrls.push(blob.url);
     }
     await db.inspection.upsert({
       where: { bookingId_kind: { bookingId: d.bookingId, kind: d.kind } },
-      update: { condition: d.condition, batteryPercent: d.batteryPercent, ballsCount: d.ballsCount, notes: d.notes, photoUrls: { push: photoUrls }, performedById: user.id },
+      update: {
+        condition: d.condition,
+        batteryPercent: d.batteryPercent,
+        ballsCount: d.ballsCount,
+        notes: d.notes,
+        photoUrls: { push: photoUrls },
+        performedById: user.id,
+      },
       create: { ...d, photoUrls, performedById: user.id },
     });
     const booking = await db.booking.findUniqueOrThrow({ where: { id: d.bookingId } });

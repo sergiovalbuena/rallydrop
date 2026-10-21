@@ -10,7 +10,12 @@ export default async function ContactPage() {
   const t = await getTranslations("contact");
   const items = [
     { icon: Mail, label: t("email"), value: brand.contact.email, href: `mailto:${brand.contact.email}` },
-    { icon: Phone, label: t("phone"), value: brand.contact.phone, href: `tel:${brand.contact.phone.replace(/[^+\d]/g, "")}` },
+    {
+      icon: Phone,
+      label: t("phone"),
+      value: brand.contact.phone,
+      href: `tel:${brand.contact.phone.replace(/[^+\d]/g, "")}`,
+    },
     { icon: AtSign, label: t("instagram"), value: "@rallydrop", href: brand.contact.instagram },
     { icon: MapPin, label: t("area"), value: t("areaBody") },
   ];

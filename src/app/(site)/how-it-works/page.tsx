@@ -55,7 +55,14 @@ async function Topics() {
     {
       id: "balls",
       icon: () => (
-        <svg viewBox="0 0 24 24" className="size-7 text-primary" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          viewBox="0 0 24 24"
+          className="size-7 text-primary"
+          aria-hidden
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <circle cx="12" cy="12" r="9" />
           <path d="M5 6c3 3 3 9 0 12M19 6c-3 3-3 9 0 12" />
         </svg>
@@ -66,13 +73,13 @@ async function Topics() {
   ];
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {topics.map((topic) => (
-            <article key={topic.id} id={topic.id} className="scroll-mt-24 rounded-2xl border bg-card p-6">
-              <topic.icon className="size-7 text-primary" aria-hidden />
-              <h2 className="mt-3 font-display text-2xl font-extrabold uppercase">{topic.title}</h2>
-              <p className="mt-2 text-muted-foreground">{topic.body}</p>
-            </article>
-          ))}
+      {topics.map((topic) => (
+        <article key={topic.id} id={topic.id} className="scroll-mt-24 rounded-2xl border bg-card p-6">
+          <topic.icon className="size-7 text-primary" aria-hidden />
+          <h2 className="mt-3 font-display text-2xl font-extrabold uppercase">{topic.title}</h2>
+          <p className="mt-2 text-muted-foreground">{topic.body}</p>
+        </article>
+      ))}
     </div>
   );
 }

@@ -7,7 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { saveCourtAction, saveSettingsAction, saveSiteTextsAction, type SettingsState } from "@/app/admin/(panel)/settings/actions";
+import {
+  saveCourtAction,
+  saveSettingsAction,
+  saveSiteTextsAction,
+  type SettingsState,
+} from "@/app/admin/(panel)/settings/actions";
 
 function useToast(state: SettingsState) {
   useEffect(() => {
@@ -16,7 +21,17 @@ function useToast(state: SettingsState) {
   }, [state]);
 }
 
-function F({ label, hint, children, className = "" }: { label: string; hint?: string; children: ReactNode; className?: string }) {
+function F({
+  label,
+  hint,
+  children,
+  className = "",
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <label className={`block space-y-1.5 ${className}`}>
       <Label asChild>
@@ -145,7 +160,12 @@ export function SettingsForm({ s }: { s: S }) {
           <Input name="contactPhone" defaultValue={s.contactPhone} />
         </F>
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
-          <input type="checkbox" name="allowOffSeason" defaultChecked={s.allowOffSeason} className="size-4 accent-primary" />
+          <input
+            type="checkbox"
+            name="allowOffSeason"
+            defaultChecked={s.allowOffSeason}
+            className="size-4 accent-primary"
+          />
           Accept bookings outside the season (use “Block days” for rainy days)
         </label>
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
@@ -160,11 +180,18 @@ export function SettingsForm({ s }: { s: S }) {
   );
 }
 
-export function CourtRow({ court }: { court: { id: string; name: string; address: string; lat: number; lng: number; active: boolean } | null }) {
+export function CourtRow({
+  court,
+}: {
+  court: { id: string; name: string; address: string; lat: number; lng: number; active: boolean } | null;
+}) {
   const [state, action, pending] = useActionState(saveCourtAction, { ok: false });
   useToast(state);
   return (
-    <form action={action} className="grid items-end gap-2 rounded-lg border p-3 md:grid-cols-[1.2fr_1.5fr_110px_110px_auto_auto]">
+    <form
+      action={action}
+      className="grid items-end gap-2 rounded-lg border p-3 md:grid-cols-[1.2fr_1.5fr_110px_110px_auto_auto]"
+    >
       <input type="hidden" name="id" value={court?.id ?? ""} />
       <F label={court ? "Court" : "New court"}>
         <Input name="name" defaultValue={court?.name} required />
@@ -179,7 +206,8 @@ export function CourtRow({ court }: { court: { id: string; name: string; address
         <Input name="lng" type="number" step="0.000001" defaultValue={court?.lng} required />
       </F>
       <label className="flex items-center gap-2 pb-3 text-sm">
-        <input type="checkbox" name="active" defaultChecked={court?.active ?? true} className="size-4 accent-primary" /> Active
+        <input type="checkbox" name="active" defaultChecked={court?.active ?? true} className="size-4 accent-primary" />{" "}
+        Active
       </label>
       <Button type="submit" variant="outline" disabled={pending}>
         {court ? "Save" : "Add"}

@@ -35,6 +35,13 @@ export async function sendSms(input: { to: string; body: string; template: strin
     error = e instanceof Error ? e.message : String(e);
   }
   await db.notificationLog.create({
-    data: { channel: "SMS", template: input.template, to: input.to, dedupeKey: input.dedupeKey ?? null, providerId, error },
+    data: {
+      channel: "SMS",
+      template: input.template,
+      to: input.to,
+      dedupeKey: input.dedupeKey ?? null,
+      providerId,
+      error,
+    },
   });
 }

@@ -14,7 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatCentsShort } from "@/lib/money";
 import type { Quote } from "@/lib/domain/pricing";
 import { contactSchema, fieldErrors } from "@/lib/validation/booking";
-import { checkoutAction, finalizeAction, quoteAction, releaseHoldAction, type CheckoutResult } from "@/app/(site)/book/actions";
+import {
+  checkoutAction,
+  finalizeAction,
+  quoteAction,
+  releaseHoldAction,
+  type CheckoutResult,
+} from "@/app/(site)/book/actions";
 import { DateTimePicker } from "./date-time-picker";
 import { OptionCard } from "./option-card";
 import { PaymentStep } from "./payment-form";
@@ -45,8 +51,20 @@ export function BookingWizard({
   const [productId, setProductId] = useState<string | null>(startProduct?.id ?? null);
   const [machineId, setMachineId] = useState<string | null>(startMachine?.id ?? null);
   const [when, setWhen] = useState<{ date: string | null; slot: Slot | null }>({ date: null, slot: null });
-  const [extras, setExtras] = useState<Extras>({ balls: true, fulfillment: "DELIVERY_COURT", courtId: catalog.courts[0]?.id ?? null, deliveryAddress: "" });
-  const [contact, setContact] = useState<Contact>({ name: "", email: "", phone: "", skillLevel: "", notes: "", termsAccepted: false });
+  const [extras, setExtras] = useState<Extras>({
+    balls: true,
+    fulfillment: "DELIVERY_COURT",
+    courtId: catalog.courts[0]?.id ?? null,
+    deliveryAddress: "",
+  });
+  const [contact, setContact] = useState<Contact>({
+    name: "",
+    email: "",
+    phone: "",
+    skillLevel: "",
+    notes: "",
+    termsAccepted: false,
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [quote, setQuote] = useState<Quote | null>(null);
   const [zone, setZone] = useState<boolean | null>(null);
@@ -87,7 +105,9 @@ export function BookingWizard({
   const pickWhen = useCallback(
     (v: { date: string | null; slot: Slot | null }) => {
       setWhen(v);
-      setStartsLater(!!v.slot && new Date(v.slot.start).getTime() - Date.now() > catalog.depositAuthLeadHours * 3_600_000);
+      setStartsLater(
+        !!v.slot && new Date(v.slot.start).getTime() - Date.now() > catalog.depositAuthLeadHours * 3_600_000,
+      );
     },
     [catalog.depositAuthLeadHours],
   );
@@ -126,7 +146,12 @@ export function BookingWizard({
       machineId,
       startsAt: when.slot.start,
       extras,
-      contact: { name: contact.name, email: contact.email, phone: contact.phone, skillLevel: contact.skillLevel || null },
+      contact: {
+        name: contact.name,
+        email: contact.email,
+        phone: contact.phone,
+        skillLevel: contact.skillLevel || null,
+      },
       notes: contact.notes,
       termsAccepted: contact.termsAccepted as true,
     });
@@ -183,7 +208,7 @@ export function BookingWizard({
       <div className="min-w-0">
         <Stepper steps={steps} current={step} />
 
-        <div className="mt-8 animate-in fade-in slide-in-from-bottom-2 duration-300" key={step}>
+        <div className="mt-8 animate-in duration-300 fade-in slide-in-from-bottom-2" key={step}>
           {step === 0 && (
             <fieldset>
               <legend className="mb-4 font-display text-3xl font-extrabold uppercase">{t("chooseProduct")}</legend>
@@ -229,7 +254,11 @@ export function BookingWizard({
                       setWhen({ date: null, slot: null });
                     }}
                     title={m.name}
-                    aside={<span className="text-sm font-semibold text-muted-foreground">{tc("deposit")} {formatCentsShort(m.depositCents)}</span>}
+                    aside={
+                      <span className="text-sm font-semibold text-muted-foreground">
+                        {tc("deposit")} {formatCentsShort(m.depositCents)}
+                      </span>
+                    }
                   >
                     {m.description}
                   </OptionCard>
@@ -255,7 +284,8 @@ export function BookingWizard({
                   />
                   <span className="flex-1">
                     <span className="flex justify-between gap-3 font-semibold">
-                      {t("balls")} <span className="font-display text-xl">+{formatCentsShort(ballsAddOn.priceCents)}</span>
+                      {t("balls")}{" "}
+                      <span className="font-display text-xl">+{formatCentsShort(ballsAddOn.priceCents)}</span>
                     </span>
                     <span className="text-sm text-muted-foreground">{ballsAddOn.description}</span>
                   </span>
@@ -394,7 +424,11 @@ export function BookingWizard({
                 </NativeSelect>
               </Field>
               <Field id="notes" label={t("notes")}>
-                <Textarea id="notes" value={contact.notes} onChange={(e) => setContact((c) => ({ ...c, notes: e.target.value }))} />
+                <Textarea
+                  id="notes"
+                  value={contact.notes}
+                  onChange={(e) => setContact((c) => ({ ...c, notes: e.target.value }))}
+                />
               </Field>
               <div className="space-y-1">
                 <label className="flex cursor-pointer items-start gap-3 text-sm">
@@ -467,9 +501,7 @@ export function BookingWizard({
         ) : (
           <div className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">{t("summary")}</div>
         )}
-        {deliveryAddOn && (
-          <p className="mt-3 text-xs text-muted-foreground">* {deliveryAddOn.description}</p>
-        )}
+        {deliveryAddOn && <p className="mt-3 text-xs text-muted-foreground">* {deliveryAddOn.description}</p>}
       </aside>
     </div>
   );

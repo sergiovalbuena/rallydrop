@@ -57,9 +57,7 @@ describe("candidate starts", () => {
   it("blocks off-season dates when the owner disables them", () => {
     const rules = { ...dayRules, now: localDateMinuteToUtc("2027-10-01", 600) };
     expect(candidateStarts("2027-11-10", rules).length).toBeGreaterThan(0);
-    expect(candidateStarts("2027-11-10", { ...rules, season: { ...rules.season, allowOffSeason: false } })).toEqual(
-      [],
-    );
+    expect(candidateStarts("2027-11-10", { ...rules, season: { ...rules.season, allowOffSeason: false } })).toEqual([]);
   });
 
   it("handles seasons that wrap the year", () => {
@@ -74,18 +72,28 @@ describe("machine conflicts", () => {
   const existing = [bookingBlock(start, end, 120)]; // busy until Tue 13:00
 
   it("rejects overlaps and anything inside the 2 h buffer", () => {
-    expect(isMachineFree(existing, localDateMinuteToUtc("2027-05-04", 660), localDateMinuteToUtc("2027-05-05", 720), 120)).toBe(false);
-    expect(isMachineFree(existing, localDateMinuteToUtc("2027-05-04", 750), localDateMinuteToUtc("2027-05-05", 810), 120)).toBe(false);
+    expect(
+      isMachineFree(existing, localDateMinuteToUtc("2027-05-04", 660), localDateMinuteToUtc("2027-05-05", 720), 120),
+    ).toBe(false);
+    expect(
+      isMachineFree(existing, localDateMinuteToUtc("2027-05-04", 750), localDateMinuteToUtc("2027-05-05", 810), 120),
+    ).toBe(false);
   });
 
   it("allows the next rental exactly when the buffer ends", () => {
-    expect(isMachineFree(existing, localDateMinuteToUtc("2027-05-04", 780), localDateMinuteToUtc("2027-05-05", 840), 120)).toBe(true);
+    expect(
+      isMachineFree(existing, localDateMinuteToUtc("2027-05-04", 780), localDateMinuteToUtc("2027-05-05", 840), 120),
+    ).toBe(true);
   });
 
   it("requires the new rental's own buffer to end before the next block", () => {
     // New rental ending Mon 09:00 → its buffer runs to 11:00, overlapping the 10:00 start.
-    expect(isMachineFree(existing, localDateMinuteToUtc("2027-05-02", 480), localDateMinuteToUtc("2027-05-03", 540), 120)).toBe(false);
-    expect(isMachineFree(existing, localDateMinuteToUtc("2027-05-02", 420), localDateMinuteToUtc("2027-05-03", 480), 120)).toBe(true);
+    expect(
+      isMachineFree(existing, localDateMinuteToUtc("2027-05-02", 480), localDateMinuteToUtc("2027-05-03", 540), 120),
+    ).toBe(false);
+    expect(
+      isMachineFree(existing, localDateMinuteToUtc("2027-05-02", 420), localDateMinuteToUtc("2027-05-03", 480), 120),
+    ).toBe(true);
   });
 
   it("lists which machines are free per slot", () => {

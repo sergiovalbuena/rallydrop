@@ -39,7 +39,8 @@ export async function startGroupEnrollment(input: { groupSessionId: string; cust
     const existing = await tx.groupEnrollment.findUnique({
       where: { groupSessionId_customerId: { groupSessionId: session.id, customerId: customer.id } },
     });
-    if (existing?.status === "CONFIRMED") throw new BookingError("INVALID_STATE", "You're already signed up for this session.");
+    if (existing?.status === "CONFIRMED")
+      throw new BookingError("INVALID_STATE", "You're already signed up for this session.");
     return tx.groupEnrollment.upsert({
       where: { groupSessionId_customerId: { groupSessionId: session.id, customerId: customer.id } },
       update: { status: "PENDING_PAYMENT", holdExpiresAt },

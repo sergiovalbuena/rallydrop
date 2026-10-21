@@ -90,7 +90,12 @@ export function CalendarBoard(props: Props) {
     setDragId(null);
     const ev = events.find((x) => x.id === id);
     if (!ev || ev.startDate === day) return;
-    if (!window.confirm(`Move ${ev.subtitle.split(" · ")[0]} to ${label(day, { weekday: "short", month: "short", day: "numeric" })}? The customer will be emailed.`)) return;
+    if (
+      !window.confirm(
+        `Move ${ev.subtitle.split(" · ")[0]} to ${label(day, { weekday: "short", month: "short", day: "numeric" })}? The customer will be emailed.`,
+      )
+    )
+      return;
     await run(() => moveToDateAction(ev.id, day));
   }
 
@@ -99,25 +104,30 @@ export function CalendarBoard(props: Props) {
     const content = (
       <>
         <span className="block truncate font-semibold">{continuation ? `↳ ${e.title}` : e.title}</span>
-        {!compact && <span className="block truncate opacity-80">{continuation ? e.subtitle : `${e.label} · ${e.subtitle}`}</span>}
+        {!compact && (
+          <span className="block truncate opacity-80">{continuation ? e.subtitle : `${e.label} · ${e.subtitle}`}</span>
+        )}
       </>
     );
     const cls = cn(
       "block w-full rounded-md border-l-4 px-1.5 py-1 text-left text-[11px] leading-tight transition-shadow hover:shadow-md",
-      e.kind === "blackout" ? "bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgb(148_163_184/0.25)_4px,rgb(148_163_184/0.25)_8px)]" : "bg-card",
+      e.kind === "blackout"
+        ? "bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgb(148_163_184/0.25)_4px,rgb(148_163_184/0.25)_8px)]"
+        : "bg-card",
       e.pending && "border-dashed opacity-70",
       e.draggable && !continuation && "cursor-grab active:cursor-grabbing",
     );
     const style = { borderLeftColor: e.color, boxShadow: `inset 0 0 0 1px ${e.color}33` };
-    const drag = e.draggable && !continuation
-      ? {
-          draggable: true,
-          onDragStart: (ev: DragEvent) => {
-            ev.dataTransfer.setData("text/plain", e.id);
-            setDragId(e.id);
-          },
-        }
-      : {};
+    const drag =
+      e.draggable && !continuation
+        ? {
+            draggable: true,
+            onDragStart: (ev: DragEvent) => {
+              ev.dataTransfer.setData("text/plain", e.id);
+              setDragId(e.id);
+            },
+          }
+        : {};
     if (e.kind === "blackout") {
       return (
         <div key={`${e.id}-${day}`} className={cn(cls, "flex items-start justify-between gap-1")} style={style}>
@@ -136,7 +146,14 @@ export function CalendarBoard(props: Props) {
       );
     }
     return (
-      <Link key={`${e.id}-${day}`} href={e.href ?? "#"} className={cls} style={style} {...drag} title={`${e.title}\n${e.label}\n${e.subtitle}`}>
+      <Link
+        key={`${e.id}-${day}`}
+        href={e.href ?? "#"}
+        className={cls}
+        style={style}
+        {...drag}
+        title={`${e.title}\n${e.label}\n${e.subtitle}`}
+      >
         {content}
       </Link>
     );
@@ -171,13 +188,21 @@ export function CalendarBoard(props: Props) {
                 role="tab"
                 aria-selected={v === view}
                 href={href(v, date)}
-                className={cn("rounded-full px-3 py-1 text-sm font-semibold capitalize", v === view && "bg-background shadow-sm")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-sm font-semibold capitalize",
+                  v === view && "bg-background shadow-sm",
+                )}
               >
                 {v}
               </Link>
             ))}
           </div>
-          <NativeSelect value={machineFilter} onChange={(e) => setMachineFilter(e.target.value)} aria-label="Machine filter" className="h-9 w-44">
+          <NativeSelect
+            value={machineFilter}
+            onChange={(e) => setMachineFilter(e.target.value)}
+            aria-label="Machine filter"
+            className="h-9 w-44"
+          >
             <option value="">All machines</option>
             {machines.map((m) => (
               <option key={m.id} value={m.id}>
@@ -255,10 +280,20 @@ export function CalendarBoard(props: Props) {
           </div>
         </div>
       ) : (
-        <DayTimeline events={visible} machines={machineFilter ? machines.filter((m) => m.id === machineFilter) : machines} chip={(e) => chip(e, date)} />
+        <DayTimeline
+          events={visible}
+          machines={machineFilter ? machines.filter((m) => m.id === machineFilter) : machines}
+          chip={(e) => chip(e, date)}
+        />
       )}
 
-      <NewBookingDialog open={newOpen} onOpenChange={setNewOpen} defaultDate={date} {...props} onCreated={(id) => router.push(`/admin/bookings/${id}`)} />
+      <NewBookingDialog
+        open={newOpen}
+        onOpenChange={setNewOpen}
+        defaultDate={date}
+        {...props}
+        onCreated={(id) => router.push(`/admin/bookings/${id}`)}
+      />
       <BlockDialog open={blockOpen} onOpenChange={setBlockOpen} defaultDate={date} machines={machines} />
     </div>
   );
@@ -277,7 +312,8 @@ function DayTimeline({
   chip: (e: CalEvent) => ReactNode;
 }) {
   const hours = Array.from({ length: (DAY_TO - DAY_FROM) / 60 + 1 }, (_, i) => DAY_FROM / 60 + i);
-  const pct = (min: number) => `${((Math.min(Math.max(min, DAY_FROM), DAY_TO) - DAY_FROM) / (DAY_TO - DAY_FROM)) * 100}%`;
+  const pct = (min: number) =>
+    `${((Math.min(Math.max(min, DAY_FROM), DAY_TO) - DAY_FROM) / (DAY_TO - DAY_FROM)) * 100}%`;
   return (
     <div className="overflow-x-auto rounded-xl border bg-card p-4">
       <div className="min-w-[760px]">
@@ -294,18 +330,30 @@ function DayTimeline({
           return (
             <div key={m.id} className="flex items-stretch border-t py-2">
               <div className="w-32 shrink-0 pr-2 text-sm font-semibold">
-                <span className="mr-1.5 inline-block size-2.5 rounded-full" style={{ background: m.color }} aria-hidden />
+                <span
+                  className="mr-1.5 inline-block size-2.5 rounded-full"
+                  style={{ background: m.color }}
+                  aria-hidden
+                />
                 {m.name}
               </div>
               <div className="relative h-16 flex-1 rounded-md bg-muted/40">
                 {hours.map((h) => (
-                  <span key={h} className="absolute inset-y-0 w-px bg-border" style={{ left: pct(h * 60) }} aria-hidden />
+                  <span
+                    key={h}
+                    className="absolute inset-y-0 w-px bg-border"
+                    style={{ left: pct(h * 60) }}
+                    aria-hidden
+                  />
                 ))}
                 {rows.map((e) => (
                   <div
                     key={e.id}
                     className="absolute inset-y-1"
-                    style={{ left: pct(e.startMin ?? 0), width: `calc(${pct(e.endMin ?? 1440)} - ${pct(e.startMin ?? 0)})` }}
+                    style={{
+                      left: pct(e.startMin ?? 0),
+                      width: `calc(${pct(e.endMin ?? 1440)} - ${pct(e.startMin ?? 0)})`,
+                    }}
                   >
                     {chip(e)}
                   </div>
@@ -405,7 +453,10 @@ function NewBookingDialog({
             <Input type="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
           </Field>
           <Field label="Delivery">
-            <NativeSelect value={f.fulfillment} onChange={(e) => set("fulfillment", e.target.value as typeof f.fulfillment)}>
+            <NativeSelect
+              value={f.fulfillment}
+              onChange={(e) => set("fulfillment", e.target.value as typeof f.fulfillment)}
+            >
               <option value="DELIVERY_COURT">Court</option>
               <option value="DELIVERY_ADDRESS">Address</option>
               <option value="PICKUP">Customer pickup</option>
@@ -457,7 +508,13 @@ function BlockDialog({
   machines: Props["machines"];
 }) {
   const { run, pending } = useAdminAction();
-  const [f, setF] = useState({ from: defaultDate, to: defaultDate, machineId: "", reason: "WEATHER" as "WEATHER" | "MAINTENANCE" | "HOLIDAY" | "OTHER", note: "" });
+  const [f, setF] = useState({
+    from: defaultDate,
+    to: defaultDate,
+    machineId: "",
+    reason: "WEATHER" as "WEATHER" | "MAINTENANCE" | "HOLIDAY" | "OTHER",
+    note: "",
+  });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -468,11 +525,17 @@ function BlockDialog({
           className="grid gap-3 sm:grid-cols-2"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (await run(() => createBlackoutAction({ ...f, machineId: f.machineId || undefined }))) onOpenChange(false);
+            if (await run(() => createBlackoutAction({ ...f, machineId: f.machineId || undefined })))
+              onOpenChange(false);
           }}
         >
           <Field label="From">
-            <Input type="date" value={f.from} onChange={(e) => setF((x) => ({ ...x, from: e.target.value }))} required />
+            <Input
+              type="date"
+              value={f.from}
+              onChange={(e) => setF((x) => ({ ...x, from: e.target.value }))}
+              required
+            />
           </Field>
           <Field label="To (inclusive)">
             <Input type="date" value={f.to} onChange={(e) => setF((x) => ({ ...x, to: e.target.value }))} required />

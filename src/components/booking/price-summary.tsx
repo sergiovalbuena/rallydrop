@@ -30,7 +30,14 @@ export function PriceSummary({
           <Skeleton className="h-6 w-1/2" />
         </div>
       ) : (
-        <dl className={loading ? "mt-4 space-y-2 text-sm opacity-60 transition-opacity" : "mt-4 space-y-2 text-sm transition-opacity"} aria-busy={loading}>
+        <dl
+          className={
+            loading
+              ? "mt-4 space-y-2 text-sm opacity-60 transition-opacity"
+              : "mt-4 space-y-2 text-sm transition-opacity"
+          }
+          aria-busy={loading}
+        >
           {quote.lines.map((l) => (
             <div key={l.key} className="flex justify-between gap-4">
               <dt>
@@ -68,7 +75,11 @@ export function PriceSummary({
                   {t("depositLine")} · {formatCents(quote.depositCents)}
                 </dt>
                 <dd className="text-xs text-muted-foreground">
-                  {depositKind === "saved" ? t("depositSaved") : depositKind === "scheduled" ? t("depositScheduled") : t("depositHold")}
+                  {depositKind === "saved"
+                    ? t("depositSaved")
+                    : depositKind === "scheduled"
+                      ? t("depositScheduled")
+                      : t("depositHold")}
                 </dd>
               </div>
             </div>

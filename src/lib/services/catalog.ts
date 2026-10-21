@@ -57,10 +57,7 @@ export async function upcomingGroupSessions(now: Date) {
         select: {
           enrollments: {
             where: {
-              OR: [
-                { status: "CONFIRMED" },
-                { status: "PENDING_PAYMENT", holdExpiresAt: { gt: now } },
-              ],
+              OR: [{ status: "CONFIRMED" }, { status: "PENDING_PAYMENT", holdExpiresAt: { gt: now } }],
             },
           },
         },

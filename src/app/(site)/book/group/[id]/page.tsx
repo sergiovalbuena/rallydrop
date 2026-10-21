@@ -44,7 +44,9 @@ async function Join({
       <div className="rounded-3xl border bg-card p-8 text-center">
         <CircleCheckBig className="mx-auto size-12 text-success" />
         <h1 className="mt-4 font-display text-4xl font-extrabold uppercase">{tb("confirmedTitle")}</h1>
-        <p className="mt-2 text-muted-foreground">{session.title} · {formatLocal(session.startsAt, "EEE, MMM d · h:mm a")}</p>
+        <p className="mt-2 text-muted-foreground">
+          {session.title} · {formatLocal(session.startsAt, "EEE, MMM d · h:mm a")}
+        </p>
       </div>
     );
   }
@@ -59,7 +61,9 @@ async function Join({
         <p className="mt-1 flex items-center gap-2 text-sm text-white/85">
           <MapPin className="size-4" /> {session.court.name}
         </p>
-        <p className="mt-3 font-display text-2xl font-bold text-optic">{t("spotsLeft", { count: session.spotsLeft })}</p>
+        <p className="mt-3 font-display text-2xl font-bold text-optic">
+          {t("spotsLeft", { count: session.spotsLeft })}
+        </p>
       </div>
       {session.spotsLeft > 0 ? (
         <ContactPayFlow

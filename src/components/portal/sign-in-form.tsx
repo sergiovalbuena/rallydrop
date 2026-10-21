@@ -16,7 +16,9 @@ export function SignInForm({ linkExpired }: { linkExpired?: boolean }) {
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(linkExpired ? "That sign-in link has expired. Request a new code." : null);
+  const [error, setError] = useState<string | null>(
+    linkExpired ? "That sign-in link has expired. Request a new code." : null,
+  );
 
   async function send(e?: FormEvent) {
     e?.preventDefault();
@@ -57,7 +59,11 @@ export function SignInForm({ linkExpired }: { linkExpired?: boolean }) {
               required
             />
           </div>
-          {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+          {error && (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
           <Button type="submit" size="lg" className="w-full" disabled={busy}>
             <Mail /> {t("sendCode")}
           </Button>
@@ -82,7 +88,11 @@ export function SignInForm({ linkExpired }: { linkExpired?: boolean }) {
               required
             />
           </div>
-          {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+          {error && (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
           <Button type="submit" size="lg" className="w-full" disabled={busy || code.length !== 6}>
             <KeyRound /> {t("verify")}
           </Button>
