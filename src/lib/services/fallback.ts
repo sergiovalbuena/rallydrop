@@ -1,0 +1,124 @@
+import "server-only";
+import type { AddOn, Product } from "@/generated/prisma/client";
+import { DEFAULT_ADD_ONS, DEFAULT_COURTS, DEFAULT_MACHINES, DEFAULT_PRODUCTS } from "@/lib/catalog-defaults";
+import type { PublicMachine } from "./catalog";
+import type { AppSettings } from "./settings";
+
+/*
+ * Lets the public site render before a database exists (first deploy) or
+ * while it is unreachable: catalog reads fall back to the starting catalog.
+ * Anything that writes (bookings, accounts, admin) still needs the database.
+ */
+
+export function databaseConfigured(): boolean {
+  return !!process.env.DATABASE_URL;
+}
+
+const UNREACHABLE_CODES = ["P1000", "P1001", "P1002", "P1003", "P1017", "ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT"];
+
+function isUnreachable(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: unknown }).code;
+  if (typeof code === "string" && UNREACHABLE_CODES.includes(code)) return true;
+  return String((error as { message?: unknown }).message ?? "").includes("DatabaseNotReachable");
+}
+
+/** Runs a read; without a usable database returns the fallback instead of failing the page. */
+export async function readOr<T>(label: string, query: () => Promise<T>, fallback: () => T): Promise<T> {
+  if (!databaseConfigured()) return fallback();
+  try {
+    return await query();
+  } catch (error) {
+    if (!isUnreachable(error)) throw error;
+    console.error(`[db unreachable] ${label}: showing fallback content`);
+    return fallback();
+  }
+}
+
+const EPOCH = new Date(0);
+
+export function fallbackProducts(): Product[] {
+  return DEFAULT_PRODUCTS.map((p) => ({
+    id: `fallback-${p.slug}`,
+    slug: p.slug,
+    kind: p.kind,
+    name: p.name,
+    description: p.description,
+    priceCents: p.priceCents,
+    active: true,
+    sortOrder: p.sortOrder,
+    durationHours: "durationHours" in p ? p.durationHours : null,
+    allowedStarts: "allowedStarts" in p ? p.allowedStarts.map((s) => ({ ...s })) : null,
+    sessionsPerMonth: "sessionsPerMonth" in p ? p.sessionsPerMonth : null,
+    sessionMinutes: "sessionMinutes" in p ? p.sessionMinutes : null,
+    groupCapacity: "groupCapacity" in p ? p.groupCapacity : null,
+    stripeProductId: null,
+    stripePriceId: null,
+    createdAt: EPOCH,
+    updatedAt: EPOCH,
+  }));
+}
+
+export function fallbackAddOns(): AddOn[] {
+  return DEFAULT_ADD_ONS.map((a) => ({ id: `fallback-${a.kind}`, active: true, ...a }));
+}
+
+export function fallbackMachines(): PublicMachine[] {
+  return DEFAULT_MACHINES.map((m) => ({
+    id: `fallback-${m.slug}`,
+    slug: m.slug,
+    name: m.name,
+    model: m.model,
+    description: m.description,
+    imageUrl: null,
+    status: "AVAILABLE",
+    bookable: m.bookable,
+    calendarColor: m.calendarColor,
+    sortOrder: m.sortOrder,
+    weightKg: "weightKg" in m ? m.weightKg : null,
+    maxSpeedKmh: "maxSpeedKmh" in m ? m.maxSpeedKmh : null,
+    ballCapacity: "ballCapacity" in m ? m.ballCapacity : null,
+    batteryHours: "batteryHours" in m ? m.batteryHours : null,
+    sports: [...m.sports],
+    levels: [...m.levels],
+    specs: "specs" in m ? m.specs.map((s) => ({ ...s })) : [],
+    depositCents: m.depositCents,
+    createdAt: EPOCH,
+    updatedAt: EPOCH,
+  }));
+}
+
+export function fallbackCourts() {
+  return DEFAULT_COURTS.map((c, i) => ({ id: `fallback-court-${i}`, ...c }));
+}
+
+/** Same values as the Settings column defaults in schema.prisma. */
+export function fallbackSettings(): AppSettings {
+  return {
+    id: "default",
+    gstBps: 500,
+    pstBps: 700,
+    bufferMinutes: 120,
+    holdMinutes: 10,
+    minLeadTimeHours: 12,
+    maxAdvanceDays: 90,
+    depositAuthMaxDays: 6,
+    depositAuthLeadHours: 24,
+    cancelFullRefundHours: 48,
+    cancelLateRefundBps: 5000,
+    deliveryStartMinute: 480,
+    deliveryEndMinute: 1260,
+    freeDeliveryCenterLat: 48.4284,
+    freeDeliveryCenterLng: -123.3656,
+    freeDeliveryRadiusKm: 5,
+    seasonStartMonth: 4,
+    seasonEndMonth: 9,
+    allowOffSeason: true,
+    smsEnabled: false,
+    contactEmail: null,
+    contactPhone: null,
+    stripeGstTaxRateId: null,
+    stripePstTaxRateId: null,
+    updatedAt: EPOCH,
+  };
+}

@@ -5,11 +5,10 @@ import { getTranslations } from "next-intl/server";
 import { CircleDollarSign, CloudRain, MapPin, RotateCcw, Truck, XCircle } from "lucide-react";
 import { FaqList } from "@/components/marketing/faq-list";
 import { ZoneMap } from "@/components/marketing/zone-map";
-import { listCourtsWithLocation } from "@/lib/services/catalog";
+import { listActiveAddOns, listCourtsWithLocation } from "@/lib/services/catalog";
 import { getSettings } from "@/lib/services/settings";
 import { PageHero, Section, SectionHeading } from "@/components/marketing/section";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/lib/db";
 import { revealDelay } from "@/components/marketing/reveal-delay";
 import { formatCentsShort } from "@/lib/money";
 
@@ -59,7 +58,7 @@ function TopicsSkeleton() {
 async function Topics() {
   await connection();
   const t = await getTranslations("how");
-  const delivery = await db.addOn.findUnique({ where: { kind: "DELIVERY" } });
+  const delivery = (await listActiveAddOns()).find((a) => a.kind === "DELIVERY");
   const fee = formatCentsShort(delivery?.priceCents ?? 1500);
   const topics = [
     { id: "delivery", icon: Truck, title: t("deliveryTitle"), body: t("deliveryBody", { fee }) },
@@ -108,11 +107,8 @@ async function Topics() {
 async function DeliveryZone() {
   await connection();
   const t = await getTranslations("how");
-  const [settings, courts, delivery] = await Promise.all([
-    getSettings(),
-    listCourtsWithLocation(),
-    db.addOn.findUnique({ where: { kind: "DELIVERY" } }),
-  ]);
+  const [settings, courts, addOns] = await Promise.all([getSettings(), listCourtsWithLocation(), listActiveAddOns()]);
+  const delivery = addOns.find((a) => a.kind === "DELIVERY");
   return (
     <Section id="zone" className="pt-0">
       <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">

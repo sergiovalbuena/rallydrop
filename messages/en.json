@@ -261,6 +261,8 @@
     "depositSaved": "Card saved, charged only if there's damage",
     "depositScheduled": "Held on your card the day before your rental",
     "toPayment": "Continue to payment",
+    "unavailableTitle": "Online booking opens soon",
+    "unavailableBody": "We're putting the final touches on online checkout. In the meantime, call or email us and we'll book your machine by hand.",
     "promoLabel": "Promo code",
     "promoPlaceholder": "Have a code? Enter it here",
     "promoApply": "Apply",

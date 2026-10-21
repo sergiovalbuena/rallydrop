@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { Settings } from "@/generated/prisma/client";
+import { fallbackSettings, readOr } from "./fallback";
 
 /** Settings with Decimal columns converted to plain numbers. */
 export type AppSettings = Omit<Settings, "freeDeliveryCenterLat" | "freeDeliveryCenterLng" | "freeDeliveryRadiusKm"> & {
@@ -20,8 +21,14 @@ export function toAppSettings(s: Settings): AppSettings {
 
 /** Reads the singleton settings row, creating it with defaults if missing. */
 export async function getSettings(): Promise<AppSettings> {
-  const row =
-    (await db.settings.findUnique({ where: { id: "default" } })) ??
-    (await db.settings.create({ data: { id: "default" } }));
-  return toAppSettings(row);
+  return readOr(
+    "settings",
+    async () => {
+      const row =
+        (await db.settings.findUnique({ where: { id: "default" } })) ??
+        (await db.settings.create({ data: { id: "default" } }));
+      return toAppSettings(row);
+    },
+    fallbackSettings,
+  );
 }

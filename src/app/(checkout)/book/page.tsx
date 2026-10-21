@@ -7,6 +7,8 @@ import { Section } from "@/components/marketing/section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listActiveAddOns, listActiveCourts, listActiveProducts, listPublicMachines } from "@/lib/services/catalog";
 import { getSettings } from "@/lib/services/settings";
+import { BookingUnavailable } from "@/components/booking/booking-unavailable";
+import { databaseConfigured } from "@/lib/services/fallback";
 
 export const metadata: Metadata = { title: "Book a machine" };
 
@@ -26,6 +28,7 @@ export default async function BookPage({ searchParams }: PageProps<"/book">) {
 
 async function Wizard({ searchParams }: { searchParams: PageProps<"/book">["searchParams"] }) {
   const params = await searchParams;
+  if (!databaseConfigured()) return <BookingUnavailable />;
   const [products, machines, addOns, courts, settings] = await Promise.all([
     listActiveProducts(),
     listPublicMachines(),

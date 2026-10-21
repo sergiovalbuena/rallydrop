@@ -1,8 +1,9 @@
 import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { db } from "@/lib/db";
 import { formatCentsShort } from "@/lib/money";
 import { nextAvailableSlot } from "@/lib/services/availability";
+import { listActiveProducts } from "@/lib/services/catalog";
+import { databaseConfigured } from "@/lib/services/fallback";
 import { getSettings } from "@/lib/services/settings";
 import { formatLocal } from "@/lib/time";
 
@@ -10,11 +11,12 @@ import { formatLocal } from "@/lib/time";
 export async function Scorebug() {
   await connection();
   const t = await getTranslations("home");
-  const [settings, day] = await Promise.all([
-    getSettings(),
-    db.product.findFirst({ where: { kind: "DAY", active: true } }),
-  ]);
-  const slot = day ? await nextAvailableSlot({ product: day, settings, now: new Date() }).catch(() => null) : null;
+  const [settings, products] = await Promise.all([getSettings(), listActiveProducts()]);
+  const day = products.find((p) => p.kind === "DAY");
+  const slot =
+    day && databaseConfigured()
+      ? await nextAvailableSlot({ product: day, settings, now: new Date() }).catch(() => null)
+      : null;
   return (
     <ScorebugFrame
       cells={[

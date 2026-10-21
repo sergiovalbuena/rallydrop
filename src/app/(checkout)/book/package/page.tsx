@@ -8,6 +8,8 @@ import { Section } from "@/components/marketing/section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/db";
 import { formatCentsShort } from "@/lib/money";
+import { BookingUnavailable } from "@/components/booking/booking-unavailable";
+import { databaseConfigured } from "@/lib/services/fallback";
 import { startPackageAction } from "../extra-actions";
 
 export const metadata: Metadata = { title: "Session package" };
@@ -26,6 +28,7 @@ async function Package({ searchParams }: { searchParams: PageProps<"/book/packag
   const sp = await searchParams;
   const slug = Array.isArray(sp.product) ? sp.product[0] : sp.product;
   const t = await getTranslations();
+  if (!databaseConfigured()) return <BookingUnavailable />;
   const product = slug ? await db.product.findFirst({ where: { slug, kind: "PACKAGE", active: true } }) : null;
   if (!product) notFound();
 

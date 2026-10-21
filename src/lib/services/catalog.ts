@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { Machine } from "@/generated/prisma/client";
+import { fallbackAddOns, fallbackCourts, fallbackMachines, fallbackProducts, readOr } from "./fallback";
 
 /** Machine with Decimal specs converted for client components. */
 export type PublicMachine = Omit<Machine, "weightKg" | "batteryHours" | "specs"> & {
@@ -26,32 +27,66 @@ export function toPublicMachine(m: Machine): PublicMachine {
 }
 
 export async function listPublicMachines(): Promise<PublicMachine[]> {
-  const machines = await db.machine.findMany({
-    where: { status: { not: "RETIRED" } },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-  });
-  return machines.map(toPublicMachine);
+  return readOr(
+    "machines",
+    async () => {
+      const machines = await db.machine.findMany({
+        where: { status: { not: "RETIRED" } },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      });
+      return machines.map(toPublicMachine);
+    },
+    fallbackMachines,
+  );
 }
 
 export async function listActiveProducts() {
-  return db.product.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } });
+  return readOr(
+    "products",
+    () => db.product.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
+    fallbackProducts,
+  );
 }
 
 export async function listActiveAddOns() {
-  return db.addOn.findMany({ where: { active: true }, orderBy: { kind: "asc" } });
+  return readOr(
+    "add-ons",
+    () => db.addOn.findMany({ where: { active: true }, orderBy: { kind: "asc" } }),
+    fallbackAddOns,
+  );
 }
 
 export async function listActiveCourts() {
-  const courts = await db.court.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } });
+  const courts = await listCourtsWithLocation();
   return courts.map((c) => ({ id: c.id, name: c.name, address: c.address }));
 }
 
 export async function listCourtsWithLocation() {
-  const courts = await db.court.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } });
-  return courts.map((c) => ({ id: c.id, name: c.name, address: c.address, lat: Number(c.lat), lng: Number(c.lng) }));
+  return readOr(
+    "courts",
+    async () => {
+      const courts = await db.court.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } });
+      return courts.map((c) => ({
+        id: c.id,
+        name: c.name,
+        address: c.address,
+        lat: Number(c.lat),
+        lng: Number(c.lng),
+      }));
+    },
+    fallbackCourts,
+  );
 }
 
 export async function upcomingGroupSessions(now: Date) {
+  return readOr(
+    "group sessions",
+    () => queryGroupSessions(now),
+    () => [],
+  );
+}
+
+async function queryGroupSessions(now: Date) {
   const sessions = await db.groupSession.findMany({
     where: { status: "SCHEDULED", startsAt: { gt: now } },
     orderBy: { startsAt: "asc" },
