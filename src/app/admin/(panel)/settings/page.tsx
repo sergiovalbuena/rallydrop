@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { CourtRow, SettingsForm, SiteTextsForm } from "@/components/admin/settings-forms";
+import { CourtRow, SettingsForm, SiteTextsForm, ZonePreview } from "@/components/admin/settings-forms";
 import { PageHeader, Panel } from "@/components/admin/ui";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/services/settings";
@@ -28,6 +28,7 @@ export default async function SettingsPage() {
     db.court.findMany({ orderBy: { sortOrder: "asc" } }),
     db.siteContent.findMany({ where: { locale: "en" } }),
   ]);
+  const center = { lat: settings.freeDeliveryCenterLat, lng: settings.freeDeliveryCenterLng };
   const mm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   return (
     <>
@@ -60,11 +61,25 @@ export default async function SettingsPage() {
             }}
           />
         </Panel>
+        <Panel title="Delivery zone">
+          <p className="mb-3 text-sm text-muted-foreground">
+            Free delivery within {settings.freeDeliveryRadiusKm} km of the centre (edit centre and radius above). Pins
+            are your active courts.
+          </p>
+          <ZonePreview
+            center={center}
+            radiusKm={settings.freeDeliveryRadiusKm}
+            courts={courts
+              .filter((c) => c.active)
+              .map((c) => ({ lat: Number(c.lat), lng: Number(c.lng), label: c.name }))}
+          />
+        </Panel>
         <Panel title="Courts (delivery list)">
           <div className="space-y-3">
             {courts.map((c) => (
               <CourtRow
                 key={c.id}
+                center={center}
                 court={{
                   id: c.id,
                   name: c.name,
@@ -75,7 +90,7 @@ export default async function SettingsPage() {
                 }}
               />
             ))}
-            <CourtRow court={null} />
+            <CourtRow court={null} center={center} />
           </div>
         </Panel>
         <Panel title="Site texts">

@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { alertAdmin, notifyReminder } from "@/lib/notify/booking-notifications";
-import { formatLocal } from "@/lib/time";
+import { addLocalDays, formatLocal, localDateMinuteToUtc, toLocalDate } from "@/lib/time";
 import { expireAllStaleHolds } from "./bookings";
 import { placeDueDepositHolds } from "./payments";
 
@@ -27,14 +27,15 @@ export async function runExpireHolds(now = new Date()) {
   return { bookings: expired.length, seats: seats.count };
 }
 
-/** Sends the 24 h reminder once per booking (window: 20–26 h before start). */
+/**
+ * Reminder for every confirmed booking starting today or tomorrow (Victoria
+ * time) that hasn't had one. Run once a day in the morning → customers get it
+ * the day before. Sent once per booking (reset when rescheduled).
+ */
 export async function runReminders(now = new Date()) {
+  const dayAfterTomorrow = localDateMinuteToUtc(addLocalDays(toLocalDate(now), 2), 0);
   const due = await db.booking.findMany({
-    where: {
-      status: "CONFIRMED",
-      reminderSentAt: null,
-      startsAt: { gt: new Date(now.getTime() + 20 * 3_600_000), lte: new Date(now.getTime() + 26 * 3_600_000) },
-    },
+    where: { status: "CONFIRMED", reminderSentAt: null, startsAt: { gt: now, lt: dayAfterTomorrow } },
     select: { id: true },
   });
   for (const b of due) {
@@ -44,9 +45,13 @@ export async function runReminders(now = new Date()) {
   return { reminders: due.length };
 }
 
-/** Places deferred deposit holds and warns the owner about expiring ones. */
+/**
+ * Places deferred deposit holds and warns the owner about expiring ones.
+ * Runs daily, so it places every hold due within the next 24 h (i.e. the
+ * morning before the rental starts).
+ */
 export async function runDeposits(now = new Date()) {
-  const placed = await placeDueDepositHolds(now);
+  const placed = await placeDueDepositHolds(now, 24);
   const expiring = await db.deposit.findMany({
     where: {
       status: "HELD",

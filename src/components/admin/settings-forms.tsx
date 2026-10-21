@@ -1,13 +1,16 @@
 "use client";
 
-import { useActionState, useEffect, type ReactNode } from "react";
+import { useActionState, useEffect, useState, type ReactNode } from "react";
+import { MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { LocationMap, type LatLng } from "@/components/maps/map";
 import {
+  geocodeAction,
   saveCourtAction,
   saveSettingsAction,
   saveSiteTextsAction,
@@ -180,39 +183,98 @@ export function SettingsForm({ s }: { s: S }) {
   );
 }
 
-export function CourtRow({
-  court,
-}: {
-  court: { id: string; name: string; address: string; lat: number; lng: number; active: boolean } | null;
-}) {
+type Court = { id: string; name: string; address: string; lat: number; lng: number; active: boolean };
+
+export function CourtRow({ court, center }: { court: Court | null; center: LatLng }) {
   const [state, action, pending] = useActionState(saveCourtAction, { ok: false });
   useToast(state);
+  const [address, setAddress] = useState(court?.address ?? "");
+  const [point, setPoint] = useState<LatLng | null>(court ? { lat: court.lat, lng: court.lng } : null);
+  const [showMap, setShowMap] = useState(!court);
+  const [finding, setFinding] = useState(false);
+
+  async function find() {
+    setFinding(true);
+    const r = await geocodeAction(address);
+    setFinding(false);
+    if (r.ok) {
+      setPoint({ lat: r.lat, lng: r.lng });
+      setShowMap(true);
+    } else toast.error(r.error);
+  }
+
   return (
-    <form
-      action={action}
-      className="grid items-end gap-2 rounded-lg border p-3 md:grid-cols-[1.2fr_1.5fr_110px_110px_auto_auto]"
-    >
+    <form action={action} className="space-y-3 rounded-lg border p-3">
       <input type="hidden" name="id" value={court?.id ?? ""} />
-      <F label={court ? "Court" : "New court"}>
-        <Input name="name" defaultValue={court?.name} required />
-      </F>
-      <F label="Address">
-        <Input name="address" defaultValue={court?.address} required />
-      </F>
-      <F label="Lat">
-        <Input name="lat" type="number" step="0.000001" defaultValue={court?.lat} required />
-      </F>
-      <F label="Lng">
-        <Input name="lng" type="number" step="0.000001" defaultValue={court?.lng} required />
-      </F>
-      <label className="flex items-center gap-2 pb-3 text-sm">
-        <input type="checkbox" name="active" defaultChecked={court?.active ?? true} className="size-4 accent-primary" />{" "}
-        Active
-      </label>
-      <Button type="submit" variant="outline" disabled={pending}>
-        {court ? "Save" : "Add"}
-      </Button>
+      <input type="hidden" name="lat" value={point?.lat ?? ""} />
+      <input type="hidden" name="lng" value={point?.lng ?? ""} />
+      <div className="grid items-end gap-2 md:grid-cols-[1.2fr_1.8fr_auto_auto_auto]">
+        <F label={court ? "Court" : "New court"}>
+          <Input name="name" defaultValue={court?.name} required />
+        </F>
+        <F label="Address">
+          <Input name="address" value={address} onChange={(e) => setAddress(e.target.value)} required />
+        </F>
+        <Button type="button" variant="outline" onClick={find} disabled={finding}>
+          <MapPin /> {finding ? "Finding…" : "Find on map"}
+        </Button>
+        <label className="flex items-center gap-2 pb-3 text-sm">
+          <input
+            type="checkbox"
+            name="active"
+            defaultChecked={court?.active ?? true}
+            className="size-4 accent-primary"
+          />{" "}
+          Active
+        </label>
+        <Button type="submit" disabled={pending}>
+          {court ? "Save" : "Add"}
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <span>
+          {point
+            ? `Pin: ${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`
+            : "No pin yet — it will be located from the address when you save."}
+        </span>
+        <button type="button" className="text-primary underline" onClick={() => setShowMap((v) => !v)}>
+          {showMap ? "Hide map" : "Show map"}
+        </button>
+      </div>
+      {showMap && (
+        <LocationMap
+          label={`Map to place ${court?.name ?? "the new court"}`}
+          center={point ?? center}
+          zoom={point ? 15 : 12}
+          picker={{ point, onChange: setPoint }}
+          className="h-72"
+        />
+      )}
+      {showMap && (
+        <p className="text-xs text-muted-foreground">Click on the map or drag the pin to the exact court entrance.</p>
+      )}
     </form>
+  );
+}
+
+export function ZonePreview({
+  center,
+  radiusKm,
+  courts,
+}: {
+  center: LatLng;
+  radiusKm: number;
+  courts: (LatLng & { label: string })[];
+}) {
+  return (
+    <LocationMap
+      label="Free delivery zone and courts"
+      center={center}
+      zoom={12}
+      circle={{ center, radiusKm }}
+      markers={[{ ...center, label: "Zone centre", color: "#2457E6" }, ...courts]}
+      className="h-80"
+    />
   );
 }
 

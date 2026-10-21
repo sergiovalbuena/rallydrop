@@ -50,7 +50,7 @@ tests/             unit/ e integration/ (doble reserva concurrente, webhooks Str
 
   | Alquiler | Qué se hace con la tarjeta |
   |---|---|
-  | Hasta 6 días | Retención con `capture_method: manual`. Si empieza en más de 24 h, la tarjeta se guarda al pagar y la retención se coloca 24 h antes. |
+  | Hasta 6 días | Retención con `capture_method: manual`. Si empieza en más de 24 h, la tarjeta se guarda al pagar y el job diario coloca la retención la mañana anterior. |
   | Semana o mes | Solo se guarda la tarjeta (`setup_future_usage: off_session`). |
 
   - Marcar **"Returned – OK"** libera el depósito automáticamente.
@@ -58,7 +58,8 @@ tests/             unit/ e integration/ (doble reserva concurrente, webhooks Str
   - Las reservas telefónicas no tienen tarjeta: el depósito se gestiona en persona.
 - **Precios.** Se calculan siempre en el servidor, en centavos, y se guarda una copia en cada reserva.
   - GST y PST se configuran en el admin. ⚠️ **Confírmalos con tu contador**, sobre todo si el PST aplica al alquiler de equipo.
-- **Zona horaria `America/Vancouver`.** Columbia Británica pasa a horario permanente UTC-7 desde el 1 de noviembre de 2026 (tzdata 2026e).
+- **Hora de BC.** Todo el sitio funciona en hora de Victoria: horarios, calendario, emails y admin se calculan en el servidor.
+  - Desde el 1 de noviembre de 2026 BC queda en UTC-7 fijo, sin más cambios de hora.
   - `src/lib/time.ts` lo aplica aunque el runtime tenga datos de zona horaria antiguos.
 
 ## Correr en local
@@ -133,9 +134,12 @@ Eventos de webhook necesarios:
 4. Ejecuta una vez `npm run db:seed` contra la base de producción, con `SEED_ADMIN_*` propios.
 5. En Stripe (modo live, cuando toque), crea el endpoint `https://TU-DOMINIO/api/stripe/webhook` con los eventos de arriba.
 6. Añade un **Blob store** en Vercel para las fotos de check-in/out. Crea `BLOB_READ_WRITE_TOKEN`.
-7. **Cron** (`vercel.json`): expira retenciones cada 10 min, depósitos cada hora y recordatorios cada hora.
-   - En el plan Hobby de Vercel los cron jobs son diarios. Usa el plan Pro o un cron externo que llame `GET /api/cron/all` con `Authorization: Bearer $CRON_SECRET`.
-   - Las retenciones vencidas se liberan igualmente al reservar, así que no se bloquea nada aunque el cron tarde.
+7. **Cron** (`vercel.json`): un solo job diario a las **7:00 AM hora de Victoria** (`0 14 * * *` UTC; BC es UTC-7 fijo). Funciona en el plan gratis de Vercel. Hace tres cosas:
+   - **Depósitos**: coloca la retención de los alquileres reservados con antelación (la mañana anterior).
+   - **Recordatorios**: envía el aviso de las reservas de mañana.
+   - **Limpieza**: libera las reservas temporales sin pagar.
+
+   Puedes lanzarlo a mano con `GET /api/cron/all` y `Authorization: Bearer $CRON_SECRET`.
 
 ## Pendiente de configurar antes de lanzar
 
@@ -143,7 +147,7 @@ Eventos de webhook necesarios:
 - [ ] **Dominio** y `NEXT_PUBLIC_SITE_URL`. Revisa `brand.contact` (email, teléfono, Instagram) en `src/config/brand.ts`.
 - [ ] **Textos legales**: `src/content/legal/*.en.tsx` son borradores. Requieren revisión por un abogado de BC (términos, responsabilidad por daños, PIPA/PIPEDA).
 - [ ] **Impuestos**: confirma GST/PST con tu contador (Admin → Settings).
-- [ ] **Datos de ejemplo**: specs de la PONGBOT Aura/Pace S, coordenadas de canchas, sesiones de grupo, testimonios (marcados como "Sample") y guía rápida (`/account/guide`). Verifícalos con el manual del fabricante.
+- [ ] **Datos de ejemplo**: specs de la PONGBOT Aura/Pace S, ubicación de las canchas (ajústala con el mapa del admin), sesiones de grupo, testimonios (marcados como "Sample") y guía rápida (`/account/guide`). Verifícalos con el manual del fabricante.
 - [ ] **Contraseña del admin**: cambia la del seed. Para magic link del admin hace falta `RESEND_API_KEY`.
 - [ ] **Pickup**: añade la dirección de recogida al email de confirmación.
 - [ ] **Stripe Customer Portal** activado para los paquetes.
@@ -153,5 +157,8 @@ Eventos de webhook necesarios:
 
 - **Admin en inglés.** Los textos del admin están en el código; los del sitio público están en `messages/en.json`.
 - **Componentes UI.** Los componentes de `src/components/ui` siguen el estilo de shadcn/ui. `components.json` está listo para `npx shadcn add …`.
-- **Geocodificación.** Las direcciones se geocodifican con OpenStreetMap Nominatim, que es gratis y tiene límite de uso justo.
-  - Si falla, la zona gratis se decide por el código postal (FSA) listado en `brand.ts`.
+- **Mapas y geocodificación (OpenStreetMap, gratis).**
+  - **Direcciones**: las de los clientes y las canchas se ubican con Nominatim. Si falla, la zona gratis se decide por el código postal (FSA) listado en `brand.ts`.
+  - **Canchas en el admin**: Admin → Settings → Courts. "Find on map" ubica la dirección; después haces clic en el mapa o arrastras el pin.
+  - **Mapa público**: `/how-it-works#zone` muestra el círculo de entrega gratis y las canchas.
+  - **Tiles**: los de `tile.openstreetmap.org` están bien para tráfico bajo. Si el sitio crece, cambia la URL en `src/components/maps/leaflet-map.tsx` por un proveedor como MapTiler o Stadia.

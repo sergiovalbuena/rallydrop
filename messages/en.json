@@ -166,7 +166,11 @@
     "q4": "What if something breaks?",
     "a4": "Accidents happen. Tell us right away. Normal wear is on us; damage from misuse may be deducted from the deposit, and we'll always explain why.",
     "q5": "Where can I use it?",
-    "a5": "Any court where ball machines are allowed. Please respect posted court time limits and share with other players."
+    "a5": "Any court where ball machines are allowed. Please respect posted court time limits and share with other players.",
+    "zoneTitle": "Delivery zone",
+    "zoneBody": "Delivery and pickup are free within {radius} km of downtown Victoria (the shaded circle). Outside it, delivery is {fee}. Pins are the public courts we deliver to — or choose your own address.",
+    "zoneMapLabel": "Map of the free delivery zone and courts in Victoria",
+    "courtsTitle": "Courts we deliver to"
   },
   "contact": {
     "title": "Contact",
@@ -227,7 +231,7 @@
     "depositLine": "Refundable deposit",
     "depositHold": "Held on your card, not charged",
     "depositSaved": "Card saved, charged only if there's damage",
-    "depositScheduled": "Held on your card 24 h before your rental",
+    "depositScheduled": "Held on your card the day before your rental",
     "toPayment": "Continue to payment",
     "holdNotice": "We're holding this slot for you for {minutes} minutes.",
     "holdExpired": "Your hold expired. Please pick your time again.",

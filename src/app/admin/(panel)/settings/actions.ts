@@ -4,6 +4,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { assertAdmin } from "@/lib/admin/guard";
+import { geocodeAddress } from "@/lib/services/geocode";
 import { EDITABLE_KEYS, SITE_CONTENT_TAG } from "@/lib/services/site-content";
 import en from "../../../../../messages/en.json";
 
@@ -118,6 +119,17 @@ export async function saveSiteTextsAction(_: SettingsState, formData: FormData):
   return { ok: true, message: "Site texts updated." };
 }
 
+/** "Find on map": geocodes an address with OpenStreetMap. */
+export async function geocodeAction(
+  address: string,
+): Promise<{ ok: true; lat: number; lng: number } | { ok: false; error: string }> {
+  await assertAdmin();
+  if (address.trim().length < 4) return { ok: false, error: "Type the court's address first." };
+  const point = await geocodeAddress(address);
+  if (!point) return { ok: false, error: "Couldn't find that address — click on the map to place the pin instead." };
+  return { ok: true, lat: Number(point.lat.toFixed(6)), lng: Number(point.lng.toFixed(6)) };
+}
+
 export async function saveCourtAction(_: SettingsState, formData: FormData): Promise<SettingsState> {
   await assertAdmin();
   const id = String(formData.get("id") ?? "");
@@ -125,12 +137,21 @@ export async function saveCourtAction(_: SettingsState, formData: FormData): Pro
     .object({
       name: z.string().trim().min(2),
       address: z.string().trim().min(3),
-      lat: z.coerce.number().min(-90).max(90),
-      lng: z.coerce.number().min(-180).max(180),
+      lat: z.union([z.literal(""), z.coerce.number().min(-90).max(90)]),
+      lng: z.union([z.literal(""), z.coerce.number().min(-180).max(180)]),
     })
     .safeParse(Object.fromEntries(formData));
-  if (!d.success) return { ok: false, error: "Name, address and coordinates are required." };
-  const data = { ...d.data, active: formData.get("active") === "on" };
+  if (!d.success) return { ok: false, error: "Name and address are required." };
+
+  // No pin placed → locate the address automatically.
+  let { lat, lng } = d.data;
+  if (lat === "" || lng === "") {
+    const point = await geocodeAddress(d.data.address);
+    if (!point) return { ok: false, error: "Couldn't locate that address. Place the pin on the map." };
+    lat = point.lat;
+    lng = point.lng;
+  }
+  const data = { name: d.data.name, address: d.data.address, lat, lng, active: formData.get("active") === "on" };
   if (id) await db.court.update({ where: { id }, data });
   else await db.court.create({ data: { ...data, active: true } });
   revalidatePath("/admin/settings");

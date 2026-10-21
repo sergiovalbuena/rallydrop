@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { CircleDollarSign, CloudRain, RotateCcw, Truck, XCircle } from "lucide-react";
+import { CircleDollarSign, CloudRain, MapPin, RotateCcw, Truck, XCircle } from "lucide-react";
 import { FaqList } from "@/components/marketing/faq-list";
+import { ZoneMap } from "@/components/marketing/zone-map";
+import { listCourtsWithLocation } from "@/lib/services/catalog";
+import { getSettings } from "@/lib/services/settings";
 import { PageHero, Section, SectionHeading } from "@/components/marketing/section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/db";
@@ -23,6 +26,15 @@ export default async function HowItWorksPage() {
           <Topics />
         </Suspense>
       </Section>
+      <Suspense
+        fallback={
+          <Section className="pt-0">
+            <Skeleton className="h-96 rounded-2xl" />
+          </Section>
+        }
+      >
+        <DeliveryZone />
+      </Suspense>
       <Section id="faq" className="max-w-3xl pt-0">
         <SectionHeading title={t("faqTitle")} align="center" />
         <FaqList items={faq} />
@@ -81,5 +93,48 @@ async function Topics() {
         </article>
       ))}
     </div>
+  );
+}
+
+async function DeliveryZone() {
+  await connection();
+  const t = await getTranslations("how");
+  const [settings, courts, delivery] = await Promise.all([
+    getSettings(),
+    listCourtsWithLocation(),
+    db.addOn.findUnique({ where: { kind: "DELIVERY" } }),
+  ]);
+  return (
+    <Section id="zone" className="pt-0">
+      <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
+        <div>
+          <h2 className="font-display text-3xl font-extrabold uppercase">{t("zoneTitle")}</h2>
+          <p className="mt-3 text-muted-foreground">
+            {t("zoneBody", {
+              radius: settings.freeDeliveryRadiusKm,
+              fee: formatCentsShort(delivery?.priceCents ?? 1500),
+            })}
+          </p>
+          <h3 className="mt-6 font-semibold">{t("courtsTitle")}</h3>
+          <ul className="mt-2 space-y-1.5 text-sm">
+            {courts.map((c) => (
+              <li key={c.id} className="flex gap-2">
+                <MapPin className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                <span>
+                  <span className="font-medium">{c.name}</span>
+                  <span className="block text-muted-foreground">{c.address}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <ZoneMap
+          label={t("zoneMapLabel")}
+          center={{ lat: settings.freeDeliveryCenterLat, lng: settings.freeDeliveryCenterLng }}
+          radiusKm={settings.freeDeliveryRadiusKm}
+          courts={courts.map((c) => ({ lat: c.lat, lng: c.lng, label: c.name }))}
+        />
+      </div>
+    </Section>
   );
 }

@@ -42,7 +42,7 @@ export function bookingWhere(b: Pick<LoadedBooking, "fulfillment" | "court" | "d
 function depositNote(b: LoadedBooking): string {
   if (!b.deposit) return "none";
   if (b.deposit.strategy === "SAVED_CARD") return "card saved, charged only if there's damage";
-  if (b.deposit.authScheduledFor) return "held on your card 24 h before drop-off";
+  if (b.deposit.authScheduledFor) return "held on your card the day before drop-off";
   return "held on your card, not charged";
 }
 

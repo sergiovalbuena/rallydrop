@@ -5,7 +5,7 @@ const JOBS = {
   "expire-holds": runExpireHolds,
   reminders: runReminders,
   deposits: runDeposits,
-  /** One call that runs everything (handy on plans with few cron slots). */
+  /** The daily job (vercel.json, 7:00 AM Victoria): runs everything. */
   all: async () => ({ ...(await runExpireHolds()), ...(await runDeposits()), ...(await runReminders()) }),
 } as const;
 

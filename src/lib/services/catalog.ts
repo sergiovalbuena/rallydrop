@@ -46,6 +46,11 @@ export async function listActiveCourts() {
   return courts.map((c) => ({ id: c.id, name: c.name, address: c.address }));
 }
 
+export async function listCourtsWithLocation() {
+  const courts = await db.court.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } });
+  return courts.map((c) => ({ id: c.id, name: c.name, address: c.address, lat: Number(c.lat), lng: Number(c.lng) }));
+}
+
 export async function upcomingGroupSessions(now: Date) {
   const sessions = await db.groupSession.findMany({
     where: { status: "SCHEDULED", startsAt: { gt: now } },

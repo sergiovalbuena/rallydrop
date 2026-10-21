@@ -25,7 +25,7 @@ import { getSettings } from "./settings";
  *    customer so the deposit can use it without asking twice.
  * 2. Deposit (separate PaymentIntent):
  *    - AUTH_HOLD now:   capture_method=manual right after the rental payment.
- *    - AUTH_HOLD later: same, placed off-session by cron 24 h before start.
+ *    - AUTH_HOLD later: same, placed off-session by the daily cron the morning before start.
  *    - SAVED_CARD:      nothing is charged; admin may charge later for damage.
  * 3. Webhooks are the source of truth; the client-side "finalize" call runs
  *    the same idempotent handlers so the customer sees the result instantly.
@@ -380,13 +380,16 @@ export async function captureDeposit(bookingId: string, amountCents: number, not
   await notifyDepositCharged(bookingId, amountCents, note.trim());
 }
 
-/** Cron: place deferred deposit holds that are due. */
-export async function placeDueDepositHolds(now = new Date()) {
+/**
+ * Cron: place deferred deposit holds that are due. `lookaheadHours` lets a
+ * once-a-day job place every hold that would fall due before its next run.
+ */
+export async function placeDueDepositHolds(now = new Date(), lookaheadHours = 0) {
   const due = await db.deposit.findMany({
     where: {
       strategy: "AUTH_HOLD",
       status: "PENDING",
-      authScheduledFor: { lte: now },
+      authScheduledFor: { lte: new Date(now.getTime() + lookaheadHours * 3_600_000) },
       booking: { status: "CONFIRMED" },
     },
     select: { bookingId: true },
@@ -541,7 +544,7 @@ export async function setBookingStatus(bookingId: string, status: BookingStatus,
 
 /**
  * Package sessions: use the subscription's card for the deposit, then place
- * the hold now or leave it to the cron (24 h before).
+ * the hold now or leave it to the daily cron (the day before).
  */
 export async function attachSubscriptionCardToDeposit(bookingId: string, stripeSubscriptionId: string) {
   const sub = await stripe().subscriptions.retrieve(stripeSubscriptionId);
