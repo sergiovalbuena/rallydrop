@@ -70,6 +70,11 @@ model Settings {
   contactEmail String?
   contactPhone String?
 
+  /// Stripe Tax Rate objects for subscription invoices; recreated whenever
+  /// the percentage changes (Stripe tax rates are immutable).
+  stripeGstTaxRateId String?
+  stripePstTaxRateId String?
+
   updatedAt DateTime @updatedAt @db.Timestamptz
 }
 
