@@ -136,11 +136,11 @@ rallydrop/
 8. **Cron y notificaciones** — expirar holds, recordatorio 24 h, holds de depósito diferidos, SMS opcional.
 9. **Pulido y entrega** — README (local, Vercel, Stripe CLI, tarjetas de prueba), checklist de pendientes.
 
-## 5. Preguntas abiertas (tengo defaults; corrígeme si alguno no te sirve)
+## 5. Decisiones confirmadas por el dueño
 
-1. **Franjas de entrega del alquiler por día**: default 24 h desde la entrega elegida (p. ej.
-   10:00 → 10:00 del día siguiente). ¿O prefieres "día calendario" (entrega mañana, recogida por la tarde)?
-2. **Fin de semana**: entrega viernes tarde o sábado mañana → recogida lunes mañana. Default: sábado 09:00 → lunes 09:00.
-3. **Depósito diferido** (punto 2 del depósito): ¿OK con guardar tarjeta y autorizar 24 h antes?
-4. **Paquetes**: ¿las sesiones de paquete incluyen entrega en cancha, o el cliente recoge? Default: incluye entrega en cancha dentro de la zona gratis.
-5. **Proveedor DB**: Neon (default, mejor encaje con Vercel) o Supabase.
+1. Repositorio propio: `sergiovalbuena/rallydrop`.
+2. Alquiler por día: **25 h** desde la entrega (configurable por producto en el admin).
+3. Fin de semana: **sábado 09:00 → lunes 09:00** o **viernes 21:00 → domingo 21:00** (48 h).
+4. Depósito con Stripe y tarjeta de crédito; para reservas con antelación la retención se coloca 24 h antes.
+5. Paquetes: incluyen entrega en cancha; zona gratis = **downtown Victoria, 5 km a la redonda**.
+6. Base de datos: **Neon**.
