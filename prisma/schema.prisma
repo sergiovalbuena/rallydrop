@@ -9,8 +9,8 @@
 //   America/Vancouver with date-fns-tz.
 // - No card data is ever stored here: only Stripe IDs.
 // - Double-booking is enforced in Postgres by an EXCLUSION constraint on
-//   `MachineOccupancy` (see prisma/sql/001_occupancy_exclusion.sql), which
-//   Prisma cannot express natively and is appended to the first migration.
+//   `MachineOccupancy`, which Prisma cannot express natively; it is written
+//   by hand at the end of prisma/migrations/*_init/migration.sql.
 // =============================================================================
 
 generator client {
@@ -53,7 +53,7 @@ model Settings {
 
   // Delivery
   deliveryStartMinute   Int     @default(480) // 08:00, minutes from midnight local
-  deliveryEndMinute     Int     @default(1200) // 20:00
+  deliveryEndMinute     Int     @default(1260) // 21:00 (Friday-night weekend start)
   freeDeliveryCenterLat Decimal @default(48.4284) @db.Decimal(9, 6) // downtown Victoria
   freeDeliveryCenterLng Decimal @default(-123.3656) @db.Decimal(9, 6)
   freeDeliveryRadiusKm  Decimal @default(5) @db.Decimal(5, 2)
@@ -116,6 +116,8 @@ model Machine {
   description   String?
   imageUrl      String?
   status        MachineStatus @default(AVAILABLE)
+  /// False = listed on the site as "Coming soon" but not bookable yet.
+  bookable      Boolean       @default(true)
   /// Admin-set colour for the master calendar (hex).
   calendarColor String        @default("#1d4ed8")
   sortOrder     Int           @default(0)
@@ -173,8 +175,12 @@ model Product {
   active      Boolean     @default(true)
   sortOrder   Int         @default(0)
 
-  /// Rental length for DAY/WEEKEND/WEEK/MONTH (MONTH = 30).
-  durationDays     Int?
+  /// Rental length for DAY/WEEKEND/WEEK/MONTH: DAY = 25 h (owner's choice),
+  /// WEEKEND = 48 h, WEEK = 168 h, MONTH = 720 h.
+  durationHours    Int?
+  /// Optional fixed start slots, e.g. WEEKEND: Sat 09:00 or Fri 21:00.
+  /// Shape: [{ "weekday": 0-6 (Sun=0), "minute": minutes from local midnight }]
+  allowedStarts    Json?
   /// PACKAGE: sessions included per billing month and length of each.
   sessionsPerMonth Int?
   sessionMinutes   Int?
@@ -258,7 +264,8 @@ enum OccupancySource {
 }
 
 /// The single source of truth for "is this machine busy?".
-/// `blockStart/blockEnd` already include the buffer around the real slot.
+/// For bookings the block is [startsAt, endsAt + buffer): the buffer after each
+/// rental (charging, cleaning) means two rentals are always >= buffer apart.
 /// Postgres EXCLUDE USING gist (machine_id WITH =, tstzrange(...) WITH &&)
 /// WHERE (active) makes overlapping active rows impossible.
 model MachineOccupancy {

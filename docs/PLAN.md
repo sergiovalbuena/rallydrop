@@ -2,8 +2,8 @@
 
 App de alquiler de máquinas lanzabolas en Victoria, BC. Este documento es la
 propuesta **previa a escribir código**. El modelo de datos está en
-[`prisma/schema.prisma`](../prisma/schema.prisma) y las restricciones SQL extra en
-[`prisma/sql/001_occupancy_exclusion.sql`](../prisma/sql/001_occupancy_exclusion.sql).
+[`prisma/schema.prisma`](../prisma/schema.prisma) y las restricciones SQL extra al final de la
+migración inicial (`prisma/migrations/*_init/migration.sql`).
 
 ## 0. Repositorio
 
