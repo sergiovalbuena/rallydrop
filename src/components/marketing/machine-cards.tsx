@@ -70,6 +70,7 @@ async function FeatureCard({ featured, detailed }: { featured: PublicMachine; de
   return (
     <article
       id={featured.slug}
+      data-reveal="scale"
       className="grid scroll-mt-24 overflow-hidden rounded-3xl border bg-card shadow-xs md:grid-cols-[1fr_1.1fr]"
     >
       <div className="court-lines floodlight grain relative flex items-center justify-center bg-court p-8 sm:p-12">
@@ -82,7 +83,7 @@ async function FeatureCard({ featured, detailed }: { featured: PublicMachine; de
             sizes="(min-width: 768px) 45vw, 100vw"
           />
         ) : (
-          <MachineIllustration accent={featured.calendarColor} className="max-w-64 drop-shadow-2xl" />
+          <MachineIllustration accent={featured.calendarColor} className="animate-float max-w-64 drop-shadow-2xl" />
         )}
         <span className="absolute top-4 left-4 rounded-full bg-accent px-3 py-1 text-xs font-bold text-accent-foreground uppercase">
           {featured.sports.map((s) => t(`sport_${s}`)).join(" · ")}

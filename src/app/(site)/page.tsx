@@ -11,6 +11,7 @@ import { Scorebug, ScorebugSkeleton } from "@/components/marketing/scorebug";
 import { ScoreSteps } from "@/components/marketing/score-steps";
 import { Section, SectionHeading } from "@/components/marketing/section";
 import { StickyBookBar } from "@/components/marketing/sticky-book-bar";
+import { revealDelay } from "@/components/marketing/reveal-delay";
 import { Ticker } from "@/components/marketing/ticker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero — night session under the floodlights */}
-      <div className="court-lines floodlight grain relative overflow-hidden bg-court text-white">
+      <div className="court-lines floodlight grain lights-on relative overflow-hidden bg-court text-white">
         <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 pt-10 pb-12 sm:px-6 lg:grid-cols-[1.15fr_1fr] lg:gap-12 lg:pt-20 lg:pb-20">
           <div>
             <p className="mb-5 inline-flex animate-in items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-optic uppercase duration-500 fade-in">
@@ -115,7 +116,9 @@ export default async function HomePage() {
       <div className="court-lines floodlight grain bg-court text-white">
         <Section>
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <h2 className="font-display text-5xl font-black uppercase sm:text-6xl">{t("testimonialsTitle")}</h2>
+            <h2 data-reveal className="font-display text-5xl font-black uppercase sm:text-6xl">
+              {t("testimonialsTitle")}
+            </h2>
             <Badge variant="accent">{tc("sampleBadge")}</Badge>
           </div>
           <div
@@ -127,6 +130,8 @@ export default async function HomePage() {
             {testimonials.map((r, i) => (
               <figure
                 key={i}
+                data-reveal
+                style={revealDelay(i, 120)}
                 className="w-[82%] shrink-0 snap-center rounded-2xl border border-white/15 bg-white/[0.06] p-6 backdrop-blur sm:w-auto"
               >
                 <Quote className="size-7 text-optic" aria-hidden />
@@ -144,7 +149,9 @@ export default async function HomePage() {
       {/* FAQ */}
       <Section id="faq" className="max-w-3xl">
         <SectionHeading title={t("faqTitle")} align="center" />
-        <FaqList items={faq} />
+        <div data-reveal>
+          <FaqList items={faq} />
+        </div>
         <div className="mt-6 text-center">
           <Button asChild variant="link">
             <Link href="/how-it-works#faq">
@@ -156,10 +163,13 @@ export default async function HomePage() {
 
       {/* Final CTA */}
       <Section className="pt-0 pb-28 sm:pb-20">
-        <div className="relative isolate overflow-hidden rounded-3xl bg-accent p-8 text-accent-foreground sm:p-14">
+        <div
+          data-reveal="scale"
+          className="relative isolate overflow-hidden rounded-3xl bg-accent p-8 text-accent-foreground sm:p-14"
+        >
           <svg
             viewBox="0 0 200 200"
-            className="absolute -top-16 -right-20 -z-10 size-72 text-accent-foreground/15 sm:-top-10 sm:-right-10 sm:size-96"
+            className="animate-spin-slow absolute -top-16 -right-20 -z-10 size-72 text-accent-foreground/15 sm:-top-10 sm:-right-10 sm:size-96"
             aria-hidden
           >
             <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" strokeWidth="6" />

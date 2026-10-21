@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCentsShort } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { revealDelay } from "./reveal-delay";
 import type { AddOn, Product } from "@/generated/prisma/client";
 
 const RENTAL_KINDS = ["DAY", "WEEKEND", "WEEK", "MONTH"];
@@ -38,7 +39,7 @@ export async function PricingGrid({
           </div>
         )}
         <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-          {rentals.map((p) => {
+          {rentals.map((p, i) => {
             const popular = p.kind === "WEEKEND";
             const days = (p.durationHours ?? 24) / 24;
             const perDay =
@@ -47,6 +48,8 @@ export async function PricingGrid({
               <Link
                 key={p.id}
                 href={`/book?product=${p.slug}`}
+                data-reveal
+                style={revealDelay(i)}
                 className={cn(
                   "group relative flex items-center gap-4 rounded-2xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:flex-col sm:items-stretch sm:p-6",
                   popular && "border-primary ring-2 ring-primary/20",
@@ -90,8 +93,13 @@ export async function PricingGrid({
             <p className="text-muted-foreground">{t("packagesBody")}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {packages.map((p) => (
-              <div key={p.id} className="court-lines flex flex-col rounded-2xl bg-court p-6 text-white">
+            {packages.map((p, i) => (
+              <div
+                key={p.id}
+                data-reveal
+                style={revealDelay(i, 120)}
+                className="court-lines flex flex-col rounded-2xl bg-court p-6 text-white"
+              >
                 <h3 className="font-display text-2xl font-extrabold uppercase">{p.name}</h3>
                 <p className="mt-2 font-display text-5xl font-extrabold text-optic">
                   {formatCentsShort(p.priceCents)}

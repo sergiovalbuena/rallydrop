@@ -10,6 +10,7 @@ import { getSettings } from "@/lib/services/settings";
 import { PageHero, Section, SectionHeading } from "@/components/marketing/section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/db";
+import { revealDelay } from "@/components/marketing/reveal-delay";
 import { formatCentsShort } from "@/lib/money";
 
 export const metadata: Metadata = { title: "How it works & FAQ" };
@@ -37,7 +38,9 @@ export default async function HowItWorksPage() {
       </Suspense>
       <Section id="faq" className="max-w-3xl pt-0">
         <SectionHeading title={t("faqTitle")} align="center" />
-        <FaqList items={faq} />
+        <div data-reveal>
+          <FaqList items={faq} />
+        </div>
       </Section>
     </>
   );
@@ -85,8 +88,14 @@ async function Topics() {
   ];
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {topics.map((topic) => (
-        <article key={topic.id} id={topic.id} className="scroll-mt-24 rounded-2xl border bg-card p-6">
+      {topics.map((topic, i) => (
+        <article
+          key={topic.id}
+          id={topic.id}
+          data-reveal
+          style={revealDelay(i % 3)}
+          className="scroll-mt-24 rounded-2xl border bg-card p-6"
+        >
           <topic.icon className="size-7 text-primary" aria-hidden />
           <h2 className="mt-3 font-display text-2xl font-extrabold uppercase">{topic.title}</h2>
           <p className="mt-2 text-muted-foreground">{topic.body}</p>
@@ -107,7 +116,7 @@ async function DeliveryZone() {
   return (
     <Section id="zone" className="pt-0">
       <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
-        <div>
+        <div data-reveal="left">
           <h2 className="font-display text-3xl font-extrabold uppercase">{t("zoneTitle")}</h2>
           <p className="mt-3 text-muted-foreground">
             {t("zoneBody", {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AtSign, Mail, MapPin, Phone } from "lucide-react";
 import { PageHero, Section } from "@/components/marketing/section";
+import { revealDelay } from "@/components/marketing/reveal-delay";
 import { brand } from "@/config/brand";
 
 export const metadata: Metadata = { title: "Contact" };
@@ -24,8 +25,13 @@ export default async function ContactPage() {
       <PageHero title={t("title")} subtitle={t("subtitle")} />
       <Section>
         <ul className="grid gap-4 sm:grid-cols-2">
-          {items.map((item) => (
-            <li key={item.label} className="flex gap-4 rounded-2xl border bg-card p-6">
+          {items.map((item, i) => (
+            <li
+              key={item.label}
+              data-reveal
+              style={revealDelay(i)}
+              className="flex gap-4 rounded-2xl border bg-card p-6"
+            >
               <item.icon className="size-6 shrink-0 text-primary" aria-hidden />
               <div>
                 <p className="text-sm text-muted-foreground">{item.label}</p>

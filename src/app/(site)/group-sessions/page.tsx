@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCentsShort } from "@/lib/money";
 import { upcomingGroupSessions } from "@/lib/services/catalog";
+import { revealDelay } from "@/components/marketing/reveal-delay";
 import { formatLocal } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Group sessions" };
@@ -20,7 +21,7 @@ export default async function GroupSessionsPage() {
     <>
       <PageHero title={t("title")} subtitle={t("subtitle")} />
       <Section className="grid gap-10 lg:grid-cols-[1fr_2fr]">
-        <div>
+        <div data-reveal="left">
           <h2 className="font-display text-3xl font-extrabold uppercase">{t("whatTitle")}</h2>
           <ul className="mt-4 space-y-3">
             {[t("what1"), t("what2"), t("what3")].map((item) => (
@@ -52,8 +53,13 @@ async function Sessions() {
   }
   return (
     <ul className="space-y-4">
-      {sessions.map((s) => (
-        <li key={s.id} className="flex flex-col gap-4 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center">
+      {sessions.map((s, i) => (
+        <li
+          key={s.id}
+          data-reveal
+          style={revealDelay(i)}
+          className="flex flex-col gap-4 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center"
+        >
           <div className="flex size-16 shrink-0 flex-col items-center justify-center rounded-xl bg-court text-white">
             <span className="text-xs font-semibold text-optic uppercase">{formatLocal(s.startsAt, "MMM")}</span>
             <span className="font-display text-3xl leading-none font-extrabold">{formatLocal(s.startsAt, "d")}</span>

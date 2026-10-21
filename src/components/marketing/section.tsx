@@ -23,7 +23,7 @@ export function SectionHeading({
   as?: "h1" | "h2";
 }) {
   return (
-    <div className={cn("mb-10 max-w-2xl", align === "center" && "mx-auto text-center")}>
+    <div data-reveal className={cn("mb-10 max-w-2xl", align === "center" && "mx-auto text-center")}>
       {eyebrow && (
         <p className="mb-3 inline-flex items-center gap-2 text-xs font-bold tracking-[0.2em] text-primary uppercase">
           <span className="h-0.5 w-6 bg-accent" aria-hidden />
@@ -31,6 +31,13 @@ export function SectionHeading({
         </p>
       )}
       <Tag className="font-display text-4xl leading-[0.95] font-extrabold uppercase sm:text-5xl">{title}</Tag>
+      <span
+        aria-hidden
+        className={cn(
+          "draw-line mt-4 block h-1 w-16 origin-left rounded-full bg-accent",
+          align === "center" && "mx-auto origin-center",
+        )}
+      />
       {subtitle && <p className="mt-4 text-lg text-balance text-muted-foreground">{subtitle}</p>}
     </div>
   );
@@ -39,13 +46,19 @@ export function SectionHeading({
 /** Navy hero band with court lines, used at the top of inner pages. */
 export function PageHero({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
   return (
-    <div className="court-lines floodlight grain relative overflow-hidden bg-court text-white">
+    <div className="court-lines floodlight grain lights-on relative overflow-hidden bg-court text-white">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-20">
-        <h1 className="font-display text-5xl leading-[0.88] font-black uppercase sm:text-8xl">{title}</h1>
-        {subtitle && <p className="mt-5 max-w-2xl text-lg text-balance text-white/80">{subtitle}</p>}
+        <h1 className="animate-in font-display text-5xl leading-[0.88] font-black uppercase duration-700 fade-in slide-in-from-bottom-4 sm:text-8xl">
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="mt-5 max-w-2xl animate-in text-lg text-balance text-white/80 delay-200 duration-700 fill-mode-both fade-in">
+            {subtitle}
+          </p>
+        )}
         {children}
       </div>
-      <div className="h-1.5 bg-accent" aria-hidden />
+      <div className="animate-draw h-1.5 origin-left bg-accent" aria-hidden />
     </div>
   );
 }

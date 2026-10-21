@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { revealDelay } from "./reveal-delay";
 
 /** "How it works" told as a tennis game: 15 · 30 · 40 · Game. */
 export async function ScoreSteps() {
@@ -18,6 +19,8 @@ export async function ScoreSteps() {
       {points.map((p, i) => (
         <li
           key={p.score}
+          data-reveal
+          style={revealDelay(i, 110)}
           className={cn(
             "group relative flex flex-col gap-3 bg-card p-6 transition-colors sm:p-7",
             p.final ? "bg-court text-white" : "hover:bg-muted/50",
@@ -26,9 +29,11 @@ export async function ScoreSteps() {
           <span className="sr-only">Step {i + 1}: </span>
           <span
             aria-hidden
+            data-reveal="flip"
+            style={revealDelay(i + 2, 110)}
             className={cn(
-              "tabular font-display text-7xl leading-none font-black uppercase",
-              p.final ? "text-optic" : "text-outline text-primary/70 transition-colors group-hover:text-primary",
+              "tabular inline-block font-display text-7xl leading-none font-black uppercase",
+              p.final ? "text-optic" : "numeral-outline text-primary/70 transition-colors group-hover:text-primary",
             )}
           >
             {p.score}
