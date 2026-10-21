@@ -39,9 +39,9 @@ export function SectionHeading({
 /** Navy hero band with court lines, used at the top of inner pages. */
 export function PageHero({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
   return (
-    <div className="court-lines relative overflow-hidden bg-court text-white">
-      <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
-        <h1 className="font-display text-5xl leading-[0.9] font-extrabold uppercase sm:text-7xl">{title}</h1>
+    <div className="court-lines floodlight grain relative overflow-hidden bg-court text-white">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-20">
+        <h1 className="font-display text-5xl leading-[0.88] font-black uppercase sm:text-8xl">{title}</h1>
         {subtitle && <p className="mt-5 max-w-2xl text-lg text-balance text-white/80">{subtitle}</p>}
         {children}
       </div>

@@ -51,7 +51,7 @@
     "eyebrow": "Ball machine rentals · Victoria, BC",
     "heroTitleA": "Your hitting partner,",
     "heroTitleB": "delivered.",
-    "heroBody": "Rent a smart ball machine by the day, weekend, week or month. We drop it at your court or your door, show you how it works, and pick it up when you're done.",
+    "heroBody": "A smart ball machine dropped at your court or door — by the day, weekend, week or month. We set it up, you hit a thousand balls, we pick it up.",
     "heroStatA": "25 h",
     "heroStatALabel": "day rentals",
     "heroStatB": "Free",
@@ -67,7 +67,7 @@
     "step3Title": "Groove your game",
     "step3Body": "Run drills from your phone. When you're done, we pick it up and release your deposit.",
     "machinesTitle": "The machines",
-    "machinesSubtitle": "Light enough to carry, smart enough to coach.",
+    "machinesSubtitle": "Light enough to carry, smart enough to coach. Delivered fully charged.",
     "pricingTitle": "Simple pricing",
     "pricingSubtitle": "Everything in Canadian dollars. A refundable deposit is held on your card, never charged unless there's damage.",
     "testimonialsTitle": "Players love it",
@@ -84,7 +84,35 @@
     "faqTitle": "Questions, answered",
     "ctaTitle": "Ready to rally?",
     "ctaBody": "Book in under two minutes. Pay by card, cancel free up to 48 hours before.",
-    "ctaButton": "Check availability"
+    "ctaButton": "Check availability",
+    "trust1": "No account needed",
+    "trust2": "Cancel free up to 48 h",
+    "trust3": "Deposit held, never charged",
+    "nextAvailable": "Next available",
+    "nextNone": "Check the calendar",
+    "fromLabel": "Day rental from",
+    "zoneLabel": "Free delivery",
+    "zoneValue": "Downtown",
+    "ticker1": "Free delivery downtown",
+    "ticker2": "25-hour day rentals",
+    "ticker3": "Tennis & pickleball",
+    "ticker4": "Cancel free up to 48 h",
+    "ticker5": "Pressureless balls included on request",
+    "ticker6": "Victoria, BC",
+    "scoreTitle": "Game, set, booked.",
+    "scoreSubtitle": "From couch to court in four points.",
+    "score15": "Pick a slot",
+    "score15Body": "Choose how long and see real-time availability. No account, two minutes.",
+    "score30": "We drop it off",
+    "score30Body": "Fully charged, at a public court or your door. Free within 5 km of downtown.",
+    "score40": "Groove your game",
+    "score40Body": "Run drills from your phone. A thousand balls an hour, zero chasing.",
+    "scoreGame": "Game",
+    "scoreGameBody": "We pick it up and release your deposit. Rinse, repeat.",
+    "perDay": "≈ {price} / day",
+    "comingSoonShort": "Also coming: {name}",
+    "stickyFrom": "From {price}",
+    "zoneSub": "+ 5 km"
   },
   "machines": {
     "title": "Our machines",
@@ -247,7 +275,16 @@
     "failedBody": "No charge was made. Please try again with another card.",
     "manage": "Manage my booking",
     "addToCalendar": "Add to calendar",
-    "packageIntro": "Session packages are monthly subscriptions. After subscribing, book your sessions from “My bookings”."
+    "packageIntro": "Session packages are monthly subscriptions. After subscribing, book your sessions from “My bookings”.",
+    "stepOf": "Step {current} of {total}",
+    "perDay": "≈ {price} / day",
+    "popular": "Most popular",
+    "trustCancel": "Free cancellation up to 48 h before",
+    "trustDeposit": "Deposit is a hold, not a charge",
+    "trustStripe": "Card details handled by Stripe",
+    "viewSummary": "Summary",
+    "hideSummary": "Hide",
+    "totalShort": "Total"
   },
   "portal": {
     "title": "My bookings",
@@ -283,7 +320,11 @@
     "sessionsLeft": "{left} of {total} sessions left this month",
     "renews": "Renews {date}",
     "bookSession": "Book a session",
-    "manageCard": "Update card / billing"
+    "manageCard": "Update card / billing",
+    "asideTitleA": "Your bookings,",
+    "asideTitleB": "one code away.",
+    "asideBody": "See what's coming up, check your deposit, grab receipts, reschedule or cancel — no password to remember.",
+    "noBooking": "Haven't booked yet? Bookings made with your email or phone show up here automatically."
   },
   "status": {
     "PENDING_PAYMENT": "Awaiting payment",
@@ -295,5 +336,10 @@
     "CANCELLED": "Cancelled",
     "EXPIRED": "Expired",
     "NO_SHOW": "No-show"
+  },
+  "checkout": {
+    "secure": "Secure checkout",
+    "help": "Questions?",
+    "backHome": "Back to home"
   }
 }

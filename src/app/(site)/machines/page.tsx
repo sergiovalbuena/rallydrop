@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { MachineCards, MachineCardsSkeleton } from "@/components/marketing/machine-cards";
+import { MachineCardsSkeleton, MachineFeature } from "@/components/marketing/machine-cards";
 import { PageHero, Section } from "@/components/marketing/section";
 import { listPublicMachines } from "@/lib/services/catalog";
 
@@ -24,5 +24,5 @@ export default async function MachinesPage() {
 
 async function Machines() {
   await connection();
-  return <MachineCards machines={await listPublicMachines()} detailed />;
+  return <MachineFeature machines={await listPublicMachines()} detailed />;
 }

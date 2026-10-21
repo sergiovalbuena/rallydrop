@@ -5,13 +5,13 @@ const JOBS = {
   "expire-holds": runExpireHolds,
   reminders: runReminders,
   deposits: runDeposits,
-  /** The daily job (vercel.json, 7:00 AM Victoria): runs everything. */
+  /** The daily job (GitHub Actions, 7:00 AM Victoria): runs everything. */
   all: async () => ({ ...(await runExpireHolds()), ...(await runDeposits()), ...(await runReminders()) }),
 } as const;
 
 /**
- * Scheduled jobs. Vercel Cron calls these with `Authorization: Bearer $CRON_SECRET`
- * (see vercel.json). Safe to run as often as you like — every job is idempotent.
+ * Scheduled jobs. GitHub Actions calls these with `Authorization: Bearer $CRON_SECRET`
+ * (see .github/workflows/daily-jobs.yml). Safe to run as often as you like — every job is idempotent.
  */
 export async function GET(request: NextRequest, { params }: RouteContext<"/api/cron/[job]">) {
   const secret = process.env.CRON_SECRET;

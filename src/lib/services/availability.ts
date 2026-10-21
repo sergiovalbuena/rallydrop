@@ -9,7 +9,7 @@ import {
   type Slot,
   type SlotRules,
 } from "@/lib/domain/availability";
-import { addLocalDays, localDateMinuteToUtc } from "@/lib/time";
+import { addLocalDays, localDateMinuteToUtc, toLocalDate } from "@/lib/time";
 import type { AppSettings } from "./settings";
 
 const STEP_MINUTES = 30;
@@ -123,4 +123,37 @@ export async function daySlots(input: {
   const { from, to } = searchWindow(input.date, 1, rules);
   const busy = await loadBusy(input.machineIds, from, to, input.now, input.excludeBookingId);
   return slotsForDate(input.date, rules, busy);
+}
+
+/** The soonest bookable start for a product on any machine (hero "next available"). */
+export async function nextAvailableSlot(input: {
+  product: Product;
+  settings: AppSettings;
+  now: Date;
+  searchDays?: number;
+}): Promise<Slot | null> {
+  const machineIds = await bookableMachineIds();
+  if (machineIds.length === 0) return null;
+  const today = toLocalDate(input.now);
+  const days = input.searchDays ?? 21;
+  const byDate = await monthAvailability({
+    product: input.product,
+    machineIds,
+    fromDate: today,
+    days,
+    settings: input.settings,
+    now: input.now,
+  });
+  const first = Object.keys(byDate)
+    .sort()
+    .find((d) => byDate[d] > 0);
+  if (!first) return null;
+  const slots = await daySlots({
+    product: input.product,
+    machineIds,
+    date: first,
+    settings: input.settings,
+    now: input.now,
+  });
+  return slots[0] ?? null;
 }

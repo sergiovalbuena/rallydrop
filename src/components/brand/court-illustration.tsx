@@ -50,6 +50,7 @@ export function CourtIllustration({ className }: { className?: string }) {
       </g>
       {/* rally arc */}
       <path
+        id="rally-arc"
         d="M318 440 C 300 240, 260 150, 205 175"
         stroke="#d9f23f"
         strokeWidth="3"
@@ -58,14 +59,44 @@ export function CourtIllustration({ className }: { className?: string }) {
         fill="none"
         opacity="0.9"
       />
-      {[
-        [306, 360, 9],
-        [287, 262, 8],
-        [254, 196, 7],
-        [214, 176, 6],
-      ].map(([cx, cy, r]) => (
-        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={r} fill="url(#ball-shine)" />
-      ))}
+      {/* Static balls for reduced motion */}
+      <g className="motion-safe:hidden">
+        {[
+          [306, 360, 9],
+          [287, 262, 8],
+          [254, 196, 7],
+          [214, 176, 6],
+        ].map(([cx, cy, r]) => (
+          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={r} fill="url(#ball-shine)" />
+        ))}
+      </g>
+      {/* Balls flying out of the machine, staggered */}
+      <g className="motion-reduce:hidden">
+        {[0, 0.6, 1.2].map((delay) => (
+          <circle key={delay} r="8" fill="url(#ball-shine)" opacity="0">
+            <animateMotion
+              dur="1.8s"
+              begin={`${delay}s`}
+              repeatCount="indefinite"
+              keyPoints="0;1"
+              keyTimes="0;1"
+              calcMode="spline"
+              keySplines="0.2 0.6 0.4 1"
+            >
+              <mpath href="#rally-arc" />
+            </animateMotion>
+            <animate attributeName="r" values="10;5" dur="1.8s" begin={`${delay}s`} repeatCount="indefinite" />
+            <animate
+              attributeName="opacity"
+              values="0;1;1;0"
+              keyTimes="0;0.08;0.85;1"
+              dur="1.8s"
+              begin={`${delay}s`}
+              repeatCount="indefinite"
+            />
+          </circle>
+        ))}
+      </g>
       {/* ball machine */}
       <g transform="translate(286 418)">
         <ellipse cx="34" cy="76" rx="52" ry="9" fill="#071233" opacity="0.45" />

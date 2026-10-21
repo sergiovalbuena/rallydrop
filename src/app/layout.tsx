@@ -1,15 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Barlow_Condensed, Inter } from "next/font/google";
+import { Big_Shoulders, Instrument_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { Providers } from "@/components/layout/providers";
 import { brand } from "@/config/brand";
 import "./globals.css";
 
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
-const barlow = Barlow_Condensed({
-  variable: "--font-barlow",
+// Display: stadium-scoreboard condensed sans. Body: crisp humanist grotesk.
+const body = Instrument_Sans({ variable: "--font-body", subsets: ["latin"], display: "swap" });
+const display = Big_Shoulders({
+  variable: "--font-scoreboard",
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
+  weight: "variable",
   display: "swap",
 });
 
@@ -33,7 +34,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${barlow.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${body.variable} ${display.variable}`}>
       <body className="flex min-h-dvh flex-col">
         <NextIntlClientProvider>
           <Providers>{children}</Providers>

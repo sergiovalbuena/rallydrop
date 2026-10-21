@@ -2,14 +2,20 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { ArrowRight, CalendarCheck, Quote, Sparkles, Truck } from "lucide-react";
+import { ArrowRight, Check, Quote } from "lucide-react";
 import { CourtIllustration } from "@/components/brand/court-illustration";
 import { FaqList } from "@/components/marketing/faq-list";
-import { MachineCards, MachineCardsSkeleton } from "@/components/marketing/machine-cards";
+import { MachineFeature } from "@/components/marketing/machine-cards";
 import { PricingGrid, PricingGridSkeleton } from "@/components/marketing/pricing-grid";
+import { Scorebug, ScorebugSkeleton } from "@/components/marketing/scorebug";
+import { ScoreSteps } from "@/components/marketing/score-steps";
 import { Section, SectionHeading } from "@/components/marketing/section";
+import { StickyBookBar } from "@/components/marketing/sticky-book-bar";
+import { Ticker } from "@/components/marketing/ticker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatCentsShort } from "@/lib/money";
 import { listActiveAddOns, listActiveProducts, listPublicMachines } from "@/lib/services/catalog";
 
 export default async function HomePage() {
@@ -17,92 +23,76 @@ export default async function HomePage() {
   const tc = await getTranslations("common");
   const th = await getTranslations("how");
 
-  const steps = [
-    { icon: CalendarCheck, title: t("step1Title"), body: t("step1Body") },
-    { icon: Truck, title: t("step2Title"), body: t("step2Body") },
-    { icon: Sparkles, title: t("step3Title"), body: t("step3Body") },
-  ];
   const testimonials = [
     { quote: t("t1Quote"), name: t("t1Name"), meta: t("t1Meta") },
     { quote: t("t2Quote"), name: t("t2Name"), meta: t("t2Meta") },
     { quote: t("t3Quote"), name: t("t3Name"), meta: t("t3Meta") },
   ];
-  const faq = [1, 2, 3, 4].map((i) => ({
-    q: th(`q${i}` as "q1"),
-    a: th(`a${i}` as "a1"),
-  }));
+  const faq = [1, 2, 3, 4].map((i) => ({ q: th(`q${i}` as "q1"), a: th(`a${i}` as "a1") }));
+  const trust = [t("trust1"), t("trust2"), t("trust3")];
 
   return (
     <>
-      {/* Hero */}
-      <div className="court-lines relative overflow-hidden bg-court text-white">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 pt-12 pb-16 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:pt-20 lg:pb-24">
-          <div className="animate-in duration-700 fade-in slide-in-from-bottom-4">
-            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-optic uppercase">
+      {/* Hero — night session under the floodlights */}
+      <div className="court-lines floodlight grain relative overflow-hidden bg-court text-white">
+        <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 pt-10 pb-12 sm:px-6 lg:grid-cols-[1.15fr_1fr] lg:gap-12 lg:pt-20 lg:pb-20">
+          <div>
+            <p className="mb-5 inline-flex animate-in items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-optic uppercase duration-500 fade-in">
               {t("eyebrow")}
             </p>
-            <h1 className="font-display text-6xl leading-[0.85] font-extrabold uppercase sm:text-7xl lg:text-8xl">
-              {t("heroTitleA")}
-              <br />
-              <span className="text-optic">{t("heroTitleB")}</span>
+            <h1 className="font-display text-[3.4rem] leading-[0.9] font-black uppercase sm:text-8xl lg:text-[6.25rem] xl:text-[6.75rem]">
+              <span className="block animate-in duration-700 fade-in slide-in-from-bottom-3">{t("heroTitleA")}</span>
+              <span className="block animate-in text-optic delay-150 duration-700 fill-mode-both fade-in slide-in-from-bottom-3">
+                {t("heroTitleB")}
+              </span>
             </h1>
-            <p className="mt-6 max-w-xl text-lg text-white/80">{t("heroBody")}</p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button asChild size="lg" variant="accent">
+            <p className="mt-6 max-w-xl animate-in text-lg text-pretty text-white/80 delay-300 duration-700 fill-mode-both fade-in">
+              {t("heroBody")}
+            </p>
+            <div id="hero-cta" className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button
+                asChild
+                size="lg"
+                variant="accent"
+                className="h-14 text-base shadow-[0_0_40px_-8px] shadow-optic/60"
+              >
                 <Link href="/book">
                   {tc("bookNow")} <ArrowRight />
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="inverted">
+              <Button asChild size="lg" variant="inverted" className="h-14 text-base">
                 <Link href="/pricing">{tc("seePricing")}</Link>
               </Button>
             </div>
-            <dl className="mt-10 grid max-w-md grid-cols-3 gap-4 border-t border-white/15 pt-6">
-              {[
-                [t("heroStatA"), t("heroStatALabel")],
-                [t("heroStatB"), t("heroStatBLabel")],
-                [t("heroStatC"), t("heroStatCLabel")],
-              ].map(([value, label]) => (
-                <div key={label}>
-                  <dt className="sr-only">{label}</dt>
-                  <dd className="font-display text-3xl font-extrabold text-optic">{value}</dd>
-                  <dd className="text-xs text-white/70">{label}</dd>
-                </div>
+            <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/75">
+              {trust.map((item) => (
+                <li key={item} className="flex items-center gap-1.5">
+                  <Check className="size-4 text-optic" aria-hidden /> {item}
+                </li>
               ))}
-            </dl>
+            </ul>
           </div>
-          <div className="animate-in duration-1000 zoom-in-95 fade-in">
-            <CourtIllustration className="mx-auto max-w-xl drop-shadow-2xl" />
+          <div className="space-y-4">
+            <CourtIllustration className="mx-auto max-w-[34rem] animate-in drop-shadow-2xl duration-1000 zoom-in-95 fade-in" />
+            <Suspense fallback={<ScorebugSkeleton />}>
+              <Scorebug />
+            </Suspense>
           </div>
         </div>
-        <div className="h-1.5 bg-accent" aria-hidden />
       </div>
+      <Ticker />
 
-      {/* How it works */}
+      {/* How it works — scored like a tennis game */}
       <Section id="how">
-        <SectionHeading eyebrow="01" title={t("howTitle")} subtitle={t("howSubtitle")} />
-        <ol className="grid gap-6 md:grid-cols-3">
-          {steps.map((s, i) => (
-            <li
-              key={s.title}
-              className="relative rounded-2xl border bg-card p-6 transition-all hover:-translate-y-0.5 hover:shadow-lg"
-            >
-              <span className="absolute top-5 right-6 font-display text-6xl font-extrabold text-muted" aria-hidden>
-                {i + 1}
-              </span>
-              <s.icon className="size-8 text-primary" aria-hidden />
-              <h3 className="mt-4 font-display text-2xl font-extrabold uppercase">{s.title}</h3>
-              <p className="mt-2 text-muted-foreground">{s.body}</p>
-            </li>
-          ))}
-        </ol>
+        <SectionHeading title={t("scoreTitle")} subtitle={t("scoreSubtitle")} />
+        <ScoreSteps />
       </Section>
 
-      {/* Machines */}
+      {/* Machine */}
       <div className="bg-muted/40">
         <Section id="machines">
-          <SectionHeading eyebrow="02" title={t("machinesTitle")} subtitle={t("machinesSubtitle")} />
-          <Suspense fallback={<MachineCardsSkeleton />}>
+          <SectionHeading title={t("machinesTitle")} subtitle={t("machinesSubtitle")} />
+          <Suspense fallback={<Skeleton className="h-[28rem] rounded-3xl" />}>
             <HomeMachines />
           </Suspense>
         </Section>
@@ -110,38 +100,44 @@ export default async function HomePage() {
 
       {/* Pricing */}
       <Section id="pricing">
-        <SectionHeading eyebrow="03" title={t("pricingTitle")} subtitle={t("pricingSubtitle")} />
+        <SectionHeading title={t("pricingTitle")} subtitle={t("pricingSubtitle")} />
         <Suspense fallback={<PricingGridSkeleton />}>
           <HomePricing />
         </Suspense>
-        <div className="mt-8">
-          <Button asChild variant="link" className="px-0">
-            <Link href="/pricing">
-              {tc("seePricing")} <ArrowRight />
-            </Link>
-          </Button>
-        </div>
+        <Button asChild variant="link" className="mt-6 px-0">
+          <Link href="/pricing">
+            {tc("seePricing")} <ArrowRight />
+          </Link>
+        </Button>
       </Section>
 
-      {/* Testimonials */}
-      <div className="court-lines bg-court text-white">
+      {/* Testimonials — swipeable on phones */}
+      <div className="court-lines floodlight grain bg-court text-white">
         <Section>
-          <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
-            <h2 className="font-display text-4xl font-extrabold uppercase sm:text-5xl">{t("testimonialsTitle")}</h2>
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <h2 className="font-display text-5xl font-black uppercase sm:text-6xl">{t("testimonialsTitle")}</h2>
             <Badge variant="accent">{tc("sampleBadge")}</Badge>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div
+            role="region"
+            aria-label={t("testimonialsTitle")}
+            tabIndex={0}
+            className="-mx-4 flex snap-x snap-mandatory [scrollbar-width:none] gap-4 overflow-x-auto px-4 pb-2 focus-visible:outline-optic sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0"
+          >
             {testimonials.map((r, i) => (
-              <figure key={i} className="rounded-2xl border border-white/15 bg-white/5 p-6 backdrop-blur">
-                <Quote className="size-6 text-optic" aria-hidden />
-                <blockquote className="mt-3 text-lg">“{r.quote}”</blockquote>
-                <figcaption className="mt-4 text-sm text-white/70">
+              <figure
+                key={i}
+                className="w-[82%] shrink-0 snap-center rounded-2xl border border-white/15 bg-white/[0.06] p-6 backdrop-blur sm:w-auto"
+              >
+                <Quote className="size-7 text-optic" aria-hidden />
+                <blockquote className="mt-3 text-lg leading-snug">“{r.quote}”</blockquote>
+                <figcaption className="mt-4 text-sm text-white/65">
                   {r.name} · {r.meta}
                 </figcaption>
               </figure>
             ))}
           </div>
-          <p className="mt-6 text-xs text-white/60">{t("testimonialsNote")}</p>
+          <p className="mt-6 text-xs text-white/55">{t("testimonialsNote")}</p>
         </Section>
       </div>
 
@@ -158,38 +154,39 @@ export default async function HomePage() {
         </div>
       </Section>
 
-      {/* CTA */}
-      <Section className="pt-0">
-        <div className="relative overflow-hidden rounded-3xl bg-accent p-8 text-accent-foreground sm:p-12">
-          <div className="max-w-xl">
-            <h2 className="font-display text-5xl leading-[0.9] font-extrabold uppercase sm:text-6xl">
-              {t("ctaTitle")}
-            </h2>
-            <p className="mt-4 text-lg">{t("ctaBody")}</p>
-            <Button asChild size="lg" className="mt-6">
-              <Link href="/book">
-                {t("ctaButton")} <ArrowRight />
-              </Link>
-            </Button>
-          </div>
+      {/* Final CTA */}
+      <Section className="pt-0 pb-28 sm:pb-20">
+        <div className="relative isolate overflow-hidden rounded-3xl bg-accent p-8 text-accent-foreground sm:p-14">
           <svg
             viewBox="0 0 200 200"
-            className="absolute -right-10 -bottom-10 size-64 opacity-30 sm:size-80"
+            className="absolute -top-16 -right-20 -z-10 size-72 text-accent-foreground/15 sm:-top-10 sm:-right-10 sm:size-96"
             aria-hidden
           >
             <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" strokeWidth="6" />
             <path d="M10 80h180M100 80v110" stroke="currentColor" strokeWidth="6" fill="none" />
           </svg>
+          <div className="max-w-xl">
+            <h2 className="font-display text-6xl leading-[0.85] font-black uppercase sm:text-7xl">{t("ctaTitle")}</h2>
+            <p className="mt-4 text-lg">{t("ctaBody")}</p>
+            <Button asChild size="lg" className="mt-7 h-14 text-base">
+              <Link href="/book">
+                {t("ctaButton")} <ArrowRight />
+              </Link>
+            </Button>
+          </div>
         </div>
       </Section>
+
+      <Suspense>
+        <StickyBar />
+      </Suspense>
     </>
   );
 }
 
 async function HomeMachines() {
   await connection();
-  const machines = await listPublicMachines();
-  return <MachineCards machines={machines} />;
+  return <MachineFeature machines={await listPublicMachines()} />;
 }
 
 async function HomePricing() {
@@ -201,4 +198,15 @@ async function HomePricing() {
   ]);
   const deposit = machines.find((m) => m.bookable)?.depositCents ?? 30000;
   return <PricingGrid products={products} addOns={addOns} depositCents={deposit} compact />;
+}
+
+async function StickyBar() {
+  await connection();
+  const t = await getTranslations("home");
+  const tc = await getTranslations("common");
+  const products = await listActiveProducts();
+  const from = Math.min(...products.filter((p) => p.kind === "DAY").map((p) => p.priceCents), 4500);
+  return (
+    <StickyBookBar watchId="hero-cta" label={t("stickyFrom", { price: formatCentsShort(from) })} cta={tc("bookNow")} />
+  );
 }

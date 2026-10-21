@@ -15,8 +15,8 @@ const RENTAL_KINDS = ["DAY", "WEEKEND", "WEEK", "MONTH"];
 export default async function BookPage({ searchParams }: PageProps<"/book">) {
   const t = await getTranslations("book");
   return (
-    <Section className="pt-8 sm:pt-12">
-      <h1 className="mb-6 font-display text-5xl font-extrabold uppercase sm:text-6xl">{t("title")}</h1>
+    <Section className="pt-6 sm:pt-12">
+      <h1 className="mb-5 font-display text-3xl font-black uppercase sm:mb-8 sm:text-6xl">{t("title")}</h1>
       <Suspense fallback={<WizardSkeleton />}>
         <Wizard searchParams={searchParams} />
       </Suspense>

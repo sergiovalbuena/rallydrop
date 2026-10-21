@@ -4,14 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarCheck, Lock, MapPin, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { formatCentsShort } from "@/lib/money";
+import { formatCents, formatCentsShort } from "@/lib/money";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import type { Quote } from "@/lib/domain/pricing";
 import { contactSchema, fieldErrors } from "@/lib/validation/booking";
 import {
@@ -20,7 +22,7 @@ import {
   quoteAction,
   releaseHoldAction,
   type CheckoutResult,
-} from "@/app/(site)/book/actions";
+} from "@/app/(checkout)/book/actions";
 import { DateTimePicker } from "./date-time-picker";
 import { OptionCard } from "./option-card";
 import { PaymentStep } from "./payment-form";
@@ -206,29 +208,48 @@ export function BookingWizard({
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
       <div className="min-w-0">
-        <Stepper steps={steps} current={step} />
+        <Stepper steps={steps} current={step} stepOfLabel={t("stepOf", { current: step + 1, total: steps.length })} />
 
         <div className="mt-8 animate-in duration-300 fade-in slide-in-from-bottom-2" key={step}>
           {step === 0 && (
             <fieldset>
-              <legend className="mb-4 font-display text-3xl font-extrabold uppercase">{t("chooseProduct")}</legend>
+              <legend className="mb-4 font-display text-2xl font-extrabold uppercase sm:text-3xl">
+                {t("chooseProduct")}
+              </legend>
               <div className="grid gap-3 sm:grid-cols-2">
-                {catalog.products.map((p) => (
-                  <OptionCard
-                    key={p.id}
-                    name="product"
-                    value={p.id}
-                    selected={productId === p.id}
-                    onSelect={() => {
-                      setProductId(p.id);
-                      setWhen({ date: null, slot: null });
-                    }}
-                    title={p.name}
-                    aside={formatCentsShort(p.priceCents)}
-                  >
-                    {p.description}
-                  </OptionCard>
-                ))}
+                {catalog.products.map((p) => {
+                  const days = (p.durationHours ?? 24) / 24;
+                  return (
+                    <OptionCard
+                      key={p.id}
+                      name="product"
+                      value={p.id}
+                      selected={productId === p.id}
+                      onSelect={() => {
+                        setProductId(p.id);
+                        setWhen({ date: null, slot: null });
+                      }}
+                      title={
+                        <span className="flex flex-wrap items-center gap-2">
+                          {p.name}
+                          {p.kind === "WEEKEND" && <Badge className="text-[10px]">{t("popular")}</Badge>}
+                        </span>
+                      }
+                      aside={
+                        <span className="block text-right">
+                          <span className="tabular">{formatCentsShort(p.priceCents)}</span>
+                          {days >= 2 && (
+                            <span className="block font-sans text-xs font-semibold text-success">
+                              {t("perDay", { price: formatCentsShort(Math.round(p.priceCents / days / 100) * 100) })}
+                            </span>
+                          )}
+                        </span>
+                      }
+                    >
+                      {p.description}
+                    </OptionCard>
+                  );
+                })}
               </div>
               <p className="mt-4 text-sm text-muted-foreground">
                 {t("packageIntro")}{" "}
@@ -241,7 +262,9 @@ export function BookingWizard({
 
           {step === 1 && (
             <fieldset>
-              <legend className="mb-4 font-display text-3xl font-extrabold uppercase">{t("chooseMachine")}</legend>
+              <legend className="mb-4 font-display text-2xl font-extrabold uppercase sm:text-3xl">
+                {t("chooseMachine")}
+              </legend>
               <div className="grid gap-3">
                 {catalog.machines.map((m) => (
                   <OptionCard
@@ -273,7 +296,7 @@ export function BookingWizard({
 
           {step === 3 && (
             <div className="space-y-8">
-              <h2 className="font-display text-3xl font-extrabold uppercase">{t("extrasTitle")}</h2>
+              <h2 className="font-display text-2xl font-extrabold uppercase sm:text-3xl">{t("extrasTitle")}</h2>
               {ballsAddOn && (
                 <label className="flex cursor-pointer items-start gap-4 rounded-xl border bg-card p-4 has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50">
                   <Checkbox
@@ -374,7 +397,7 @@ export function BookingWizard({
               }}
               id="details-form"
             >
-              <h2 className="font-display text-3xl font-extrabold uppercase">{t("stepDetails")}</h2>
+              <h2 className="font-display text-2xl font-extrabold uppercase sm:text-3xl">{t("stepDetails")}</h2>
               <Field id="name" label={t("name")} error={errors.name}>
                 <Input
                   id="name"
@@ -457,7 +480,7 @@ export function BookingWizard({
 
           {step === 5 && checkout && (
             <div className="space-y-4">
-              <h2 className="font-display text-3xl font-extrabold uppercase">{t("stepPay")}</h2>
+              <h2 className="font-display text-2xl font-extrabold uppercase sm:text-3xl">{t("stepPay")}</h2>
               <PaymentStep
                 clientSecret={checkout.clientSecret}
                 amountCents={checkout.amountCents}
@@ -473,10 +496,27 @@ export function BookingWizard({
         </div>
 
         {step < 5 && (
-          <div className="sticky bottom-0 z-10 -mx-4 mt-8 flex items-center justify-between gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0">
-            <Button variant="ghost" onClick={() => go((step - 1) as Step)} disabled={step === 0}>
-              <ArrowLeft /> {tc("back")}
-            </Button>
+          <div className="sticky bottom-0 z-10 -mx-4 mt-8 flex items-center justify-between gap-3 border-t bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="sm:w-auto sm:px-4"
+                onClick={() => go((step - 1) as Step)}
+                disabled={step === 0}
+                aria-label={tc("back")}
+              >
+                <ArrowLeft /> <span className="hidden sm:inline">{tc("back")}</span>
+              </Button>
+              {quote && (
+                <p className="leading-tight lg:hidden" aria-live="polite">
+                  <span className="block text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    {t("totalShort")}
+                  </span>
+                  <span className="tabular font-display text-2xl font-black">{formatCents(quote.totalCents)}</span>
+                </p>
+              )}
+            </div>
             {step === 4 ? (
               <Button type="submit" form="details-form" size="lg" disabled={submitting}>
                 {submitting ? tc("loading") : t("toPayment")} <ArrowRight />
@@ -495,13 +535,24 @@ export function BookingWizard({
         )}
       </div>
 
-      <aside className="lg:sticky lg:top-24 lg:self-start">
-        {productId && machineId ? (
+      {/* Full summary: always on desktop; on phones only at review/pay (the bar shows the total before). */}
+      <aside className={cn("space-y-4 lg:sticky lg:top-24 lg:block lg:self-start", step >= 4 ? "block" : "hidden")}>
+        {productId && machineId && (
           <PriceSummary quote={quote} loading={quoting} depositKind={depositKind} header={header} />
-        ) : (
-          <div className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">{t("summary")}</div>
         )}
-        {deliveryAddOn && <p className="mt-3 text-xs text-muted-foreground">* {deliveryAddOn.description}</p>}
+        <ul className="space-y-2 rounded-2xl border bg-card p-4 text-sm">
+          {[
+            { icon: CalendarCheck, text: t("trustCancel") },
+            { icon: ShieldCheck, text: t("trustDeposit") },
+            { icon: Lock, text: t("trustStripe") },
+          ].map((item) => (
+            <li key={item.text} className="flex items-center gap-2.5 text-muted-foreground">
+              <item.icon className="size-4 shrink-0 text-success" aria-hidden />
+              {item.text}
+            </li>
+          ))}
+        </ul>
+        {deliveryAddOn && <p className="text-xs text-muted-foreground">* {deliveryAddOn.description}</p>}
       </aside>
     </div>
   );

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { Check, Plus } from "lucide-react";
+import { ArrowRight, Check, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +22,7 @@ export async function PricingGrid({
   compact?: boolean;
 }) {
   const t = await getTranslations("pricing");
+  const th = await getTranslations("home");
   const tc = await getTranslations("common");
   const rentals = products.filter((p) => RENTAL_KINDS.includes(p.kind));
   const packages = products.filter((p) => p.kind === "PACKAGE");
@@ -36,25 +37,47 @@ export async function PricingGrid({
             <p className="text-muted-foreground">{t("rentalsBody")}</p>
           </div>
         )}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           {rentals.map((p) => {
             const popular = p.kind === "WEEKEND";
+            const days = (p.durationHours ?? 24) / 24;
+            const perDay =
+              days >= 2 ? th("perDay", { price: formatCentsShort(Math.round(p.priceCents / days / 100) * 100) }) : null;
             return (
-              <div
+              <Link
                 key={p.id}
+                href={`/book?product=${p.slug}`}
                 className={cn(
-                  "relative flex flex-col rounded-2xl border bg-card p-6 transition-all hover:-translate-y-0.5 hover:shadow-lg",
+                  "group relative flex items-center gap-4 rounded-2xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:flex-col sm:items-stretch sm:p-6",
                   popular && "border-primary ring-2 ring-primary/20",
                 )}
               >
-                {popular && <Badge className="absolute -top-3 left-6">{t("popular")}</Badge>}
-                <h3 className="font-display text-2xl font-extrabold uppercase">{p.name}</h3>
-                <p className="mt-3 font-display text-5xl font-extrabold">{formatCentsShort(p.priceCents)}</p>
-                {p.description && <p className="mt-3 flex-1 text-sm text-muted-foreground">{p.description}</p>}
-                <Button asChild variant={popular ? "default" : "outline"} className="mt-6">
-                  <Link href={`/book?product=${p.slug}`}>{t("choose")}</Link>
-                </Button>
-              </div>
+                {popular && <Badge className="absolute -top-2.5 right-4 sm:right-auto sm:left-6">{t("popular")}</Badge>}
+                <div className="min-w-0 flex-1 sm:flex-none">
+                  <h3 className="text-xl font-extrabold uppercase sm:text-2xl">{p.name}</h3>
+                  {p.description && (
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground sm:mt-3 sm:line-clamp-none">
+                      {p.description}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right sm:order-first sm:mt-1 sm:text-left">
+                  <p className="tabular font-display text-4xl leading-none font-black sm:text-6xl">
+                    {formatCentsShort(p.priceCents)}
+                  </p>
+                  {perDay && <p className="mt-1 text-xs font-semibold text-success">{perDay}</p>}
+                </div>
+                <span
+                  className={cn(
+                    "hidden h-10 items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition-colors sm:mt-auto sm:flex",
+                    popular ? "bg-primary text-primary-foreground" : "border group-hover:bg-secondary",
+                  )}
+                >
+                  {t("choose")}{" "}
+                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </span>
+                <ArrowRight className="size-5 shrink-0 text-muted-foreground sm:hidden" aria-hidden />
+              </Link>
             );
           })}
         </div>

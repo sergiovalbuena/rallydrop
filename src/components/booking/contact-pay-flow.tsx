@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCents } from "@/lib/money";
-import type { StartPaymentResult } from "@/app/(site)/book/extra-actions";
+import type { StartPaymentResult } from "@/app/(checkout)/book/extra-actions";
 import { getStripe, stripeAppearance } from "./stripe-client";
 
 /**

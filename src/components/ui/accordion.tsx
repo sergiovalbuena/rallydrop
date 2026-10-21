@@ -11,7 +11,7 @@ export function AccordionItem({ className, ...props }: ComponentProps<typeof Acc
 }
 export function AccordionTrigger({ className, children, ...props }: ComponentProps<typeof AccordionPrimitive.Trigger>) {
   return (
-    <AccordionPrimitive.Header className="flex">
+    <AccordionPrimitive.Header className="flex font-sans tracking-normal normal-case">
       <AccordionPrimitive.Trigger
         className={cn(
           "flex flex-1 cursor-pointer items-center justify-between gap-4 py-5 text-left text-base font-semibold transition-all outline-none hover:text-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 [&[data-state=open]>svg]:rotate-180",
