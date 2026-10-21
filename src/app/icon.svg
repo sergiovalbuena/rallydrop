@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="RallyDrop">
+  <defs><clipPath id="b"><circle cx="28" cy="28" r="17"/></clipPath></defs>
+  <g stroke="#2457E6" stroke-width="3" stroke-linecap="round">
+    <path d="M3 10l7 7M10 3l6 6M3 19l4 4"/>
+  </g>
+  <circle cx="28" cy="28" r="17" fill="#D9F23F"/>
+  <g clip-path="url(#b)" stroke="#0E2350" stroke-width="2.6" fill="none">
+    <path d="M9 24.5h38M28 24.5V47"/>
+  </g>
+  <circle cx="28" cy="28" r="17" fill="none" stroke="#0E2350" stroke-width="2.6"/>
+</svg>

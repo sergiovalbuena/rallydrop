@@ -3,7 +3,6 @@ import {
   localDateMinuteToUtc,
   localMonth,
   localWeekday,
-  toLocalDate,
   toLocalMinute,
 } from "@/lib/time";
 
@@ -128,6 +127,3 @@ export function availabilityByDate(
   return out;
 }
 
-export function todayLocal(now: Date): string {
-  return toLocalDate(now);
-}

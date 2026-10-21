@@ -1,26 +1,146 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * RallyDrop palette — an original take on the energy of a hard-court
+ * tournament: deep court navy, electric court blue, optic ball yellow and
+ * crisp line white. Contrast pairs are chosen to meet WCAG AA.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --radius: 0.75rem;
+
+  --background: oklch(0.985 0.004 250);
+  --foreground: oklch(0.2 0.05 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.05 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.05 260);
+  --primary: oklch(0.47 0.2 262); /* court blue */
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.015 255);
+  --secondary-foreground: oklch(0.25 0.06 260);
+  --muted: oklch(0.955 0.01 255);
+  --muted-foreground: oklch(0.47 0.03 260);
+  --accent: oklch(0.92 0.2 118); /* optic yellow */
+  --accent-foreground: oklch(0.22 0.05 260);
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.55 0.15 150);
+  --warning: oklch(0.72 0.16 70);
+  --border: oklch(0.9 0.015 255);
+  --input: oklch(0.88 0.02 255);
+  --ring: oklch(0.55 0.2 262);
+
+  --court: oklch(0.32 0.11 262); /* deep court navy */
+  --court-light: oklch(0.47 0.2 262);
+  --optic: oklch(0.92 0.2 118);
+  --line: oklch(0.99 0 0);
+}
+
+.dark {
+  --background: oklch(0.16 0.04 262);
+  --foreground: oklch(0.96 0.01 250);
+  --card: oklch(0.2 0.05 262);
+  --card-foreground: oklch(0.96 0.01 250);
+  --popover: oklch(0.2 0.05 262);
+  --popover-foreground: oklch(0.96 0.01 250);
+  --primary: oklch(0.68 0.17 258);
+  --primary-foreground: oklch(0.16 0.04 262);
+  --secondary: oklch(0.26 0.05 262);
+  --secondary-foreground: oklch(0.96 0.01 250);
+  --muted: oklch(0.24 0.04 262);
+  --muted-foreground: oklch(0.74 0.03 255);
+  --accent: oklch(0.9 0.19 118);
+  --accent-foreground: oklch(0.18 0.04 262);
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.7 0.15 150);
+  --warning: oklch(0.8 0.15 75);
+  --border: oklch(0.3 0.05 262);
+  --input: oklch(0.34 0.05 262);
+  --ring: oklch(0.68 0.17 258);
+
+  --court: oklch(0.24 0.08 262);
+  --court-light: oklch(0.4 0.16 262);
 }
 
 @theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-barlow), var(--font-inter), ui-sans-serif, sans-serif;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-court: var(--court);
+  --color-court-light: var(--court-light);
+  --color-optic: var(--optic);
+  --color-line: var(--line);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  /* Court lines: white tramlines used as a graphic motif on navy panels. */
+  .court-lines {
+    background-image:
+      linear-gradient(to right, transparent calc(50% - 1px), oklch(1 0 0 / 0.09) calc(50% - 1px), oklch(1 0 0 / 0.09) calc(50% + 1px), transparent calc(50% + 1px)),
+      linear-gradient(to bottom, transparent calc(62% - 1px), oklch(1 0 0 / 0.09) calc(62% - 1px), oklch(1 0 0 / 0.09) calc(62% + 1px), transparent calc(62% + 1px)),
+      linear-gradient(to right, transparent 12%, oklch(1 0 0 / 0.07) 12%, oklch(1 0 0 / 0.07) calc(12% + 2px), transparent calc(12% + 2px), transparent calc(88% - 2px), oklch(1 0 0 / 0.07) calc(88% - 2px), oklch(1 0 0 / 0.07) 88%, transparent 88%);
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
