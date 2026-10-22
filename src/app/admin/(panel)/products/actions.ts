@@ -28,6 +28,9 @@ export async function saveProductAction(_: SaveState, formData: FormData): Promi
   const id = String(formData.get("id"));
   const priceCents = dollarsToCents(String(formData.get("price") ?? ""));
   if (priceCents === null) return { ok: false, error: "Invalid price." };
+  const offText = String(formData.get("offSeasonPrice") ?? "").trim();
+  const offSeasonPriceCents = offText ? dollarsToCents(offText) : null;
+  if (offText && offSeasonPriceCents === null) return { ok: false, error: "Invalid off-season price." };
   const num = (k: string) => {
     const v = formData.get(k);
     return v === null || v === "" ? undefined : Number(v);
@@ -43,6 +46,7 @@ export async function saveProductAction(_: SaveState, formData: FormData): Promi
       name: String(formData.get("name") ?? product.name).trim() || product.name,
       description: String(formData.get("description") ?? "").trim() || null,
       priceCents,
+      ...(formData.has("offSeasonPrice") ? { offSeasonPriceCents } : {}),
       active: formData.get("active") === "on",
       durationHours: num("durationHours") ?? product.durationHours,
       sessionsPerMonth: num("sessionsPerMonth") ?? product.sessionsPerMonth,

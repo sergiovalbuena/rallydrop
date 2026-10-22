@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { ArrowRight, Check, Plus } from "lucide-react";
+import { ArrowRight, Check, Plus, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,18 +8,23 @@ import { formatCentsShort } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { revealDelay } from "./reveal-delay";
 import type { AddOn, Product } from "@/generated/prisma/client";
+import { isHighSeason, seasonalPrice } from "@/lib/domain/season";
+import type { PricingContext } from "@/lib/services/pricing-context";
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const monthName = (mmdd: string) => MONTHS[Number(mmdd.slice(0, 2)) - 1] ?? mmdd;
 
 const RENTAL_KINDS = ["DAY", "WEEKEND", "WEEK", "MONTH"];
 
 export async function PricingGrid({
   products,
   addOns,
-  depositCents,
+  ctx,
   compact = false,
 }: {
   products: Product[];
   addOns: AddOn[];
-  depositCents: number;
+  ctx: PricingContext;
   compact?: boolean;
 }) {
   const t = await getTranslations("pricing");
@@ -27,7 +32,9 @@ export async function PricingGrid({
   const tc = await getTranslations("common");
   const rentals = products.filter((p) => RENTAL_KINDS.includes(p.kind));
   const packages = products.filter((p) => p.kind === "PACKAGE");
-  const group = products.find((p) => p.kind === "GROUP_SESSION");
+  const highNow = isHighSeason(ctx.today, ctx.season);
+  const seasonLabel = (start: string, end: string) => `${monthName(start)}–${monthName(end)}`;
+  const highLabel = seasonLabel(ctx.season.start, ctx.season.end);
 
   return (
     <div className="space-y-12">
@@ -42,8 +49,10 @@ export async function PricingGrid({
           {rentals.map((p, i) => {
             const popular = p.kind === "WEEKEND";
             const days = (p.durationHours ?? 24) / 24;
+            const now = seasonalPrice(p, ctx.today, ctx.season).cents;
+            const other = highNow ? (p.offSeasonPriceCents ?? p.priceCents) : p.priceCents;
             const perDay =
-              days >= 2 ? th("perDay", { price: formatCentsShort(Math.round(p.priceCents / days / 100) * 100) }) : null;
+              days >= 2 ? th("perDay", { price: formatCentsShort(Math.round(now / days / 100) * 100) }) : null;
             return (
               <Link
                 key={p.id}
@@ -66,9 +75,16 @@ export async function PricingGrid({
                 </div>
                 <div className="text-right sm:order-first sm:mt-1 sm:text-left">
                   <p className="tabular font-display text-4xl leading-none font-black sm:text-6xl">
-                    {formatCentsShort(p.priceCents)}
+                    {formatCentsShort(now)}
                   </p>
                   {perDay && <p className="mt-1 text-xs font-semibold text-success">{perDay}</p>}
+                  {other !== now && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {highNow
+                        ? t("offSeasonFrom", { price: formatCentsShort(other) })
+                        : t("highSeasonPrice", { season: highLabel, price: formatCentsShort(other) })}
+                    </p>
+                  )}
                 </div>
                 <span
                   className={cn(
@@ -127,21 +143,35 @@ export async function PricingGrid({
 
       {!compact && (
         <div className="grid gap-4 md:grid-cols-2">
-          {group && (
+          {ctx.care && (
             <div className="rounded-2xl border bg-card p-6">
-              <h2 className="font-display text-2xl font-extrabold uppercase">{t("groupTitle")}</h2>
-              <p className="mt-2 font-display text-4xl font-extrabold">
-                {formatCentsShort(group.priceCents)}
-                <span className="text-base font-semibold text-muted-foreground"> {tc("perPerson")}</span>
+              <h2 className="flex items-center gap-2 font-display text-2xl font-extrabold uppercase">
+                <ShieldCheck className="size-6 text-primary" aria-hidden /> {t("careTitle")}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {t("careBody", { cap: formatCentsShort(ctx.care.cap) })}
               </p>
-              <p className="mt-2 text-sm text-muted-foreground">{t("groupBody")}</p>
-              <Button asChild variant="outline" className="mt-5">
-                <Link href="/group-sessions">{tc("learnMore")}</Link>
-              </Button>
+              <ul className="mt-4 space-y-1 text-sm">
+                <li className="flex justify-between">
+                  <span>{t("careShort")}</span>
+                  <span className="font-semibold">+{formatCentsShort(ctx.care.short)}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span>{t("careWeek")}</span>
+                  <span className="font-semibold">+{formatCentsShort(ctx.care.week)}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span>{t("careMonth")}</span>
+                  <span className="font-semibold">+{formatCentsShort(ctx.care.month)}</span>
+                </li>
+              </ul>
             </div>
           )}
           <div className="rounded-2xl border bg-card p-6">
             <h2 className="font-display text-2xl font-extrabold uppercase">{t("addOnsTitle")}</h2>
+            <p className="mt-2 flex items-center gap-2 text-sm font-medium text-success">
+              <Check className="size-4" aria-hidden /> {t("ballsIncluded")}
+            </p>
             <ul className="mt-4 space-y-4">
               {addOns.map((a) => (
                 <li key={a.id} className="flex items-start justify-between gap-4">
@@ -163,9 +193,9 @@ export async function PricingGrid({
       <div className="rounded-2xl border border-dashed bg-muted/40 p-6">
         <h2 className="font-display text-xl font-bold uppercase">{t("depositTitle")}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          {t("depositBody", { amount: formatCentsShort(depositCents) })}
+          {t("depositBody", { short: formatCentsShort(ctx.deposit.short), long: formatCentsShort(ctx.deposit.long) })}
         </p>
-        <p className="mt-2 text-xs text-muted-foreground">{tc("taxesNote")}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{ctx.taxesCharged ? tc("taxesNote") : tc("pricesInCad")}</p>
       </div>
     </div>
   );

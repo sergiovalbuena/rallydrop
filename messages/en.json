@@ -12,12 +12,11 @@
     "perMonth": "/ month",
     "perPerson": "/ person",
     "comingSoon": "Coming soon",
-    "sampleBadge": "Sample",
     "back": "Back",
     "continue": "Continue",
     "close": "Close",
     "deposit": "Refundable deposit",
-    "taxesNote": "Prices in CAD. GST and PST added at checkout.",
+    "taxesNote": "Prices in CAD. Taxes are added at checkout.",
     "skipToContent": "Skip to content",
     "toggleTheme": "Toggle light/dark mode",
     "openMenu": "Open menu",
@@ -26,7 +25,8 @@
     "tryAgain": "Try again",
     "notFoundTitle": "Out of bounds",
     "notFoundBody": "We couldn't find that page. Let's get you back on court.",
-    "home": "Home"
+    "home": "Home",
+    "pricesInCad": "Prices in CAD."
   },
   "nav": {
     "machines": "Machines",
@@ -45,7 +45,10 @@
     "privacy": "Privacy",
     "faq": "FAQ",
     "rights": "All rights reserved.",
-    "madeIn": "Made on the courts of Victoria, BC."
+    "madeIn": "Made on the courts of Victoria, BC.",
+    "waiver": "Release of liability",
+    "insured": "RallyDrop carries commercial general liability insurance.",
+    "licence": "{municipality} Business Licence #{number}"
   },
   "home": {
     "eyebrow": "Ball machine rentals · Victoria, BC",
@@ -69,23 +72,13 @@
     "pricingTitle": "Simple pricing",
     "pricingSubtitle": "Everything in Canadian dollars. A refundable deposit is held on your card, never charged unless there's damage.",
     "testimonialsTitle": "Players love it",
-    "testimonialsNote": "Example reviews — placeholders until real customer reviews are collected.",
-    "t1Quote": "Two hours of backhands with no one to chase balls for. My slice has never been better.",
-    "t1Name": "Sample player",
-    "t1Meta": "4.0 · Fairfield",
-    "t2Quote": "Dropped at Beacon Hill at 8 AM sharp, set up in five minutes. Booking took a minute on my phone.",
-    "t2Name": "Sample player",
-    "t2Meta": "Pickleball · James Bay",
-    "t3Quote": "We split a monthly package between three friends. Cheapest coaching we've ever had.",
-    "t3Name": "Sample player",
-    "t3Meta": "3.5 · Oak Bay",
     "faqTitle": "Questions, answered",
     "ctaTitle": "Ready to rally?",
     "ctaBody": "Book in under two minutes. Pay by card, cancel free up to 48 hours before.",
     "ctaButton": "Check availability",
     "trust1": "No account needed",
     "trust2": "Cancel free up to 48 h",
-    "trust3": "Deposit held, never charged",
+    "trust3": "Deposit held, only charged if damaged",
     "nextAvailable": "Next available",
     "nextNone": "Pick a date",
     "fromLabel": "Day rental from",
@@ -141,25 +134,50 @@
     "aiTitle": "AI coach included",
     "ai1": "Swing analysis with real-time voice tips",
     "ai2": "Movement heatmap after every session",
-    "ai3": "Drills that adapt to your level"
+    "ai3": "Drills that adapt to your level",
+    "specsNote": "Manufacturer specs. Real-world speed varies with spin and settings.",
+    "aiSectionTitle": "What the AI camera does for you",
+    "aiSectionSubtitle": "The Spotter module turns a ball machine into a coach that watches every shot.",
+    "aiF1Title": "Sees every swing",
+    "aiF1Body": "Dual cameras at 120 frames per second track you and the ball on every shot.",
+    "aiF2Title": "Coaches out loud",
+    "aiF2Body": "Real-time voice tips on your swing and footwork, while you play — no screen needed.",
+    "aiF3Title": "Maps your movement",
+    "aiF3Body": "A heatmap after each session shows where you hit from and how you move.",
+    "aiF4Title": "Calls the score",
+    "aiF4Body": "Unclip it and put it by the net: it umpires and keeps score in matches with friends.",
+    "levelTitle": "Is it right for my level?",
+    "levelSubtitle": "If you can rally a few balls, you'll get a lot out of it. It suits beginners up to about NTRP 4.5.",
+    "levelBeginnerTitle": "Beginner",
+    "levelBeginnerBody": "Slow, consistent feeds to the same spot to groove your forehand and backhand. Start at low speed and raise it as you go.",
+    "levelIntermediateTitle": "Intermediate",
+    "levelIntermediateBody": "Mix topspin and slice, move side to side and drill transitions to the net with custom sequences.",
+    "levelAdvancedTitle": "Advanced (up to 4.5)",
+    "levelAdvancedBody": "Up to 100 km/h, heavy spin, random patterns and a ball every 1.5 s — plus AI feedback on your technique."
   },
   "pricing": {
     "title": "Pricing",
-    "subtitle": "Pick the rhythm that fits your season. Add drop-off and collection if you'd rather not haul it.",
+    "subtitle": "Pick the rhythm that fits your season. Balls are always included.",
     "rentalsTitle": "Rentals",
     "rentalsBody": "The machine is yours for the whole period — play as often as you like.",
     "packagesTitle": "Monthly session packages",
     "packagesBody": "1.5-hour sessions with drop-off and collection at your court included. Billed monthly, cancel anytime.",
-    "groupTitle": "Coached group session",
-    "groupBody": "One hour of machine-fed drills with a coach, up to six players.",
     "addOnsTitle": "Add-ons",
     "depositTitle": "About the deposit",
-    "depositBody": "We place a {amount} hold on your card for rentals up to 6 days — it's released when the machine comes back in good shape. For week and month rentals we securely save your card instead, and only charge it if there's damage.",
+    "depositBody": "We hold {short} on your card for rentals up to 6 days — released when the machine comes back in good shape. For week and month rentals we securely save your card for up to {long} instead. It's only charged if the machine is damaged, lost or late.",
     "sessions": "{count} sessions / month",
     "sessionLength": "{minutes} min each",
     "popular": "Most popular",
     "choose": "Choose",
-    "subscribe": "Subscribe"
+    "subscribe": "Subscribe",
+    "offSeasonFrom": "Off-season: {price}",
+    "highSeasonPrice": "{season}: {price}",
+    "careTitle": "RallyDrop Care",
+    "careBody": "Optional damage protection: with Care the most you pay for accidental damage is {cap}. Not insurance; doesn't cover theft, loss, rain use or gross negligence.",
+    "careShort": "Day or weekend",
+    "careWeek": "Week",
+    "careMonth": "Month",
+    "ballsIncluded": "A full bucket of balls comes with every rental."
   },
   "groups": {
     "title": "Group sessions",
@@ -191,16 +209,6 @@
     "ballsTitle": "Which balls?",
     "ballsBody": "Use pressureless tennis balls — they keep the same bounce for months and feed consistently. Pressurized balls go flat and can jam the feeder. Our ball bucket add-on includes 100–120 pressureless balls.",
     "faqTitle": "FAQ",
-    "q1": "Do I need an account?",
-    "a1": "No. Book with your email or phone number. To manage bookings later, sign in with a one-time code sent to you.",
-    "q2": "Is the machine hard to use?",
-    "a2": "Not at all. We walk you through it when you collect it (or at drop-off) and you get a quick-start guide. Most players are hitting within five minutes.",
-    "q3": "Can I use it for pickleball?",
-    "a3": "Yes — the PONGBOT Aura feeds pickleballs too. Let us know in the booking notes.",
-    "q4": "What if something breaks?",
-    "a4": "Accidents happen. Tell us right away. Normal wear is on us; damage from misuse may be deducted from the deposit, and we'll always explain why.",
-    "q5": "Where can I use it?",
-    "a5": "Any court where ball machines are allowed. Please respect posted court time limits and share with other players.",
     "zoneTitle": "Delivery zones",
     "zoneBody": "Trips are priced by straight-line distance from downtown Victoria (the rings on the map). Pins are the public courts we serve — or use your own address.",
     "zoneMapLabel": "Map of the delivery zones and courts in Victoria",
@@ -237,7 +245,6 @@
     "noDates": "Nothing available in this range. Try the next month.",
     "returnAt": "Return {when}",
     "extrasTitle": "Add-ons & delivery",
-    "balls": "Add a ball bucket",
     "serviceTitle": "Getting the machine to you",
     "serviceIntro": "We can bring it, collect it, or both — priced by distance from downtown. Or grab it yourself for free.",
     "serviceRound": "Drop-off & collection",
@@ -270,8 +277,6 @@
     "contactHint": "We need at least one way to reach you.",
     "level": "Playing level (optional)",
     "notes": "Anything we should know? (optional)",
-    "terms": "I accept the rental terms, including responsibility for damage and safe use.",
-    "termsLink": "Read the terms",
     "summary": "Summary",
     "subtotal": "Subtotal",
     "gst": "GST ({rate}%)",
@@ -280,6 +285,8 @@
     "depositLine": "Refundable deposit",
     "depositHold": "Held on your card, not charged",
     "depositSaved": "Card saved, charged only if there's damage",
+    "depositHoldAmount": "a {amount} hold on your card",
+    "depositSavedAmount": "your card saved for up to {amount}",
     "depositScheduled": "Held on your card the day before your rental",
     "toPayment": "Continue to payment",
     "unavailableTitle": "Online booking opens soon",
@@ -314,7 +321,13 @@
     "trustStripe": "Card details handled by Stripe",
     "viewSummary": "Summary",
     "hideSummary": "Hide",
-    "totalShort": "Total"
+    "totalShort": "Total",
+    "offSeasonPrice": "Off-season price",
+    "depositLongShort": "{amount} for week & month",
+    "ballsIncluded": "A full bucket of balls (100–120) comes with every rental.",
+    "careTitle": "RallyDrop Care",
+    "careBody": "Accidents happen: with Care, the most you pay for accidental damage is {cap}. Doesn't cover theft, loss, use in the rain or gross negligence.",
+    "awaitingTerms": "Payment received — please accept the terms (we've emailed you a link) to confirm your booking."
   },
   "portal": {
     "title": "My bookings",
@@ -407,5 +420,91 @@
     "consent": "We'll only email you about this machine. Unsubscribe anytime.",
     "done": "You're on the list — we'll email you when the {name} is ready.",
     "already": "You're already on the list for the {name}. We'll be in touch!"
+  },
+  "consent": {
+    "summaryTitle": "Key terms",
+    "depositDefault": "a refundable deposit",
+    "bulletDeposit": "Deposit: {deposit}, only charged if the machine is damaged, lost or late.",
+    "bulletDamage": "You're responsible for damage, loss or theft during your rental (RallyDrop Care caps accidental damage at $100).",
+    "bulletRain": "Rain on your start day? Reschedule free or get a 100% credit for 6 months.",
+    "bulletLate": "Late return, or not available for collection on time: one extra day is charged.",
+    "bulletCancel": "Cancel more than 48 h before for a full refund, 50% within 48 h, none once started.",
+    "agree": "I agree to the <terms></terms> and the <waiver></waiver>, and I understand I'm giving up certain legal rights.",
+    "termsLink": "Rental Terms",
+    "waiverLink": "Release of Liability & Assumption of Risk",
+    "age": "I'm <b>19 or older</b> (age of majority in BC), or a parent/guardian renting for a minor who will use it under my supervision.",
+    "missing": "Tick both boxes to continue.",
+    "version": "Version {version}",
+    "close": "Close",
+    "tickBoth": "Tick both boxes to continue."
+  },
+  "accept": {
+    "title": "Accept the rental terms",
+    "cta": "Accept and confirm",
+    "saving": "Saving…",
+    "done": "Thank you — you're all set. We'll see you at the start of your rental.",
+    "already": "Already accepted on {date}. Nothing else to do."
+  },
+  "faq": {
+    "account": {
+      "q": "Do I need an account?",
+      "a": "No. Book with your email or phone number. To see or change your bookings later, open “My bookings” and sign in with a one-time code we send you."
+    },
+    "where": {
+      "q": "Where can I use it?",
+      "a": "Wherever you like — at home, at your club or at a public court. Just respect the rules of the place: court time limits, municipal court bookings and whether ball machines are allowed."
+    },
+    "delivery": {
+      "q": "How does delivery work?",
+      "a": "Collect and return it at our downtown spot for free, or book our trips: we drop it off and/or collect it at your address, or in the parking lot or at the curb next to a court you choose — never inside the court. Trips are priced by distance from downtown: from {trip} one way or {round} round trip."
+    },
+    "balls": {
+      "q": "Are balls included?",
+      "a": "Yes. Every rental comes with a full bucket of 100–120 pressureless balls. Want more? Add an extra bucket at checkout."
+    },
+    "easy": {
+      "q": "Is the machine hard to use?",
+      "a": "Not at all. We show you everything in five minutes at hand-off. You control it from the PONGBOT app or just by talking to it (“more topspin”, “wider angle”), and you get a quick-start card and video."
+    },
+    "ai": {
+      "q": "What does the AI camera do?",
+      "a": "The Spotter camera films you at 120 frames per second, tracks you and the ball, analyses your swing and movement and gives you voice tips while you play — plus a movement heatmap afterwards. You can also put it next to the net so it acts as an umpire and keeps score in matches with friends."
+    },
+    "speed": {
+      "q": "How fast does it go? Is it good for my level?",
+      "a": "Up to 100 km/h (about 62 mph) in tennis, lobs up to 8 m high, topspin, slice and flat, and up to one ball every 1.5 seconds. It suits beginners through advanced players (up to about NTRP 4.5). Real-world speed varies with spin and settings."
+    },
+    "pickleball": {
+      "q": "Can I use it for pickleball?",
+      "a": "Yes — the Aura S is set up for pickleball as well as tennis. Mention it in your booking notes and we'll bring it ready to go."
+    },
+    "deposit": {
+      "q": "How does the deposit work?",
+      "a": "For rentals up to 6 days we place a temporary hold of {short} on your card — it's not a charge, and it's released as soon as the machine is back in good shape. For week and month rentals we securely save your card for up to {long} instead. We only charge it if the machine is damaged, lost or returned late, and we always explain why."
+    },
+    "care": {
+      "q": "What is RallyDrop Care?",
+      "a": "Optional damage protection you can add at checkout (from {price}). With Care, the most you pay for accidental damage is {cap}. It isn't insurance and doesn't cover theft, loss, use in the rain or gross negligence."
+    },
+    "rain": {
+      "q": "What if it rains?",
+      "a": "Victoria, we know. If it rains on the day your rental starts, tell us before your start or drop-off time and reschedule for free — or take a credit for 100% of what you paid, valid for 6 months."
+    },
+    "breaks": {
+      "q": "What if something breaks or jams?",
+      "a": "Stop the machine, switch it off and contact us right away — don't open it. Most jams are a wet or damaged ball: switch off, take it out of the hopper and try again. Normal wear is on us."
+    },
+    "friends": {
+      "q": "Can friends share one rental?",
+      "a": "Absolutely. Each friend can connect their phone to the machine with the PONGBOT app and take turns. The person who rented is responsible for everyone who uses it."
+    },
+    "cancel": {
+      "q": "Can I cancel or reschedule?",
+      "a": "Yes, from “My bookings”. Cancel more than 48 hours before the start for a full refund, or within 48 hours for 50% back. Rescheduling is free when the new time is available."
+    },
+    "insured": {
+      "q": "Is RallyDrop insured?",
+      "a": "Yes. RallyDrop carries commercial general liability insurance."
+    }
   }
 }

@@ -10,6 +10,9 @@ import { db } from "@/lib/db";
 import { formatCentsShort } from "@/lib/money";
 import { BookingUnavailable } from "@/components/booking/booking-unavailable";
 import { databaseConfigured } from "@/lib/services/fallback";
+import { currentLegal, toConsentDocs } from "@/lib/services/legal";
+import { chargedTaxes } from "@/lib/domain/rental";
+import { getSettings } from "@/lib/services/settings";
 import { startPackageAction } from "../extra-actions";
 
 export const metadata: Metadata = { title: "Session package" };
@@ -31,6 +34,8 @@ async function Package({ searchParams }: { searchParams: PageProps<"/book/packag
   if (!databaseConfigured()) return <BookingUnavailable />;
   const product = slug ? await db.product.findFirst({ where: { slug, kind: "PACKAGE", active: true } }) : null;
   if (!product) notFound();
+  const taxes = chargedTaxes(await getSettings());
+  const taxesCharged = taxes.gstBps > 0 || taxes.pstBps > 0;
 
   if (sp.done) {
     return (
@@ -52,11 +57,12 @@ async function Package({ searchParams }: { searchParams: PageProps<"/book/packag
           {formatCentsShort(product.priceCents)} <span className="text-base text-white/70">{t("common.perMonth")}</span>
         </p>
         <p className="mt-2 text-sm text-white/80">{product.description}</p>
-        <p className="mt-2 text-xs text-white/60">{t("common.taxesNote")}</p>
+        <p className="mt-2 text-xs text-white/60">{taxesCharged ? t("common.taxesNote") : t("common.pricesInCad")}</p>
       </div>
       <ContactPayFlow
         targetId={product.id}
         start={startPackageAction}
+        consentDocs={toConsentDocs(await currentLegal())}
         successPath={`/book/package?product=${product.slug}&done=1`}
         cta={t("pricing.subscribe")}
       />

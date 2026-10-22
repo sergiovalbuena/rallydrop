@@ -46,20 +46,23 @@ tests/             unit/ e integration/ (doble reserva concurrente, webhooks Str
   - Cada reserva bloquea `[inicio, fin + margen)`. El margen es de 2 h por defecto y se puede configurar.
   - Mientras el cliente paga, el horario queda retenido 10 minutos.
   - Un *advisory lock* por máquina evita deadlocks cuando llegan muchas peticiones simultáneas.
-- **Depósito.** Se elige según la duración del alquiler:
+- **Depósito.** Se elige según la duración del alquiler (montos por máquina en Admin → Machines):
 
   | Alquiler | Qué se hace con la tarjeta |
   |---|---|
-  | Hasta 6 días | Retención con `capture_method: manual`. Si empieza en más de 24 h, la tarjeta se guarda al pagar y el job diario coloca la retención la mañana anterior. |
-  | Semana o mes | Solo se guarda la tarjeta (`setup_future_usage: off_session`). |
+  | Hasta 6 días | Retención de **$400** con `capture_method: manual`. Si empieza en más de 24 h, la tarjeta se guarda al pagar y el job diario coloca la retención la mañana anterior. |
+  | Semana o mes | Tarjeta guardada (`setup_future_usage: off_session`) para cobrar hasta **$600**. |
 
   - Marcar **"Returned – OK"** libera el depósito automáticamente.
-  - Con daños, el admin cobra el depósito total o parcialmente, con una nota obligatoria que se envía por email al cliente.
+  - Con daños, el admin cobra el depósito total o parcialmente, con una nota obligatoria que se envía por email al cliente. Si el cliente compró **RallyDrop Care**, el cobro máximo es $100 salvo que se marque una exclusión (robo, pérdida, lluvia, negligencia grave).
+  - Check-out con checklist (máquina, Spotter, batería, cargador) y verificación manual de ID (últimos 4 dígitos de la licencia), obligatoria en semana/mes. Stripe Identity queda detrás de un ajuste, sin activar.
   - Las reservas telefónicas no tienen tarjeta: el depósito se gestiona en persona.
+- **Temporadas.** Alta del 1 abr al 30 sep (editable en Settings, formato MM-DD). El precio sale de la fecha de inicio: día $50/$45, fin de semana $85/$75, semana $160/$140, mes $420/$300. Un cubo de bolas va incluido; cubo extra +$8. En temporada alta se puede limitar cuántos alquileres de mes se aceptan por mes (por defecto 1; 0 = no se ofrecen).
+- **Términos y waiver (clickwrap).** Antes de pagar, dos casillas sin marcar (términos + waiver, y mayor de 19). El botón de pago queda desactivado hasta marcarlas. Cada aceptación guarda versión, SHA-256 del texto, IP, navegador y hora (`WaiverAcceptance`). Los textos viven versionados en `LegalDocument` (Admin → Terms & waiver) y nunca se borran. Ninguna reserva se confirma sin aceptación, tampoco desde el webhook: si el pago llega sin ella, el horario queda retenido y el cliente recibe un enlace `/accept/…` para aceptar. Las reservas telefónicas mandan ese enlace automáticamente.
+- **Impuestos.** Apagados por defecto. GST/PST solo se cobran con el interruptor encendido **y** el número de registro guardado; si no, el sitio dice "Prices in CAD".
 - **Precios.** Se calculan siempre en el servidor, en centavos, y se guarda una copia en cada reserva.
 - **Códigos promocionales.** Se crean en Admin → Promo codes (% o monto fijo, fechas, usos máximos, tipos de alquiler). El cliente lo escribe justo antes de pagar; el descuento se aplica antes de impuestos, nunca baja el cobro de $1 (el pago con tarjeta es lo que guarda la tarjeta para el depósito) y no afecta el depósito. El seed crea `FIRSTSERVE` (10%) para probar.
 - **Entrega y recogida (pagadas).** Recoger y devolver en el punto del centro es gratis. Si el cliente prefiere, compramos los trayectos: *drop-off* (la llevamos), *collection* (la recogemos) o ambos (ida y vuelta, más barato que dos viajes). Precio fijo por trayecto según la distancia en línea recta desde el centro: zona 1 hasta 5 km ($15 / $25 ida y vuelta), zona 2 hasta 12 km ($25 / $40), zona 3 hasta 20 km ($35 / $60); más lejos solo autoservicio online. Todo editable en Admin → Settings. Los paquetes mensuales incluyen ida y vuelta a la cancha.
-  - GST y PST se configuran en el admin. ⚠️ **Confírmalos con tu contador**, sobre todo si el PST aplica al alquiler de equipo.
 - **Hora de BC.** Todo el sitio funciona en hora de Victoria: horarios, calendario, emails y admin se calculan en el servidor.
   - Desde el 1 de noviembre de 2026 BC queda en UTC-7 fijo, sin más cambios de hora.
   - `src/lib/time.ts` lo aplica aunque el runtime tenga datos de zona horaria antiguos.
@@ -149,15 +152,16 @@ Eventos de webhook necesarios:
 
 ## Pendiente de configurar antes de lanzar
 
+- [ ] **Datos reales de contacto** (Admin → Settings → Business details): teléfono, email, dominio, dirección del punto de recogida e Instagram. Mientras estén vacíos, el sitio simplemente no los muestra.
+- [ ] **Revisión legal**: los términos y el waiver son borradores (Admin → Terms & waiver, marcados DRAFT solo en el admin). Un abogado de BC debe revisarlos; publica la versión revisada y pulsa *Mark lawyer-reviewed*.
+- [ ] **Seguro de responsabilidad civil**: mientras no esté en Settings, el dashboard muestra "No liability insurance on file".
+- [ ] **Licencia municipal** (business licence) en Settings.
+- [ ] **Impuestos**: cuando te registres para GST/PST, enciéndelos y guarda los números (confírmalo con tu contador).
 - [ ] **Claves reales**: Stripe live (y su webhook), Resend con el dominio verificado (`EMAIL_FROM`), `ADMIN_ALERT_EMAIL`, Twilio si quieres SMS.
-- [ ] **Dominio** y `NEXT_PUBLIC_SITE_URL`. Revisa `brand.contact` (email, teléfono, Instagram) en `src/config/brand.ts`.
-- [ ] **Textos legales**: `src/content/legal/*.en.tsx` son borradores. Requieren revisión por un abogado de BC (términos, responsabilidad por daños, PIPA/PIPEDA).
-- [ ] **Impuestos**: confirma GST/PST con tu contador (Admin → Settings).
-- [ ] **Datos de ejemplo**: specs de la PONGBOT Aura/Pace S, ubicación de las canchas (ajústala con el mapa del admin), sesiones de grupo, testimonios (marcados como "Sample") y guía rápida (`/account/guide`). Verifícalos con el manual del fabricante.
+- [ ] **Base de datos de producción** (Neon) y `npm run db:seed`.
+- [ ] **Foto de la Aura S**: confirma que tienes permiso de PONGBOT para usarla.
 - [ ] **Contraseña del admin**: cambia la del seed. Para magic link del admin hace falta `RESEND_API_KEY`.
-- [ ] **Pickup**: añade la dirección de recogida al email de confirmación.
 - [ ] **Stripe Customer Portal** activado para los paquetes.
-- [ ] Opcional: fotos reales de las máquinas (Admin → Machines) y textos editables (Admin → Settings → Site texts).
 
 ## Notas
 

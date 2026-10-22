@@ -8,6 +8,7 @@ import { notifyRescheduled } from "@/lib/notify/booking-notifications";
 import { createBooking, lockMachine, rescheduleBooking } from "@/lib/services/bookings";
 import { BookingError, isOverlapError } from "@/lib/services/errors";
 import { geocodeAddress } from "@/lib/services/geocode";
+import { notifyAcceptanceNeeded } from "@/lib/notify/booking-notifications";
 import { addLocalDays, localDateMinuteToUtc, toLocalMinute } from "@/lib/time";
 
 export type CalResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -66,7 +67,7 @@ export async function createManualBookingAction(
       machineId: d.machineId,
       startsAt: localDateMinuteToUtc(d.date, h * 60 + m),
       customer: { name: d.name, email: d.email || null, phone: d.phone || null },
-      balls: d.balls,
+      extraBalls: d.balls,
       fulfillment: d.fulfillment,
       dropoff: d.trips !== "COLLECTION",
       collection: d.trips !== "DROPOFF",
@@ -75,11 +76,16 @@ export async function createManualBookingAction(
       deliveryPoint: point,
       customerNotes: d.notes || null,
       channel: "ADMIN",
-      termsAccepted: false,
       skipSlotRules: true,
     });
+    // Phone bookings: the customer accepts the Terms & Waiver through a link.
+    await notifyAcceptanceNeeded(booking.id).catch((e) => console.error("acceptance link", e));
     revalidatePath("/admin/calendar");
-    return { ok: true, message: `Booking ${booking.code} created.`, bookingId: booking.id };
+    return {
+      ok: true,
+      message: `Booking ${booking.code} created. We sent the customer the link to accept the terms.`,
+      bookingId: booking.id,
+    };
   } catch (e) {
     if (e instanceof z.ZodError) return { ok: false, error: "Please fill in all required fields." };
     return fail(e);

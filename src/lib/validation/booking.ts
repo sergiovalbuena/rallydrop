@@ -30,7 +30,10 @@ export const contactSchema = z
 
 export const extrasSchema = z
   .object({
-    balls: z.boolean(),
+    /** Optional extra bucket — balls are included in every rental. */
+    extraBalls: z.boolean().default(false),
+    /** RallyDrop Care damage protection. */
+    care: z.boolean().default(false),
     /** Where we meet: PICKUP = self-serve at the hub (no trips). */
     fulfillment: z.enum(["PICKUP", "DELIVERY_COURT", "DELIVERY_ADDRESS"]),
     /** Paid trips: we bring it / we come back for it. */
@@ -64,7 +67,6 @@ export const checkoutSchema = z.object({
   extras: extrasSchema,
   contact: contactSchema,
   notes: optionalText(500),
-  termsAccepted: z.literal(true, { error: "Please accept the rental terms." }),
   promoCode: promoCodeSchema,
 });
 
@@ -73,8 +75,17 @@ export type CheckoutInput = z.input<typeof checkoutSchema>;
 export const quoteSchema = z.object({
   productId: z.string().min(1),
   machineId: z.string().min(1),
+  /** Picks the season price; omitted before a date is chosen. */
+  startsAt: z.iso.datetime().nullish(),
   extras: extrasSchema,
   promoCode: promoCodeSchema,
+});
+
+/** The two clickwrap boxes + the exact documents shown. */
+export const consentSchema = z.object({
+  termsId: z.string().min(1),
+  waiverId: z.string().min(1),
+  boxes: z.array(z.string()).max(5),
 });
 
 export type QuoteInput = z.input<typeof quoteSchema>;

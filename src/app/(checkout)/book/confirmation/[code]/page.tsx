@@ -45,10 +45,12 @@ async function Confirmation({
 
   // Covers redirect-based payments (3-D Secure) that return here directly.
   let status = booking.status;
+  let awaitingTerms = false;
   if (status === "PENDING_PAYMENT" || status === "EXPIRED") {
     const r = await finalizeRentalPayment(booking.id).catch(() => null);
     if (r?.status === "confirmed") status = "CONFIRMED";
     if (r?.status === "slot_lost") status = "CANCELLED";
+    awaitingTerms = r?.status === "awaiting_terms";
   }
 
   const contact = booking.customer.email ?? booking.customer.phone ?? "";
@@ -94,7 +96,9 @@ async function Confirmation({
       <h1 className="mt-4 font-display text-4xl font-extrabold uppercase">
         {failed ? t("failedTitle") : t("pendingTitle")}
       </h1>
-      <p className="mt-3 text-muted-foreground">{failed ? t("failedBody") : t("pendingBody")}</p>
+      <p className="mt-3 text-muted-foreground">
+        {failed ? t("failedBody") : awaitingTerms ? t("awaitingTerms") : t("pendingBody")}
+      </p>
       <Button asChild className="mt-6">
         <Link href={failed ? "/book" : `/book/confirmation/${booking.code}?b=${booking.id}`}>
           {failed ? t("title") : "Refresh"}

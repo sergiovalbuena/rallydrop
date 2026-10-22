@@ -14,11 +14,6 @@ export const brand = {
   timeZone: "America/Vancouver",
   currency: "cad",
   locale: "en-CA",
-  contact: {
-    email: "hello@rallydrop.ca",
-    phone: "+1 (250) 555-0142",
-    instagram: "https://instagram.com/rallydrop",
-  },
   /**
    * Postal-code areas (FSA) treated as delivery zone 1 when an address
    * can't be located on the map. Roughly downtown Victoria + 5 km.

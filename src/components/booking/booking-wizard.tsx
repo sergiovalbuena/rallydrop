@@ -4,7 +4,17 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CalendarCheck, Lock, MapPin, ShieldCheck, TicketPercent, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarCheck,
+  CircleCheck,
+  Lock,
+  MapPin,
+  ShieldCheck,
+  TicketPercent,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -16,8 +26,10 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { Quote } from "@/lib/domain/pricing";
 import type { DeliveryResolution } from "@/lib/domain/delivery";
+import { seasonalPrice } from "@/lib/domain/season";
 import { contactSchema, fieldErrors } from "@/lib/validation/booking";
 import {
+  acceptTermsAction,
   checkoutAction,
   finalizeAction,
   quoteAction,
@@ -56,7 +68,8 @@ export function BookingWizard({
   const [machineId, setMachineId] = useState<string | null>(startMachine?.id ?? null);
   const [when, setWhen] = useState<{ date: string | null; slot: Slot | null }>({ date: null, slot: null });
   const [extras, setExtras] = useState<Extras>({
-    balls: true,
+    extraBalls: false,
+    care: false,
     fulfillment: "DELIVERY_COURT",
     dropoff: true,
     collection: true,
@@ -69,7 +82,6 @@ export function BookingWizard({
     phone: "",
     skillLevel: "",
     notes: "",
-    termsAccepted: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -88,12 +100,13 @@ export function BookingWizard({
   const steps = [t("stepProduct"), t("stepMachine"), t("stepWhen"), t("stepExtras"), t("stepDetails"), t("stepPay")];
 
   // Live price: recompute whenever the selection changes (debounced for typing).
-  const quoteKey = JSON.stringify({ productId, machineId, extras, promo });
+  const startsAt = when.slot?.start ?? null;
+  const quoteKey = JSON.stringify({ productId, machineId, extras, promo, startsAt });
   useEffect(() => {
     if (!productId || !machineId) return;
     const handle = setTimeout(() => {
       startQuoting(async () => {
-        const r = await quoteAction({ productId, machineId, extras, promoCode: promo });
+        const r = await quoteAction({ productId, machineId, extras, promoCode: promo, startsAt });
         if (r.ok) {
           setQuote(r.quote);
           setDelivery(r.delivery);
@@ -149,7 +162,7 @@ export function BookingWizard({
       return;
     }
     startApplyingPromo(async () => {
-      const r = await quoteAction({ productId, machineId, extras, promoCode: code });
+      const r = await quoteAction({ productId, machineId, extras, promoCode: code, startsAt });
       if (!r.ok) {
         setPromoError(r.error);
         return;
@@ -184,7 +197,6 @@ export function BookingWizard({
       skillLevel: contact.skillLevel || null,
     });
     const e = r.success ? {} : fieldErrors(r.error);
-    if (!contact.termsAccepted) e.terms = "Please accept the rental terms.";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -204,7 +216,6 @@ export function BookingWizard({
         skillLevel: contact.skillLevel || null,
       },
       notes: contact.notes,
-      termsAccepted: contact.termsAccepted as true,
       promoCode: promo,
     });
     setSubmitting(false);
@@ -269,7 +280,12 @@ export function BookingWizard({
           delivery?.status === "ok"))) ||
     step === 4;
 
-  const ballsAddOn = catalog.addOns.find((a) => a.kind === "BALLS");
+  const extraAddOn = catalog.addOns.find((a) => a.kind === "EXTRA_BALLS");
+  const carePrice = product ? (catalog.care?.[product.kind] ?? null) : null;
+  // Prices follow the season of the start date (today until a date is picked).
+  const priceDate = when.date ?? catalog.today;
+  const priceOf = (p: (typeof catalog.products)[number]) => seasonalPrice(p, priceDate, catalog.season);
+  const longRental = !!product?.durationHours && product.durationHours > catalog.depositAuthMaxDays * 24;
 
   const header = (
     <div className="mt-3 space-y-1 text-sm">
@@ -297,6 +313,7 @@ export function BookingWizard({
               <div className="grid gap-3 sm:grid-cols-2">
                 {catalog.products.map((p) => {
                   const days = (p.durationHours ?? 24) / 24;
+                  const price = priceOf(p);
                   return (
                     <OptionCard
                       key={p.id}
@@ -315,10 +332,15 @@ export function BookingWizard({
                       }
                       aside={
                         <span className="block text-right">
-                          <span className="tabular">{formatCentsShort(p.priceCents)}</span>
+                          <span className="tabular">{formatCentsShort(price.cents)}</span>
                           {days >= 2 && (
                             <span className="block font-sans text-xs font-semibold text-success">
-                              {t("perDay", { price: formatCentsShort(Math.round(p.priceCents / days / 100) * 100) })}
+                              {t("perDay", { price: formatCentsShort(Math.round(price.cents / days / 100) * 100) })}
+                            </span>
+                          )}
+                          {price.offSeason && price.cents < p.priceCents && (
+                            <span className="block font-sans text-[11px] font-medium text-muted-foreground">
+                              {t("offSeasonPrice")}
                             </span>
                           )}
                         </span>
@@ -358,6 +380,9 @@ export function BookingWizard({
                     aside={
                       <span className="text-sm font-semibold text-muted-foreground">
                         {tc("deposit")} {formatCentsShort(m.depositCents)}
+                        <span className="block text-xs font-normal">
+                          {t("depositLongShort", { amount: formatCentsShort(m.depositLongCents) })}
+                        </span>
                       </span>
                     }
                   >
@@ -375,20 +400,46 @@ export function BookingWizard({
           {step === 3 && (
             <div className="space-y-8">
               <h2 className="font-display text-2xl font-extrabold uppercase sm:text-3xl">{t("extrasTitle")}</h2>
-              {ballsAddOn && (
-                <label className="flex cursor-pointer items-start gap-4 rounded-xl border bg-card p-4 has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50">
+              <p className="flex items-center gap-2 rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">
+                <CircleCheck className="size-4 shrink-0" aria-hidden /> {t("ballsIncluded")}
+              </p>
+              {carePrice !== null && (
+                <label className="flex cursor-pointer items-start gap-4 rounded-xl border bg-card p-4 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50">
                   <Checkbox
-                    checked={extras.balls}
-                    onCheckedChange={(v) => setExtras((e) => ({ ...e, balls: v === true }))}
+                    checked={extras.care}
+                    onCheckedChange={(v) => setExtras((e) => ({ ...e, care: v === true }))}
                     className="mt-0.5"
-                    aria-label={t("balls")}
+                    aria-label={t("careTitle")}
                   />
                   <span className="flex-1">
                     <span className="flex justify-between gap-3 font-semibold">
-                      {t("balls")}{" "}
-                      <span className="font-display text-xl">+{formatCentsShort(ballsAddOn.priceCents)}</span>
+                      <span className="flex items-center gap-2">
+                        <ShieldCheck className="size-4 text-primary" aria-hidden /> {t("careTitle")}
+                      </span>
+                      <span className="font-display text-xl">+{formatCentsShort(carePrice)}</span>
                     </span>
-                    <span className="text-sm text-muted-foreground">{ballsAddOn.description}</span>
+                    <span className="mt-1 block text-sm text-muted-foreground">
+                      {t("careBody", { cap: formatCentsShort(catalog.careCapCents) })}
+                    </span>
+                  </span>
+                </label>
+              )}
+              {extraAddOn && (
+                <label className="flex cursor-pointer items-start gap-4 rounded-xl border bg-card p-4 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50">
+                  <Checkbox
+                    checked={extras.extraBalls}
+                    onCheckedChange={(v) => setExtras((e) => ({ ...e, extraBalls: v === true }))}
+                    className="mt-0.5"
+                    aria-label={extraAddOn.name}
+                  />
+                  <span className="flex-1">
+                    <span className="flex justify-between gap-3 font-semibold">
+                      {extraAddOn.name}
+                      <span className="font-display text-xl">+{formatCentsShort(extraAddOn.priceCents)}</span>
+                    </span>
+                    {extraAddOn.description && (
+                      <span className="text-sm text-muted-foreground">{extraAddOn.description}</span>
+                    )}
                   </span>
                 </label>
               )}
@@ -572,29 +623,6 @@ export function BookingWizard({
                   onChange={(e) => setContact((c) => ({ ...c, notes: e.target.value }))}
                 />
               </Field>
-              <div className="space-y-1">
-                <label className="flex cursor-pointer items-start gap-3 text-sm">
-                  <Checkbox
-                    checked={contact.termsAccepted}
-                    onCheckedChange={(v) => setContact((c) => ({ ...c, termsAccepted: v === true }))}
-                    aria-invalid={!!errors.terms}
-                    aria-describedby={errors.terms ? "terms-error" : undefined}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    {t("terms")}{" "}
-                    <Link href="/terms" target="_blank" className="text-primary underline">
-                      {t("termsLink")}
-                    </Link>
-                  </span>
-                </label>
-                {errors.terms && (
-                  <p id="terms-error" className="text-sm text-destructive">
-                    {errors.terms}
-                  </p>
-                )}
-              </div>
-
               {/* Promo code — last thing before payment. Not a nested form: Enter applies it. */}
               <div className="rounded-2xl border border-dashed bg-muted/40 p-4">
                 <Label htmlFor="promo" className="flex items-center gap-2">
@@ -663,6 +691,13 @@ export function BookingWizard({
                 code={checkout.code}
                 holdExpiresAt={checkout.holdExpiresAt}
                 finalize={finalizeAction}
+                accept={acceptTermsAction}
+                consentDocs={catalog.legal}
+                depositNote={
+                  longRental
+                    ? t("depositSavedAmount", { amount: formatCentsShort(machine?.depositLongCents ?? 0) })
+                    : t("depositHoldAmount", { amount: formatCentsShort(machine?.depositCents ?? 0) })
+                }
                 onExpired={onExpired}
                 confirmationPath={`/book/confirmation/${checkout.code}?b=${checkout.bookingId}`}
               />

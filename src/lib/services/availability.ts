@@ -46,8 +46,8 @@ export function rulesFor(
     minLeadHours: settings.minLeadTimeHours,
     maxAdvanceDays: settings.maxAdvanceDays,
     season: {
-      startMonth: settings.seasonStartMonth,
-      endMonth: settings.seasonEndMonth,
+      start: settings.seasonStart,
+      end: settings.seasonEnd,
       allowOffSeason: settings.allowOffSeason,
     },
     now,

@@ -31,8 +31,37 @@ model Settings {
   id String @id @default("default")
 
   // Taxes — owner must confirm rates and applicability with their accountant.
-  gstBps Int @default(500) // 5%
-  pstBps Int @default(700) // 7%
+  // A small supplier that isn't registered must not charge GST, so both are
+  // off by default and can only be switched on with a registration number.
+  gstBps    Int     @default(500) // 5%
+  pstBps    Int     @default(700) // 7%
+  chargeGst Boolean @default(false)
+  chargePst Boolean @default(false)
+  gstNumber String?
+  pstNumber String?
+
+  // Site & business details (blank = hidden on the site)
+  siteDomain   String?
+  hubAddress   String? // self-serve pick-up point
+  instagramUrl String?
+
+  // Insurance & licence (shown on the site only when filled in)
+  insuranceProvider           String?
+  insurancePolicyNumber       String?
+  insuranceCoverageCents      Int?
+  businessLicenceNumber       String?
+  businessLicenceMunicipality String?
+
+  // RallyDrop Care (damage protection add-on)
+  careEnabled    Boolean @default(true)
+  careShortCents Int     @default(800) // day & weekend
+  careWeekCents  Int     @default(1500)
+  careMonthCents Int     @default(2500)
+  /// Most a Care customer pays for accidental damage.
+  careCapCents   Int     @default(10000)
+
+  /// Long rentals: how the renter's ID is checked at hand-off.
+  identityCheck IdentityCheck @default(MANUAL)
 
   // Booking rules
   bufferMinutes        Int @default(120) // battery charge + cleaning between rentals
@@ -62,11 +91,15 @@ model Settings {
   /// Beyond the last zone we don't deliver online.
   deliveryZones       Json    @default("[{\"maxKm\":5,\"tripCents\":1500,\"roundTripCents\":2500},{\"maxKm\":12,\"tripCents\":2500,\"roundTripCents\":4000},{\"maxKm\":20,\"tripCents\":3500,\"roundTripCents\":6000}]")
 
-  // Season (high season only affects messaging/defaults; blackouts block dates)
-  seasonStartMonth Int     @default(4) // April
-  seasonEndMonth   Int     @default(9) // September
+  // High season (inclusive, "MM-DD", Vancouver dates). Prices switch on the
+  // rental's start date; outside it the off-season prices apply.
+  seasonStart        String  @default("04-01")
+  seasonEnd          String  @default("09-30")
   /// When false, bookings outside the season are refused entirely.
-  allowOffSeason   Boolean @default(true)
+  allowOffSeason     Boolean @default(true)
+  /// Month rentals block four weekends: cap how many can start per calendar
+  /// month in high season (null = no limit, 0 = not offered in high season).
+  highSeasonMonthCap Int?    @default(1)
 
   // Notifications
   smsEnabled Boolean @default(false) // also requires Twilio env vars
@@ -105,6 +138,11 @@ enum MachineStatus {
   RETIRED
 }
 
+enum IdentityCheck {
+  MANUAL // admin ticks "ID verified" + licence last 4 at hand-off
+  STRIPE_IDENTITY // feature flag, not wired yet
+}
+
 enum Sport {
   TENNIS
   PICKLEBALL
@@ -127,6 +165,8 @@ model Machine {
   status        MachineStatus @default(AVAILABLE)
   /// False = listed on the site as "Coming soon" but not bookable yet.
   bookable      Boolean       @default(true)
+  /// Hidden machines never appear on the public site (any page).
+  isPublic      Boolean       @default(true)
   /// Admin-set colour for the master calendar (hex).
   calendarColor String        @default("#1d4ed8")
   sortOrder     Int           @default(0)
@@ -140,9 +180,14 @@ model Machine {
   levels       SkillLevel[]
   specs        Json? // free-form extra rows: [{ label, value }]
 
-  depositCents Int     @default(30000)
+  /// Card hold for rentals up to Settings.depositAuthMaxDays.
+  depositCents      Int     @default(40000)
+  /// Saved-card deposit for week & month rentals.
+  depositLongCents  Int     @default(60000)
+  /// What the machine cost (admin payback tracking).
+  purchaseCostCents Int?
   /// Comes with the AI coach (camera module): highlighted on the site.
-  aiCoach      Boolean @default(false)
+  aiCoach           Boolean @default(false)
 
   createdAt DateTime @default(now()) @db.Timestamptz
   updatedAt DateTime @updatedAt @db.Timestamptz
@@ -197,14 +242,17 @@ enum ProductKind {
 }
 
 model Product {
-  id          String      @id @default(cuid())
-  slug        String      @unique // "day", "weekend", "package-basic"...
-  kind        ProductKind
-  name        String
-  description String?
-  priceCents  Int
-  active      Boolean     @default(true)
-  sortOrder   Int         @default(0)
+  id                  String      @id @default(cuid())
+  slug                String      @unique // "day", "weekend", "package-basic"...
+  kind                ProductKind
+  name                String
+  description         String?
+  /// High-season price (and the only price for non-rental products).
+  priceCents          Int
+  /// Off-season price for rentals; null = same as priceCents.
+  offSeasonPriceCents Int?
+  active              Boolean     @default(true)
+  sortOrder           Int         @default(0)
 
   /// Rental length for DAY/WEEKEND/WEEK/MONTH: DAY = 25 h (owner's choice),
   /// WEEKEND = 48 h, WEEK = 168 h, MONTH = 720 h.
@@ -230,7 +278,8 @@ model Product {
 }
 
 enum AddOnKind {
-  BALLS
+  /// Balls are included in every rental; this is the optional extra bucket.
+  EXTRA_BALLS
 }
 
 model AddOn {
@@ -350,6 +399,7 @@ model Customer {
   bookings      Booking[]
   subscriptions Subscription[]
   enrollments   GroupEnrollment[]
+  acceptances   WaiverAcceptance[]
   otpCodes      CustomerOtp[]
   sessions      CustomerSession[]
 }
@@ -448,6 +498,11 @@ model Booking {
   deliveryKm       Decimal?          @db.Decimal(5, 2)
   /// Snapshot of what the trips cost (part of subtotalCents).
   deliveryFeeCents Int               @default(0)
+  /// RallyDrop Care bought for this rental (snapshot of its price).
+  care             Boolean           @default(false)
+  careCents        Int               @default(0)
+  /// The off-season price applied (by start date).
+  offSeason        Boolean           @default(false)
   customerNotes    String?
 
   // Price snapshot at booking time (cents). Product price changes never
@@ -474,6 +529,7 @@ model Booking {
   updatedAt DateTime @updatedAt @db.Timestamptz
 
   addOns      BookingAddOn[]
+  acceptances WaiverAcceptance[]
   occupancy   MachineOccupancy?
   deposit     Deposit?
   payments    Payment[]
@@ -531,6 +587,14 @@ model Inspection {
   condition      MachineCondition
   batteryPercent Int?
   ballsCount     Int?
+  /// Hand-off checklist (each item checked separately).
+  machineOk      Boolean?
+  spotterOk      Boolean?
+  batteryOk      Boolean?
+  chargerOk      Boolean?
+  /// Long rentals: ID seen at hand-off.
+  idVerified     Boolean          @default(false)
+  licenceLast4   String?
   notes          String?
   /// Uploaded to Vercel Blob / Supabase Storage; URLs only.
   photoUrls      String[]
@@ -572,9 +636,11 @@ model Deposit {
   status    DepositStatus   @default(PENDING)
 
   amountCents   Int // snapshot of machine.depositCents
-  capturedCents Int     @default(0)
+  capturedCents Int            @default(0)
   /// Required whenever capturedCents > 0.
   captureNote   String?
+  /// RallyDrop Care exclusion used to charge above the Care cap.
+  careExclusion CareExclusion?
 
   stripePaymentIntentId String?   @unique
   stripePaymentMethodId String?
@@ -861,4 +927,86 @@ model PromoCode {
   updatedAt      DateTime      @updatedAt @db.Timestamptz
 
   bookings Booking[]
+}
+
+// -----------------------------------------------------------------------------
+// Legal: versioned documents and click-through acceptance (clickwrap)
+// -----------------------------------------------------------------------------
+
+enum LegalKind {
+  TERMS
+  WAIVER
+}
+
+enum CareExclusion {
+  THEFT
+  LOSS
+  RAIN
+  GROSS_NEGLIGENCE
+}
+
+/// Every published version of the rental terms and the waiver. Never delete
+/// rows: acceptances point at the exact text the customer agreed to.
+model LegalDocument {
+  id          String    @id @default(cuid())
+  kind        LegalKind
+  version     String // e.g. "2026-10-22"
+  title       String
+  /// Markdown-ish text (## headings, - lists, **bold**).
+  body        String
+  /// SHA-256 of `body`, hex.
+  sha256      String
+  /// Draft = not reviewed by a lawyer yet (badge shown in admin only).
+  draft       Boolean   @default(true)
+  /// Null until published; the latest published version is the live one.
+  publishedAt DateTime? @db.Timestamptz
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+
+  termsAcceptances  WaiverAcceptance[] @relation("terms")
+  waiverAcceptances WaiverAcceptance[] @relation("waiver")
+
+  @@unique([kind, version])
+  @@index([kind, publishedAt])
+}
+
+/// Proof a customer ticked the boxes: who, which exact texts, when, from where.
+model WaiverAcceptance {
+  id              String        @id @default(cuid())
+  bookingId       String?
+  booking         Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customerId      String?
+  customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  name            String
+  contact         String // email or phone from the booking
+  termsId         String
+  terms           LegalDocument @relation("terms", fields: [termsId], references: [id])
+  waiverId        String
+  waiver          LegalDocument @relation("waiver", fields: [waiverId], references: [id])
+  termsVersion    String
+  termsSha256     String
+  waiverVersion   String
+  waiverSha256    String
+  /// Boxes ticked, e.g. ["terms_waiver", "age_19"].
+  checkboxes      Json
+  /// "checkout" | "accept_link" | "package" | "carried_over"
+  method          String
+  ip              String?
+  userAgent       String?
+  acceptedAt      DateTime      @default(now()) @db.Timestamptz
+  /// Same instant in America/Vancouver, human readable.
+  acceptedAtLocal String
+
+  @@index([bookingId])
+  @@index([customerId, acceptedAt])
+}
+
+/// Customer reviews shown on the site (only when 2+ are published).
+model Review {
+  id           String   @id @default(cuid())
+  customerName String
+  text         String
+  rating       Int      @default(5)
+  reviewedOn   DateTime @db.Date
+  published    Boolean  @default(false)
+  createdAt    DateTime @default(now()) @db.Timestamptz
 }

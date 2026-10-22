@@ -12,6 +12,8 @@ import {
   ShoppingBag,
   TicketPercent,
   BellRing,
+  FileText,
+  Star,
   Users,
   UsersRound,
   Wrench,
@@ -28,6 +30,8 @@ const ITEMS = [
   { href: "/admin/products", label: "Prices & products", icon: ShoppingBag },
   { href: "/admin/promo-codes", label: "Promo codes", icon: TicketPercent },
   { href: "/admin/waitlist", label: "Waitlist", icon: BellRing },
+  { href: "/admin/reviews", label: "Reviews", icon: Star },
+  { href: "/admin/legal", label: "Terms & waiver", icon: FileText },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/export", label: "Export", icon: Download },
 ];

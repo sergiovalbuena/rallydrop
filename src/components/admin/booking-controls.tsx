@@ -23,9 +23,11 @@ import {
   recordManualPaymentAction,
   refundAction,
   releaseDepositAction,
+  sendAcceptanceLinkAction,
   setStatusAction,
 } from "@/app/admin/(panel)/bookings/actions";
 import type { BookingStatus, DepositStatus } from "@/generated/prisma/client";
+import { formatCents } from "@/lib/money";
 import { STATUS_LABEL } from "./ui";
 import { useAdminAction } from "./use-action";
 
@@ -68,14 +70,20 @@ export function DepositControls({
   status,
   amount,
   canCharge,
+  careCapCents,
 }: {
   bookingId: string;
   status: DepositStatus;
   amount: number;
   canCharge: boolean;
+  /** Set when the customer bought RallyDrop Care: charges are capped unless an exclusion applies. */
+  careCapCents?: number | null;
 }) {
   const { run, pending } = useAdminAction();
-  const [captureAmount, setCaptureAmount] = useState((amount / 100).toFixed(2));
+  const [exclusion, setExclusion] = useState("");
+  const capped = careCapCents != null && !exclusion;
+  const max = capped ? Math.min(amount, careCapCents) : amount;
+  const [captureAmount, setCaptureAmount] = useState((max / 100).toFixed(2));
   const [note, setNote] = useState("");
   const open = ["HELD", "CARD_SAVED", "PENDING", "FAILED"].includes(status);
   if (!open) return null;
@@ -87,6 +95,28 @@ export function DepositControls({
       {canCharge && (
         <div className="space-y-3 rounded-lg border p-4">
           <p className="text-sm font-semibold">Charge for damage</p>
+          {careCapCents != null && (
+            <div className="space-y-2 rounded-md bg-primary/5 p-3 text-sm">
+              <p>
+                <strong>RallyDrop Care:</strong> accidental damage is capped at {formatCents(careCapCents)}. Choose an
+                exclusion (and explain it in the note) to charge more.
+              </p>
+              <NativeSelect
+                aria-label="Care exclusion"
+                value={exclusion}
+                onChange={(e) => {
+                  setExclusion(e.target.value);
+                  if (!e.target.value) setCaptureAmount((Math.min(amount, careCapCents) / 100).toFixed(2));
+                }}
+              >
+                <option value="">No exclusion — accidental damage (capped)</option>
+                <option value="THEFT">Theft</option>
+                <option value="LOSS">Loss</option>
+                <option value="RAIN">Used in the rain / wet court</option>
+                <option value="GROSS_NEGLIGENCE">Gross negligence</option>
+              </NativeSelect>
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
             <div className="space-y-1.5">
               <Label htmlFor="capture-amount">Amount (CAD)</Label>
@@ -112,13 +142,15 @@ export function DepositControls({
             variant="destructive"
             disabled={pending || !note.trim()}
             onClick={async () => {
-              if (await run(() => captureDepositAction(bookingId, captureAmount, note))) setNote("");
+              if (await run(() => captureDepositAction(bookingId, captureAmount, note, exclusion || undefined)))
+                setNote("");
             }}
           >
             Charge deposit
           </Button>
           <p className="text-xs text-muted-foreground">
-            A hold can only be captured once — any remaining amount is released automatically.
+            Up to {formatCents(max)} now. A hold can only be captured once — any remaining amount is released
+            automatically.
           </p>
         </div>
       )}
@@ -204,10 +236,27 @@ export function InspectionForm({
   bookingId,
   kind,
   defaults,
+  requireId = false,
+  spotter = true,
 }: {
   bookingId: string;
   kind: "CHECK_OUT" | "CHECK_IN";
-  defaults?: { condition: string; batteryPercent: number | null; ballsCount: number | null; notes: string | null };
+  defaults?: {
+    condition: string;
+    batteryPercent: number | null;
+    ballsCount: number | null;
+    notes: string | null;
+    machineOk: boolean | null;
+    spotterOk: boolean | null;
+    batteryOk: boolean | null;
+    chargerOk: boolean | null;
+    idVerified: boolean;
+    licenceLast4: string | null;
+  };
+  /** Week & month rentals: ID check required at check-out. */
+  requireId?: boolean;
+  /** Machine has the Spotter AI camera module. */
+  spotter?: boolean;
 }) {
   const { run, pending } = useAdminAction();
   const id = (s: string) => `${kind}-${s}`;
@@ -252,6 +301,56 @@ export function InspectionForm({
           />
         </div>
       </div>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">
+          Checklist — each item {kind === "CHECK_OUT" ? "handed over" : "back"} and OK
+        </legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {[
+            ["machineOk", "Machine"],
+            ...(spotter ? [["spotterOk", "Spotter camera module"]] : []),
+            ["batteryOk", "Battery"],
+            ["chargerOk", "Charger"],
+          ].map(([name, label]) => (
+            <label key={name} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name={name}
+                defaultChecked={!!defaults?.[name as "machineOk"]}
+                className="size-4 accent-primary"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {kind === "CHECK_OUT" && (
+        <fieldset className="grid gap-3 rounded-lg border p-3 sm:grid-cols-2">
+          <legend className="px-1 text-sm font-medium">
+            ID check {requireId ? "(required — week/month rental)" : "(optional)"}
+          </legend>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm">
+            <input
+              type="checkbox"
+              name="idVerified"
+              defaultChecked={defaults?.idVerified}
+              required={requireId}
+              className="size-4 accent-primary"
+            />
+            ID verified
+          </label>
+          <div className="space-y-1.5">
+            <Label htmlFor={id("licence")}>Driver&apos;s licence — last 4</Label>
+            <Input
+              id={id("licence")}
+              name="licenceLast4"
+              maxLength={4}
+              required={requireId}
+              defaultValue={defaults?.licenceLast4 ?? ""}
+            />
+          </div>
+        </fieldset>
+      )}
       <div className="space-y-1.5">
         <Label htmlFor={id("notes")}>Notes</Label>
         <Textarea id={id("notes")} name="notes" defaultValue={defaults?.notes ?? ""} className="min-h-16" />
@@ -294,6 +393,28 @@ export function ManualPaymentForm({ bookingId }: { bookingId: string }) {
         onClick={() => run(() => recordManualPaymentAction(bookingId, amount))}
       >
         Record
+      </Button>
+    </div>
+  );
+}
+
+export function AcceptanceLinkControls({ bookingId, url }: { bookingId: string; url: string }) {
+  const { run, pending } = useAdminAction();
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button size="sm" disabled={pending} onClick={() => run(() => sendAcceptanceLinkAction(bookingId))}>
+        Send link to customer
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={async () => {
+          await navigator.clipboard.writeText(url);
+          setCopied(true);
+        }}
+      >
+        {copied ? "Copied ✓" : "Copy link"}
       </Button>
     </div>
   );

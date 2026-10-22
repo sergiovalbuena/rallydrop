@@ -31,6 +31,9 @@ const machine = z.object({
   sports: z.array(z.enum(["TENNIS", "PICKLEBALL"])),
   levels: z.array(z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED", "PRO"])),
   deposit: z.string(),
+  depositLong: z.string(),
+  purchaseCost: z.string(),
+  isPublic: z.boolean(),
   imageUrl: z.string().trim().optional(),
   specs: z.string().optional(),
 });
@@ -57,6 +60,9 @@ export async function saveMachineAction(_: FormState, formData: FormData): Promi
     sports: formData.getAll("sports"),
     levels: formData.getAll("levels"),
     deposit: formData.get("deposit") ?? "0",
+    depositLong: formData.get("depositLong") ?? "0",
+    purchaseCost: formData.get("purchaseCost") ?? "",
+    isPublic: formData.get("isPublic") === "on",
     imageUrl: blank(formData.get("imageUrl")),
     specs: blank(formData.get("specs")),
   });
@@ -65,6 +71,9 @@ export async function saveMachineAction(_: FormState, formData: FormData): Promi
   const d = parsed.data;
   const depositCents = dollarsToCents(d.deposit);
   if (depositCents === null) return { ok: false, error: "Invalid deposit amount." };
+  const depositLongCents = dollarsToCents(d.depositLong);
+  if (depositLongCents === null) return { ok: false, error: "Invalid week/month deposit." };
+  const purchaseCostCents = d.purchaseCost.trim() ? dollarsToCents(d.purchaseCost) : null;
 
   let imageUrl = d.imageUrl ?? null;
   const file = formData.get("image");
@@ -97,6 +106,9 @@ export async function saveMachineAction(_: FormState, formData: FormData): Promi
     sports: d.sports,
     levels: d.levels,
     depositCents,
+    depositLongCents,
+    purchaseCostCents,
+    isPublic: d.isPublic,
     imageUrl,
     specs,
   };

@@ -8,6 +8,13 @@ import { Lock, Timer, TriangleAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { formatCents } from "@/lib/money";
+import {
+  EMPTY_CONSENT,
+  TermsConsent,
+  consentBoxes,
+  type ConsentDocs,
+  type ConsentValue,
+} from "@/components/legal/terms-consent";
 import { getStripe, stripeAppearance } from "./stripe-client";
 
 type Finalize = (
@@ -17,8 +24,16 @@ type Finalize = (
   | { status: "processing"; code: string }
   | { status: "failed"; code: string; message: string }
   | { status: "slot_lost"; code: string }
+  | { status: "awaiting_terms"; code: string }
   | { status: "error"; message: string }
 >;
+
+type Accept = (input: {
+  bookingId: string;
+  termsId: string;
+  waiverId: string;
+  boxes: string[];
+}) => Promise<{ ok: true } | { ok: false; error: string }>;
 
 export function PaymentStep(props: {
   clientSecret: string;
@@ -27,6 +42,10 @@ export function PaymentStep(props: {
   code: string;
   holdExpiresAt: string;
   finalize: Finalize;
+  /** Records the clickwrap acceptance; must succeed before the card is charged. */
+  accept: Accept;
+  consentDocs: ConsentDocs;
+  depositNote: string;
   onExpired: () => void;
   confirmationPath: string;
 }) {
@@ -74,22 +93,40 @@ function PayForm({
   code,
   holdExpiresAt,
   finalize,
+  accept,
+  consentDocs,
+  depositNote,
   onExpired,
   confirmationPath,
 }: Parameters<typeof PaymentStep>[0]) {
   const t = useTranslations("book");
+  const tc = useTranslations("consent");
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [consent, setConsent] = useState<ConsentValue>(EMPTY_CONSENT);
+  const consentOk = consent.terms_waiver && consent.age_19;
   const remaining = useCountdown(holdExpiresAt, onExpired);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements || !consentOk) return;
     setBusy(true);
     setError(null);
+    // Proof of acceptance first: no record, no charge.
+    const accepted = await accept({
+      bookingId,
+      termsId: consentDocs.terms.id,
+      waiverId: consentDocs.waiver.id,
+      boxes: consentBoxes(consent),
+    });
+    if (!accepted.ok) {
+      setError(accepted.error);
+      setBusy(false);
+      return;
+    }
     const returnUrl = `${window.location.origin}${confirmationPath}`;
     const { error: confirmError } = await stripe.confirmPayment({
       elements,
@@ -121,16 +158,28 @@ function PayForm({
         {t("holdNotice", { minutes: remaining })}
       </p>
       <PaymentElement options={{ layout: "tabs" }} />
+      <TermsConsent docs={consentDocs} value={consent} onChange={setConsent} depositNote={depositNote} />
       {error && (
         <Alert variant="destructive">
           <TriangleAlert />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <Button type="submit" size="lg" className="w-full" disabled={!stripe || busy}>
+      <Button
+        type="submit"
+        size="lg"
+        className="w-full"
+        disabled={!stripe || busy || !consentOk}
+        aria-describedby={!consentOk ? `${bookingId}-consent-hint` : undefined}
+      >
         <Lock />
         {busy ? t("processing") : t("payNow", { amount: formatCents(amountCents) })}
       </Button>
+      {!consentOk && (
+        <p id={`${bookingId}-consent-hint`} className="-mt-2 text-center text-sm font-medium text-muted-foreground">
+          {tc("tickBoth")}
+        </p>
+      )}
       <p className="text-center text-xs text-muted-foreground">
         {t("secure")} · {code}
       </p>

@@ -7,6 +7,9 @@ import { Section } from "@/components/marketing/section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listActiveAddOns, listActiveCourts, listActiveProducts, listPublicMachines } from "@/lib/services/catalog";
 import { getSettings } from "@/lib/services/settings";
+import { carePrice } from "@/lib/domain/rental";
+import { currentLegal, toConsentDocs } from "@/lib/services/legal";
+import { toLocalDate } from "@/lib/time";
 import { BookingUnavailable } from "@/components/booking/booking-unavailable";
 import { databaseConfigured } from "@/lib/services/fallback";
 
@@ -29,13 +32,19 @@ export default async function BookPage({ searchParams }: PageProps<"/book">) {
 async function Wizard({ searchParams }: { searchParams: PageProps<"/book">["searchParams"] }) {
   const params = await searchParams;
   if (!databaseConfigured()) return <BookingUnavailable />;
-  const [products, machines, addOns, courts, settings] = await Promise.all([
+  const [products, machines, addOns, courts, settings, legal] = await Promise.all([
     listActiveProducts(),
     listPublicMachines(),
     listActiveAddOns(),
     listActiveCourts(),
     getSettings(),
+    currentLegal(),
   ]);
+  const care: Catalog["care"] = {};
+  for (const kind of ["DAY", "WEEKEND", "WEEK", "MONTH"] as const) {
+    const price = carePrice(kind, settings);
+    if (price !== null) care[kind] = price;
+  }
   const catalog: Catalog = {
     products: products
       .filter((p) => RENTAL_KINDS.includes(p.kind))
@@ -46,6 +55,7 @@ async function Wizard({ searchParams }: { searchParams: PageProps<"/book">["sear
         name: p.name,
         description: p.description,
         priceCents: p.priceCents,
+        offSeasonPriceCents: p.offSeasonPriceCents,
         durationHours: p.durationHours,
       })),
     machines: machines
@@ -56,6 +66,7 @@ async function Wizard({ searchParams }: { searchParams: PageProps<"/book">["sear
         name: m.name,
         description: m.description,
         depositCents: m.depositCents,
+        depositLongCents: m.depositLongCents,
         calendarColor: m.calendarColor,
       })),
     addOns: addOns.map((a) => ({ kind: a.kind, name: a.name, description: a.description, priceCents: a.priceCents })),
@@ -64,6 +75,11 @@ async function Wizard({ searchParams }: { searchParams: PageProps<"/book">["sear
     depositAuthMaxDays: settings.depositAuthMaxDays,
     depositAuthLeadHours: settings.depositAuthLeadHours,
     deliveryZones: settings.deliveryZones,
+    season: { start: settings.seasonStart, end: settings.seasonEnd },
+    today: toLocalDate(new Date()),
+    care: settings.careEnabled ? care : null,
+    careCapCents: settings.careCapCents,
+    legal: toConsentDocs(legal),
   };
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   return <BookingWizard catalog={catalog} initialProduct={one(params.product)} initialMachine={one(params.machine)} />;

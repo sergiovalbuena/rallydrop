@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { LocationMap, type LatLng } from "@/components/maps/map";
 import {
@@ -46,8 +45,6 @@ function F({
   );
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
 type S = {
   gstPercent: number;
   pstPercent: number;
@@ -65,12 +62,30 @@ type S = {
   deliveryHubLng: number;
   /** One row per zone, dollars. */
   zones: { maxKm: number; trip: string; roundTrip: string }[];
-  seasonStartMonth: number;
-  seasonEndMonth: number;
+  seasonStart: string;
+  seasonEnd: string;
   allowOffSeason: boolean;
+  highSeasonMonthCap: string;
   smsEnabled: boolean;
   contactEmail: string;
   contactPhone: string;
+  siteDomain: string;
+  hubAddress: string;
+  instagramUrl: string;
+  chargeGst: boolean;
+  chargePst: boolean;
+  gstNumber: string;
+  pstNumber: string;
+  insuranceProvider: string;
+  insurancePolicyNumber: string;
+  insuranceCoverage: string;
+  businessLicenceNumber: string;
+  businessLicenceMunicipality: string;
+  careEnabled: boolean;
+  careShort: string;
+  careWeek: string;
+  careMonth: string;
+  careCap: string;
 };
 
 export function SettingsForm({ s }: { s: S }) {
@@ -79,12 +94,49 @@ export function SettingsForm({ s }: { s: S }) {
   return (
     <form action={action} className="space-y-8">
       <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <legend className="mb-3 font-semibold">Taxes</legend>
-        <F label="GST %" hint="Confirm rates with your accountant.">
+        <legend className="mb-1 font-semibold">Taxes</legend>
+        <p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-4">
+          Off until you&apos;re registered: a tax is only charged when it&apos;s switched on <em>and</em> its
+          registration number is saved. Confirm with your accountant when you must register.
+        </p>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="chargeGst" defaultChecked={s.chargeGst} className="size-4 accent-primary" />
+          Charge GST
+        </label>
+        <F label="GST %">
           <Input name="gstPercent" type="number" step="0.01" defaultValue={s.gstPercent} />
         </F>
-        <F label="PST %" hint="Confirm whether PST applies to rentals.">
+        <F label="GST number" className="sm:col-span-2">
+          <Input name="gstNumber" defaultValue={s.gstNumber} placeholder="123456789 RT0001" />
+        </F>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="chargePst" defaultChecked={s.chargePst} className="size-4 accent-primary" />
+          Charge PST
+        </label>
+        <F label="PST %">
           <Input name="pstPercent" type="number" step="0.01" defaultValue={s.pstPercent} />
+        </F>
+        <F label="PST number" className="sm:col-span-2">
+          <Input name="pstNumber" defaultValue={s.pstNumber} placeholder="PST-1234-5678" />
+        </F>
+      </fieldset>
+      <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <legend className="mb-1 font-semibold">RallyDrop Care (damage protection)</legend>
+        <label className="flex items-center gap-2 text-sm sm:col-span-2 lg:col-span-4">
+          <input type="checkbox" name="careEnabled" defaultChecked={s.careEnabled} className="size-4 accent-primary" />
+          Offer RallyDrop Care at checkout
+        </label>
+        <F label="Day & weekend (CAD)">
+          <Input name="careShort" inputMode="decimal" defaultValue={s.careShort} />
+        </F>
+        <F label="Week (CAD)">
+          <Input name="careWeek" inputMode="decimal" defaultValue={s.careWeek} />
+        </F>
+        <F label="Month (CAD)">
+          <Input name="careMonth" inputMode="decimal" defaultValue={s.careMonth} />
+        </F>
+        <F label="Most a Care customer pays (CAD)" hint="For accidental damage">
+          <Input name="careCap" inputMode="decimal" defaultValue={s.careCap} />
         </F>
       </fieldset>
       <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -160,30 +212,15 @@ export function SettingsForm({ s }: { s: S }) {
         })}
       </fieldset>
       <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <legend className="mb-3 font-semibold">Season & contact</legend>
-        <F label="High season from">
-          <NativeSelect name="seasonStartMonth" defaultValue={s.seasonStartMonth}>
-            {MONTHS.map((m, i) => (
-              <option key={m} value={i + 1}>
-                {m}
-              </option>
-            ))}
-          </NativeSelect>
+        <legend className="mb-3 font-semibold">Seasons</legend>
+        <F label="High season starts (MM-DD)" hint="High-season prices from this date">
+          <Input name="seasonStart" defaultValue={s.seasonStart} placeholder="04-01" pattern="\d{2}-\d{2}" />
         </F>
-        <F label="High season to">
-          <NativeSelect name="seasonEndMonth" defaultValue={s.seasonEndMonth}>
-            {MONTHS.map((m, i) => (
-              <option key={m} value={i + 1}>
-                {m}
-              </option>
-            ))}
-          </NativeSelect>
+        <F label="High season ends (MM-DD)" hint="Inclusive; off-season prices after">
+          <Input name="seasonEnd" defaultValue={s.seasonEnd} placeholder="09-30" pattern="\d{2}-\d{2}" />
         </F>
-        <F label="Contact email">
-          <Input name="contactEmail" type="email" defaultValue={s.contactEmail} />
-        </F>
-        <F label="Contact phone">
-          <Input name="contactPhone" defaultValue={s.contactPhone} />
+        <F label="Month rentals per month in high season" hint="Blank = no limit, 0 = not offered">
+          <Input name="highSeasonMonthCap" type="number" min={0} defaultValue={s.highSeasonMonthCap} />
         </F>
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
           <input
@@ -198,6 +235,59 @@ export function SettingsForm({ s }: { s: S }) {
           <input type="checkbox" name="smsEnabled" defaultChecked={s.smsEnabled} className="size-4 accent-primary" />
           Send SMS (requires Twilio keys)
         </label>
+      </fieldset>
+      <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <legend className="mb-1 font-semibold">Business details (shown on the site)</legend>
+        <p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-4">
+          Leave a field empty to hide it everywhere on the site.
+        </p>
+        <F label="Contact email">
+          <Input name="contactEmail" type="email" defaultValue={s.contactEmail} />
+        </F>
+        <F label="Contact phone">
+          <Input name="contactPhone" defaultValue={s.contactPhone} />
+        </F>
+        <F label="Domain">
+          <Input name="siteDomain" defaultValue={s.siteDomain} placeholder="rallydrop.ca" />
+        </F>
+        <F label="Instagram URL">
+          <Input name="instagramUrl" type="url" defaultValue={s.instagramUrl} />
+        </F>
+        <F label="Pick-up point address" className="sm:col-span-2 lg:col-span-4">
+          <Input name="hubAddress" defaultValue={s.hubAddress} placeholder="Shown to self-serve customers" />
+        </F>
+      </fieldset>
+      <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <legend className="mb-1 font-semibold">Insurance & licence</legend>
+        <p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-4">
+          With an insurance provider saved, the footer and the terms say “RallyDrop carries commercial general liability
+          insurance”. The licence number is shown in the footer.
+        </p>
+        <F label="Insurance provider">
+          <Input name="insuranceProvider" defaultValue={s.insuranceProvider} />
+        </F>
+        <F label="Policy number">
+          <Input name="insurancePolicyNumber" defaultValue={s.insurancePolicyNumber} />
+        </F>
+        <F label="Coverage (CAD)">
+          <Input
+            name="insuranceCoverage"
+            inputMode="decimal"
+            defaultValue={s.insuranceCoverage}
+            placeholder="2000000"
+          />
+        </F>
+        <div />
+        <F label="Business licence #">
+          <Input name="businessLicenceNumber" defaultValue={s.businessLicenceNumber} />
+        </F>
+        <F label="Licence municipality">
+          <Input
+            name="businessLicenceMunicipality"
+            defaultValue={s.businessLicenceMunicipality}
+            placeholder="City of Victoria"
+          />
+        </F>
       </fieldset>
       <Button type="submit" disabled={pending}>
         Save settings

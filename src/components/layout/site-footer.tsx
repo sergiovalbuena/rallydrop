@@ -2,16 +2,17 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Logo } from "@/components/brand/logo";
 import { brand } from "@/config/brand";
+import { getSiteInfo } from "@/lib/services/site-info";
 
 export async function SiteFooter() {
   const t = await getTranslations();
+  const site = await getSiteInfo();
   const columns = [
     {
       title: t("footer.explore"),
       links: [
         { href: "/machines", label: t("nav.machines") },
         { href: "/pricing", label: t("nav.pricing") },
-        { href: "/group-sessions", label: t("nav.groups") },
       ],
     },
     {
@@ -27,6 +28,7 @@ export async function SiteFooter() {
       title: t("footer.legal"),
       links: [
         { href: "/terms", label: t("footer.terms") },
+        { href: "/waiver", label: t("footer.waiver") },
         { href: "/privacy", label: t("footer.privacy") },
       ],
     },
@@ -37,15 +39,20 @@ export async function SiteFooter() {
         <div className="space-y-4">
           <Logo inverted />
           <p className="max-w-xs text-sm text-white/75">{t("footer.blurb")}</p>
-          <p className="text-sm text-white/75">
-            <a className="hover:text-optic" href={`mailto:${brand.contact.email}`}>
-              {brand.contact.email}
-            </a>
-            <br />
-            <a className="hover:text-optic" href={`tel:${brand.contact.phone.replace(/[^+\d]/g, "")}`}>
-              {brand.contact.phone}
-            </a>
-          </p>
+          {(site.email || site.phone) && (
+            <p className="text-sm text-white/75">
+              {site.email && (
+                <a className="block hover:text-optic" href={`mailto:${site.email}`}>
+                  {site.email}
+                </a>
+              )}
+              {site.phone && site.phoneHref && (
+                <a className="block hover:text-optic" href={site.phoneHref}>
+                  {site.phone}
+                </a>
+              )}
+            </p>
+          )}
         </div>
         {columns.map((col) => (
           <div key={col.title}>
@@ -67,6 +74,20 @@ export async function SiteFooter() {
           <p>
             © {brand.name}. {t("footer.rights")}
           </p>
+          {(site.insured || site.licence) && (
+            <p>
+              {[
+                site.insured && t("footer.insured"),
+                site.licence &&
+                  t("footer.licence", {
+                    municipality: site.licence.municipality ?? "City of Victoria",
+                    number: site.licence.number,
+                  }),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
           <p>{t("footer.madeIn")}</p>
         </div>
       </div>

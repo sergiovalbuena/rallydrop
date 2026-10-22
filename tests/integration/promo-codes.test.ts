@@ -22,11 +22,10 @@ describe.skipIf(!hasTestDb)("promo codes (Postgres)", () => {
       machineId: catalog.aura.id,
       startsAt: localDateMinuteToUtc("2027-05-03", 600),
       customer: { name: "Alex", email: `alex${Math.random()}@example.com` },
-      balls: true,
+      extraBalls: true,
       fulfillment: "DELIVERY_COURT",
       courtId: catalog.court.id,
       channel: "ONLINE",
-      termsAccepted: true,
       now,
       ...overrides,
     };
@@ -43,12 +42,13 @@ describe.skipIf(!hasTestDb)("promo codes (Postgres)", () => {
     const promo = await db.promoCode.create({ data: { code: "SPRING15", kind: "PERCENT", percentBps: 1500 } });
     const booking = await createBooking(input({ promoCode: " spring15 " }));
     // 55.00 − 15% = 46.75 → +12% tax
-    expect(booking.discountCents).toBe(825);
-    expect(booking.subtotalCents).toBe(4675);
-    expect(booking.totalCents).toBe(4675 + 234 + 327);
+    // 45 + 8 extra bucket = 53 → −15% = 45.05 (no tax by default)
+    expect(booking.discountCents).toBe(795);
+    expect(booking.subtotalCents).toBe(4505);
+    expect(booking.totalCents).toBe(4505);
     expect(booking.promoCodeId).toBe(promo.id);
     // Add-on rows stay at their own price (the promo line isn't an add-on).
-    expect(booking.addOns.map((a) => a.priceCents)).toEqual([1000]);
+    expect(booking.addOns.map((a) => a.priceCents)).toEqual([800]);
   });
 
   it("rejects unknown, inactive, expired, not-yet-active and wrong-product codes", async () => {
@@ -72,7 +72,8 @@ describe.skipIf(!hasTestDb)("promo codes (Postgres)", () => {
     const r = await priceBooking({
       productId: catalog.day.id,
       machineId: catalog.aura.id,
-      balls: false,
+      extraBalls: false,
+      care: false,
       fulfillment: "PICKUP",
       promoCode: "NOPE",
       now,

@@ -8,6 +8,8 @@ import { geocodeAddress } from "@/lib/services/geocode";
 import { EDITABLE_KEYS, SITE_CONTENT_TAG } from "@/lib/services/site-content";
 import { dollarsToCents } from "@/lib/money";
 import type { DeliveryZone } from "@/lib/domain/delivery";
+import { isValidMonthDay } from "@/lib/domain/season";
+import { SITE_INFO_TAG } from "@/lib/services/site-info";
 import en from "../../../../../messages/en.json";
 
 type Messages = { [k: string]: string | Messages };
@@ -57,10 +59,29 @@ const settings = z.object({
   deliveryEnd: hhmm,
   deliveryHubLat: z.coerce.number().min(-90).max(90),
   deliveryHubLng: z.coerce.number().min(-180).max(180),
-  seasonStartMonth: z.coerce.number().int().min(1).max(12),
-  seasonEndMonth: z.coerce.number().int().min(1).max(12),
+  seasonStart: z.string().trim().refine(isValidMonthDay, "High season start must look like 04-01."),
+  seasonEnd: z.string().trim().refine(isValidMonthDay, "High season end must look like 09-30."),
+  highSeasonMonthCap: z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : Number(v)))
+    .refine((v) => v === null || (Number.isInteger(v) && v >= 0), "Month cap must be a whole number."),
   contactEmail: z.string().trim().optional(),
   contactPhone: z.string().trim().optional(),
+  siteDomain: z.string().trim().optional(),
+  hubAddress: z.string().trim().optional(),
+  instagramUrl: z.string().trim().optional(),
+  gstNumber: z.string().trim().optional(),
+  pstNumber: z.string().trim().optional(),
+  insuranceProvider: z.string().trim().optional(),
+  insurancePolicyNumber: z.string().trim().optional(),
+  insuranceCoverage: z.string().trim().optional(),
+  businessLicenceNumber: z.string().trim().optional(),
+  businessLicenceMunicipality: z.string().trim().optional(),
+  careShort: z.string(),
+  careWeek: z.string(),
+  careMonth: z.string(),
+  careCap: z.string(),
 });
 
 /** Zone rows from the form → validated, ascending zone table (or an error message). */
@@ -92,6 +113,13 @@ export async function saveSettingsAction(_: SettingsState, formData: FormData): 
   if (d.deliveryEnd <= d.deliveryStart) return { ok: false, error: "Delivery hours: end must be after start." };
   const zones = parseZoneRows(formData);
   if (typeof zones === "string") return { ok: false, error: zones };
+  const chargeGst = formData.get("chargeGst") === "on";
+  const chargePst = formData.get("chargePst") === "on";
+  if (chargeGst && !d.gstNumber) return { ok: false, error: "Save your GST number before charging GST." };
+  if (chargePst && !d.pstNumber) return { ok: false, error: "Save your PST number before charging PST." };
+  const care = [d.careShort, d.careWeek, d.careMonth, d.careCap].map((v) => dollarsToCents(v));
+  if (care.some((c) => c === null || c < 0)) return { ok: false, error: "Check the RallyDrop Care prices." };
+  const coverage = d.insuranceCoverage ? dollarsToCents(d.insuranceCoverage) : null;
   await db.settings.update({
     where: { id: "default" },
     data: {
@@ -110,14 +138,33 @@ export async function saveSettingsAction(_: SettingsState, formData: FormData): 
       deliveryHubLat: d.deliveryHubLat,
       deliveryHubLng: d.deliveryHubLng,
       deliveryZones: zones,
-      seasonStartMonth: d.seasonStartMonth,
-      seasonEndMonth: d.seasonEndMonth,
+      seasonStart: d.seasonStart,
+      seasonEnd: d.seasonEnd,
+      highSeasonMonthCap: d.highSeasonMonthCap,
       allowOffSeason: formData.get("allowOffSeason") === "on",
       smsEnabled: formData.get("smsEnabled") === "on",
       contactEmail: d.contactEmail || null,
       contactPhone: d.contactPhone || null,
+      siteDomain: d.siteDomain || null,
+      hubAddress: d.hubAddress || null,
+      instagramUrl: d.instagramUrl || null,
+      chargeGst,
+      chargePst,
+      gstNumber: d.gstNumber || null,
+      pstNumber: d.pstNumber || null,
+      insuranceProvider: d.insuranceProvider || null,
+      insurancePolicyNumber: d.insurancePolicyNumber || null,
+      insuranceCoverageCents: coverage,
+      businessLicenceNumber: d.businessLicenceNumber || null,
+      businessLicenceMunicipality: d.businessLicenceMunicipality || null,
+      careEnabled: formData.get("careEnabled") === "on",
+      careShortCents: care[0]!,
+      careWeekCents: care[1]!,
+      careMonthCents: care[2]!,
+      careCapCents: care[3]!,
     },
   });
+  updateTag(SITE_INFO_TAG);
   revalidatePath("/admin/settings");
   return { ok: true, message: "Settings saved." };
 }

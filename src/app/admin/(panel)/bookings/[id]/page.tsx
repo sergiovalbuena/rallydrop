@@ -5,6 +5,7 @@ import { ArrowLeft, ExternalLink, Mail, MapPin, Phone } from "lucide-react";
 import {
   CancelBookingButton,
   DepositControls,
+  AcceptanceLinkControls,
   InspectionForm,
   ManualPaymentForm,
   RefundForm,
@@ -16,6 +17,9 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
 import { logistics } from "@/lib/domain/logistics";
+import { getSettings } from "@/lib/services/settings";
+import { acceptanceToken } from "@/lib/services/legal";
+import { siteUrl } from "@/lib/site-url";
 import { formatLocal, formatRange } from "@/lib/time";
 
 /** Internal admin: always rendered per request, no instant-navigation shell. */
@@ -36,10 +40,12 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
       promoCode: { select: { code: true } },
       payments: { include: { refunds: true }, orderBy: { createdAt: "asc" } },
       inspections: true,
+      acceptances: { orderBy: { acceptedAt: "desc" } },
       events: { orderBy: { createdAt: "desc" } },
     },
   });
   if (!b) notFound();
+  const settings = await getSettings();
 
   const rental = b.payments.filter(
     (p) => p.kind === "RENTAL" && (p.status === "SUCCEEDED" || p.status === "PARTIALLY_REFUNDED"),
@@ -131,7 +137,13 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
                 Last saved {formatLocal(checkOut.performedAt, "MMM d, h:mm a")}
               </p>
             )}
-            <InspectionForm bookingId={b.id} kind="CHECK_OUT" defaults={checkOut ?? undefined} />
+            <InspectionForm
+              bookingId={b.id}
+              kind="CHECK_OUT"
+              defaults={checkOut ?? undefined}
+              requireId={b.deposit?.strategy === "SAVED_CARD"}
+              spotter={b.machine.aiCoach}
+            />
             <Photos urls={checkOut?.photoUrls ?? []} />
           </Panel>
 
@@ -141,12 +153,41 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
                 Last saved {formatLocal(checkIn.performedAt, "MMM d, h:mm a")}
               </p>
             )}
-            <InspectionForm bookingId={b.id} kind="CHECK_IN" defaults={checkIn ?? undefined} />
+            <InspectionForm
+              bookingId={b.id}
+              kind="CHECK_IN"
+              defaults={checkIn ?? undefined}
+              spotter={b.machine.aiCoach}
+            />
             <Photos urls={checkIn?.photoUrls ?? []} />
           </Panel>
         </div>
 
         <div className="space-y-6">
+          <Panel title="Rental Terms & Waiver">
+            {b.acceptances[0] ? (
+              <div className="space-y-1 text-sm">
+                <p className="font-semibold text-success">Terms accepted ✓</p>
+                <p className="text-muted-foreground">
+                  {b.acceptances[0].acceptedAtLocal} · Terms v{b.acceptances[0].termsVersion} · Waiver v
+                  {b.acceptances[0].waiverVersion} · {b.acceptances[0].method.replace("_", " ")}
+                </p>
+                <p className="text-xs break-all text-muted-foreground">
+                  IP {b.acceptances[0].ip ?? "—"} · SHA-256 {b.acceptances[0].termsSha256.slice(0, 12)}… /{" "}
+                  {b.acceptances[0].waiverSha256.slice(0, 12)}…
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 text-sm">
+                <p className="font-semibold text-destructive">Not accepted yet</p>
+                <p className="text-muted-foreground">
+                  Send the customer the link (or copy it) — the booking isn&apos;t complete until they tick both boxes.
+                </p>
+                <AcceptanceLinkControls bookingId={b.id} url={siteUrl(`/accept/${acceptanceToken(b.id)}`)} />
+              </div>
+            )}
+          </Panel>
+
           <Panel title="Customer">
             <p className="font-semibold">
               <Link href={`/admin/customers/${b.customer.id}`} className="hover:underline">
@@ -186,9 +227,11 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
               {b.discountCents > 0 && (
                 <Row label={`Promo ${b.promoCode?.code ?? ""}`} value={formatCents(-b.discountCents)} />
               )}
-              <Row label="Subtotal" value={formatCents(b.subtotalCents)} />
-              <Row label={`GST ${b.gstBps / 100}%`} value={formatCents(b.gstCents)} />
-              <Row label={`PST ${b.pstBps / 100}%`} value={formatCents(b.pstCents)} />
+              {b.care && <Row label="RallyDrop Care" value={formatCents(b.careCents)} />}
+              {b.deliveryFeeCents > 0 && <Row label="Drop-off / collection" value={formatCents(b.deliveryFeeCents)} />}
+              <Row label={`Subtotal${b.offSeason ? " (off-season)" : ""}`} value={formatCents(b.subtotalCents)} />
+              {b.gstBps > 0 && <Row label={`GST ${b.gstBps / 100}%`} value={formatCents(b.gstCents)} />}
+              {b.pstBps > 0 && <Row label={`PST ${b.pstBps / 100}%`} value={formatCents(b.pstCents)} />}
               <Row label="Total" value={formatCents(b.totalCents)} strong />
             </dl>
             <ul className="mt-4 space-y-2 border-t pt-4 text-sm">
@@ -246,6 +289,7 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
                 status={b.deposit.status}
                 amount={b.deposit.amountCents - b.deposit.capturedCents}
                 canCharge={!!b.deposit.stripePaymentMethodId || b.deposit.status === "HELD"}
+                careCapCents={b.care ? settings.careCapCents : null}
               />
             </Panel>
           )}

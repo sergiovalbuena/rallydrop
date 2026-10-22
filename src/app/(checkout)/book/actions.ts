@@ -1,9 +1,11 @@
 "use server";
 
+import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import {
   checkoutSchema,
+  consentSchema,
   fieldErrors,
   quoteSchema,
   type CheckoutInput,
@@ -12,6 +14,8 @@ import {
 import { createBooking, priceBooking } from "@/lib/services/bookings";
 import { BookingError } from "@/lib/services/errors";
 import { geocodeAddress } from "@/lib/services/geocode";
+import { recordAcceptance } from "@/lib/services/legal";
+import { clientIp } from "@/lib/request";
 import { cancelBooking, finalizeRentalPayment, startRentalPayment, type FinalizeResult } from "@/lib/services/payments";
 import type { Quote } from "@/lib/domain/pricing";
 import type { DeliveryResolution } from "@/lib/domain/delivery";
@@ -23,7 +27,7 @@ export type QuoteResult =
 export async function quoteAction(input: QuoteInput): Promise<QuoteResult> {
   const parsed = quoteSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Incomplete selection." };
-  const { productId, machineId, extras, promoCode } = parsed.data;
+  const { productId, machineId, extras, promoCode, startsAt } = parsed.data;
   const point =
     extras.fulfillment === "DELIVERY_ADDRESS" && extras.deliveryAddress
       ? await geocodeAddress(extras.deliveryAddress)
@@ -32,7 +36,9 @@ export async function quoteAction(input: QuoteInput): Promise<QuoteResult> {
     const { quote, delivery, promoError } = await priceBooking({
       productId,
       machineId,
-      balls: extras.balls,
+      startsAt: startsAt ? new Date(startsAt) : null,
+      extraBalls: extras.extraBalls,
+      care: extras.care,
       fulfillment: extras.fulfillment,
       dropoff: extras.dropoff,
       collection: extras.collection,
@@ -77,7 +83,8 @@ export async function checkoutAction(input: CheckoutInput): Promise<CheckoutResu
       machineId: data.machineId,
       startsAt: new Date(data.startsAt),
       customer: data.contact,
-      balls: data.extras.balls,
+      extraBalls: data.extras.extraBalls,
+      care: data.extras.care,
       fulfillment: data.extras.fulfillment,
       dropoff: data.extras.dropoff,
       collection: data.extras.collection,
@@ -86,7 +93,6 @@ export async function checkoutAction(input: CheckoutInput): Promise<CheckoutResu
       deliveryPoint: point,
       customerNotes: data.notes,
       channel: "ONLINE",
-      termsAccepted: data.termsAccepted,
       promoCode: data.promoCode,
     });
     heldBookingId = booking.id;
@@ -123,6 +129,46 @@ export async function finalizeAction(
   } catch (e) {
     console.error("finalize failed", e);
     return { status: "error", message: "We couldn't confirm the payment yet. Check your email in a minute." };
+  }
+}
+
+/**
+ * Records the Terms & Waiver acceptance (clickwrap) right before the card is
+ * charged. The payment button stays disabled until this succeeds, and the
+ * booking is never confirmed without it (also checked in the webhook).
+ */
+export async function acceptTermsAction(input: {
+  bookingId: string;
+  termsId: string;
+  waiverId: string;
+  boxes: string[];
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const parsed = consentSchema.extend({ bookingId: z.string().min(1) }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Tick both boxes to continue." };
+  const booking = await db.booking.findUnique({
+    where: { id: parsed.data.bookingId },
+    select: { id: true, status: true, customer: { select: { id: true, name: true, email: true, phone: true } } },
+  });
+  if (!booking || booking.status !== "PENDING_PAYMENT") return { ok: false, error: "This booking is no longer open." };
+  try {
+    const h = await headers();
+    await recordAcceptance({
+      bookingId: booking.id,
+      customerId: booking.customer.id,
+      name: booking.customer.name,
+      contact: booking.customer.email ?? booking.customer.phone ?? "",
+      termsId: parsed.data.termsId,
+      waiverId: parsed.data.waiverId,
+      boxes: parsed.data.boxes,
+      method: "checkout",
+      ip: clientIp(h),
+      userAgent: h.get("user-agent"),
+    });
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof BookingError) return { ok: false, error: e.message };
+    console.error("accept terms", e);
+    return { ok: false, error: "We couldn't save your acceptance. Please try again." };
   }
 }
 

@@ -3,23 +3,25 @@ import { getTranslations } from "next-intl/server";
 import { AtSign, Mail, MapPin, Phone } from "lucide-react";
 import { PageHero, Section } from "@/components/marketing/section";
 import { revealDelay } from "@/components/marketing/reveal-delay";
-import { brand } from "@/config/brand";
+import { getSiteInfo } from "@/lib/services/site-info";
 
 export const metadata: Metadata = { title: "Contact" };
 
 export default async function ContactPage() {
   const t = await getTranslations("contact");
+  const site = await getSiteInfo();
+  // Only details the owner has filled in (Admin → Settings) are shown.
   const items = [
-    { icon: Mail, label: t("email"), value: brand.contact.email, href: `mailto:${brand.contact.email}` },
-    {
-      icon: Phone,
-      label: t("phone"),
-      value: brand.contact.phone,
-      href: `tel:${brand.contact.phone.replace(/[^+\d]/g, "")}`,
+    site.email && { icon: Mail, label: t("email"), value: site.email, href: `mailto:${site.email}` },
+    site.phone && { icon: Phone, label: t("phone"), value: site.phone, href: site.phoneHref ?? undefined },
+    site.instagramUrl && {
+      icon: AtSign,
+      label: t("instagram"),
+      value: site.instagramUrl.replace(/^https?:\/\/(www\.)?instagram\.com\//, "@").replace(/\/$/, ""),
+      href: site.instagramUrl,
     },
-    { icon: AtSign, label: t("instagram"), value: "@rallydrop", href: brand.contact.instagram },
-    { icon: MapPin, label: t("area"), value: t("areaBody") },
-  ];
+    { icon: MapPin, label: t("area"), value: site.hubAddress ? `${t("areaBody")} ${site.hubAddress}` : t("areaBody") },
+  ].filter((i): i is Exclude<typeof i, string | null | false> => !!i);
   return (
     <>
       <PageHero title={t("title")} subtitle={t("subtitle")} />

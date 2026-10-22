@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 export const NAV = [
   { href: "/machines", key: "machines" },
   { href: "/pricing", key: "pricing" },
-  { href: "/group-sessions", key: "groups" },
   { href: "/how-it-works", key: "howItWorks" },
   { href: "/contact", key: "contact" },
 ] as const;

@@ -10,6 +10,7 @@ import { notifyRescheduled } from "@/lib/notify/booking-notifications";
 import { rescheduleBooking } from "@/lib/services/bookings";
 import { BookingError } from "@/lib/services/errors";
 import { cancelBooking, captureDeposit, refundRental, releaseDeposit, setBookingStatus } from "@/lib/services/payments";
+import { notifyAcceptanceNeeded } from "@/lib/notify/booking-notifications";
 import type { BookingStatus } from "@/generated/prisma/client";
 
 export type AdminResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -53,11 +54,14 @@ export async function releaseDepositAction(bookingId: string) {
   });
 }
 
-export async function captureDepositAction(bookingId: string, amount: string, note: string) {
+const EXCLUSIONS = ["THEFT", "LOSS", "RAIN", "GROSS_NEGLIGENCE"] as const;
+
+export async function captureDepositAction(bookingId: string, amount: string, note: string, exclusion?: string) {
   return run(bookingId, async (actor) => {
     const cents = dollarsToCents(amount);
     if (cents === null) throw new BookingError("INVALID_STATE", "Enter a valid amount.");
-    await captureDeposit(bookingId, cents, note, actor);
+    const ex = EXCLUSIONS.find((e) => e === exclusion) ?? null;
+    await captureDeposit(bookingId, cents, note, actor, ex);
     return "Deposit charged. The customer has been emailed the reason.";
   });
 }
@@ -101,6 +105,17 @@ const inspection = z.object({
   batteryPercent: z.coerce.number().int().min(0).max(100).optional(),
   ballsCount: z.coerce.number().int().min(0).max(1000).optional(),
   notes: z.string().max(2000).optional(),
+  // Hand-off checklist, each item checked separately.
+  machineOk: z.boolean(),
+  spotterOk: z.boolean(),
+  batteryOk: z.boolean(),
+  chargerOk: z.boolean(),
+  idVerified: z.boolean(),
+  licenceLast4: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9]{4}$/, "Licence: enter the last 4 characters.")
+    .optional(),
 });
 
 /** Check-out / check-in with optional photos (stored in Vercel Blob). */
@@ -112,9 +127,23 @@ export async function inspectionAction(formData: FormData): Promise<AdminResult>
     batteryPercent: formData.get("batteryPercent") || undefined,
     ballsCount: formData.get("ballsCount") || undefined,
     notes: formData.get("notes") || undefined,
+    machineOk: formData.get("machineOk") === "on",
+    spotterOk: formData.get("spotterOk") === "on",
+    batteryOk: formData.get("batteryOk") === "on",
+    chargerOk: formData.get("chargerOk") === "on",
+    idVerified: formData.get("idVerified") === "on",
+    licenceLast4: formData.get("licenceLast4") || undefined,
   });
-  if (!parsed.success) return { ok: false, error: "Please fill in the condition fields." };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Please fill in the condition fields." };
   const d = parsed.data;
+  if (d.kind === "CHECK_OUT") {
+    const target = await db.booking.findUnique({ where: { id: d.bookingId }, select: { deposit: true } });
+    // Week & month rentals: ID must be seen at hand-off.
+    if (target?.deposit?.strategy === "SAVED_CARD" && (!d.idVerified || !d.licenceLast4)) {
+      return { ok: false, error: "Long rental: check the customer's ID and enter the last 4 of their licence." };
+    }
+  }
   return run(d.bookingId, async (actor) => {
     const user = await assertAdmin();
     const photos = formData.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
@@ -151,6 +180,14 @@ export async function inspectionAction(formData: FormData): Promise<AdminResult>
     }
     const note = skipped ? ` ${skipped} photo(s) not saved — set BLOB_READ_WRITE_TOKEN to enable uploads.` : "";
     return `${d.kind === "CHECK_OUT" ? "Check-out" : "Check-in"} saved.${note}`;
+  });
+}
+
+/** Re-sends the Terms & Waiver acceptance link to the customer. */
+export async function sendAcceptanceLinkAction(bookingId: string) {
+  return run(bookingId, async () => {
+    await notifyAcceptanceNeeded(bookingId);
+    return "Link sent to the customer.";
   });
 }
 

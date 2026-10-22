@@ -21,11 +21,10 @@ describe.skipIf(!hasTestDb)("drop-off & collection (Postgres)", () => {
       machineId: catalog.aura.id,
       startsAt: localDateMinuteToUtc("2027-05-03", 600),
       customer: { name: "Alex", email: `alex${Math.random()}@example.com` },
-      balls: false,
+      extraBalls: false,
       fulfillment: "DELIVERY_COURT",
       courtId: catalog.court.id,
       channel: "ONLINE",
-      termsAccepted: true,
       now,
       ...overrides,
     };
@@ -76,7 +75,6 @@ describe.skipIf(!hasTestDb)("drop-off & collection (Postgres)", () => {
     const b = await createBooking(
       input({
         channel: "ADMIN",
-        termsAccepted: false,
         dropoff: true,
         collection: true,
         fulfillment: "DELIVERY_ADDRESS",

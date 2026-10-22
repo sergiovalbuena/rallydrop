@@ -12,9 +12,13 @@ import {
   notifyDepositFailed,
   notifyDepositReleased,
   notifySlotLost,
+  notifyAcceptanceNeeded,
 } from "@/lib/notify/booking-notifications";
+import { bookingAcceptance } from "./legal";
 import { confirmBooking, releaseOccupancy } from "./bookings";
 import { BookingError } from "./errors";
+import { maxDamageCharge } from "@/lib/domain/rental";
+import type { CareExclusion } from "@/generated/prisma/client";
 import { getSettings } from "./settings";
 
 /*
@@ -113,7 +117,8 @@ export type FinalizeResult =
   | { status: "confirmed"; code: string; depositClientSecret?: string }
   | { status: "processing"; code: string }
   | { status: "failed"; code: string; message: string }
-  | { status: "slot_lost"; code: string };
+  | { status: "slot_lost"; code: string }
+  | { status: "awaiting_terms"; code: string };
 
 /**
  * Called by the browser right after the Payment Element succeeds (and by the
@@ -135,6 +140,7 @@ export async function finalizeRentalPayment(bookingId: string): Promise<Finalize
   }
   const outcome = await handleRentalSucceeded(pi, { offSession: false });
   if (outcome.kind === "slot_lost") return { status: "slot_lost", code };
+  if (outcome.kind === "awaiting_terms") return { status: "awaiting_terms", code };
   return { status: "confirmed", code, depositClientSecret: outcome.depositClientSecret };
 }
 
@@ -142,7 +148,7 @@ export async function finalizeRentalPayment(bookingId: string): Promise<Finalize
 export async function handleRentalSucceeded(
   pi: Stripe.PaymentIntent,
   opts: { offSession: boolean },
-): Promise<{ kind: "confirmed"; depositClientSecret?: string } | { kind: "slot_lost" }> {
+): Promise<{ kind: "confirmed"; depositClientSecret?: string } | { kind: "slot_lost" } | { kind: "awaiting_terms" }> {
   const bookingId = pi.metadata.bookingId;
   const chargeId = piId(pi.latest_charge);
   const receiptUrl =
@@ -159,7 +165,40 @@ export async function handleRentalSucceeded(
   if (!booking) return { kind: "confirmed" };
   if (booking.status === "CANCELLED" && booking.cancelReason === "slot_lost") return { kind: "slot_lost" };
 
+  // Remember the card for the deposit before anything else.
+  const paymentMethod = piId(pi.payment_method);
+  if (booking.deposit && paymentMethod && !booking.deposit.stripePaymentMethodId) {
+    await db.deposit.update({
+      where: { id: booking.deposit.id },
+      data: {
+        stripePaymentMethodId: paymentMethod,
+        status: booking.deposit.strategy === "SAVED_CARD" ? "CARD_SAVED" : booking.deposit.status,
+      },
+    });
+  }
+
+  // Never confirm without proof the customer accepted the Terms & Waiver.
+  if (["PENDING_PAYMENT", "EXPIRED"].includes(booking.status) && !(await bookingAcceptance(bookingId))) {
+    await holdForAcceptance(bookingId);
+    return { kind: "awaiting_terms" };
+  }
+
+  return completeConfirmation(bookingId, pi.id, pi.amount, { offSession: opts.offSession });
+}
+
+/**
+ * Paid and accepted → confirm the booking, place the deposit hold if it's
+ * due now, and send the confirmation. Also used when acceptance arrives
+ * after the payment (acceptance link).
+ */
+export async function completeConfirmation(
+  bookingId: string,
+  paymentIntentId: string,
+  amountCents: number,
+  opts: { offSession: boolean },
+): Promise<{ kind: "confirmed"; depositClientSecret?: string } | { kind: "slot_lost" }> {
   const confirmed = await confirmBooking(bookingId);
+  const pi = { id: paymentIntentId, amount: amountCents };
   if (!confirmed) {
     // Paid after the hold expired and someone else took the slot → full refund.
     await stripe().refunds.create({ payment_intent: pi.id }, { idempotencyKey: `slot_lost:${pi.id}` });
@@ -172,23 +211,10 @@ export async function handleRentalSucceeded(
     return { kind: "slot_lost" };
   }
 
-  const paymentMethod = piId(pi.payment_method);
+  const deposit = await db.deposit.findUnique({ where: { bookingId } });
   let depositClientSecret: string | undefined;
-  if (booking.deposit && paymentMethod) {
-    if (!booking.deposit.stripePaymentMethodId) {
-      await db.deposit.update({
-        where: { id: booking.deposit.id },
-        data: {
-          stripePaymentMethodId: paymentMethod,
-          status: booking.deposit.strategy === "SAVED_CARD" ? "CARD_SAVED" : booking.deposit.status,
-        },
-      });
-    }
-    if (
-      booking.deposit.strategy === "AUTH_HOLD" &&
-      !booking.deposit.authScheduledFor &&
-      booking.deposit.status === "PENDING"
-    ) {
+  if (deposit?.stripePaymentMethodId) {
+    if (deposit.strategy === "AUTH_HOLD" && !deposit.authScheduledFor && deposit.status === "PENDING") {
       const hold = await placeDepositHold(bookingId, { offSession: opts.offSession });
       depositClientSecret = hold.status === "requires_action" ? hold.clientSecret : undefined;
     }
@@ -196,6 +222,19 @@ export async function handleRentalSucceeded(
 
   await notifyBookingConfirmed(bookingId);
   return { kind: "confirmed", depositClientSecret };
+}
+
+/**
+ * Paid but no acceptance on file (shouldn't happen from our checkout, which
+ * records it before charging). Keep the slot, don't confirm, and send the
+ * customer a link to accept; the owner is alerted.
+ */
+async function holdForAcceptance(bookingId: string) {
+  await db.$transaction([
+    db.machineOccupancy.updateMany({ where: { bookingId }, data: { holdExpiresAt: null, active: true } }),
+    db.bookingEvent.create({ data: { bookingId, type: "awaiting_terms", actor: "system" } }),
+  ]);
+  await notifyAcceptanceNeeded(bookingId);
 }
 
 async function receiptFor(chargeId: string | null): Promise<string | null> {
@@ -308,12 +347,32 @@ export async function releaseDeposit(bookingId: string, actor: string) {
  * emailed to the customer. Authorizations can be captured once; the
  * remainder is released automatically by Stripe.
  */
-export async function captureDeposit(bookingId: string, amountCents: number, note: string, actor: string) {
+export async function captureDeposit(
+  bookingId: string,
+  amountCents: number,
+  note: string,
+  actor: string,
+  /** With RallyDrop Care, charging above the cap needs one of these. */
+  exclusion: CareExclusion | null = null,
+) {
   const deposit = await db.deposit.findUnique({
     where: { bookingId },
     include: { booking: { include: { customer: true } } },
   });
   if (!deposit) throw new BookingError("NOT_FOUND", "This booking has no deposit.");
+  const settings = await getSettings();
+  const limit = maxDamageCharge({
+    depositCents: deposit.amountCents,
+    care: deposit.booking.care,
+    careCapCents: settings.careCapCents,
+    exclusion,
+  });
+  if (amountCents + deposit.capturedCents > limit) {
+    throw new BookingError(
+      "INVALID_STATE",
+      `This customer has RallyDrop Care: the most you can charge is ${limit / 100} CAD unless you record an exclusion (theft, loss, rain or gross negligence).`,
+    );
+  }
   const check = validateCapture({
     amountCents,
     depositCents: deposit.amountCents,
@@ -360,6 +419,7 @@ export async function captureDeposit(bookingId: string, amountCents: number, not
       data: {
         capturedCents,
         captureNote: note.trim(),
+        careExclusion: exclusion,
         capturedAt: new Date(),
         status: capturedCents >= deposit.amountCents ? "CAPTURED" : "PARTIALLY_CAPTURED",
       },

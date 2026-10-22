@@ -5,6 +5,7 @@ import { Section } from "@/components/marketing/section";
 import { SessionBooker } from "@/components/portal/session-booker";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listActiveCourts } from "@/lib/services/catalog";
+import { currentLegal, customerAcceptedLive, toConsentDocs } from "@/lib/services/legal";
 import { customerPackage } from "@/lib/services/portal";
 import { getPortalCustomer } from "@/lib/services/portal-auth";
 import { formatLocal } from "@/lib/time";
@@ -26,7 +27,11 @@ async function Session() {
   if (!customer) redirect("/account");
   const pkg = await customerPackage(customer.id);
   if (!pkg || pkg.usage.left <= 0) redirect("/account");
-  const courts = await listActiveCourts();
+  const [courts, accepted, legal] = await Promise.all([
+    listActiveCourts(),
+    customerAcceptedLive(customer.id),
+    currentLegal(),
+  ]);
   return (
     <div className="space-y-6">
       <div>
@@ -36,7 +41,11 @@ async function Session() {
           {formatLocal(pkg.usage.periodEnd, "MMM d")}. Delivery to the court is included.
         </p>
       </div>
-      <SessionBooker productId={pkg.subscription.productId} courts={courts} />
+      <SessionBooker
+        productId={pkg.subscription.productId}
+        courts={courts}
+        consentDocs={accepted ? null : toConsentDocs(legal)}
+      />
     </div>
   );
 }

@@ -26,13 +26,13 @@ function layout(title: string, bodyHtml: string, cta?: { label: string; url: str
   return `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif;color:#13203d">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden">
-<tr><td style="background:${NAVY};padding:22px 28px;color:#fff;font-size:22px;font-weight:800;letter-spacing:1px;text-transform:uppercase">
-<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${OPTIC};margin-right:8px"></span>Rally<span style="color:${OPTIC}">Drop</span></td></tr>
+<tr><td style="background:${NAVY};padding:22px 28px;color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px">
+<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${OPTIC};margin-right:8px"></span>rally<span style="color:${OPTIC}">drop</span></td></tr>
 <tr><td style="height:5px;background:${OPTIC}"></td></tr>
 <tr><td style="padding:28px">
 <h1 style="margin:0 0 16px;font-size:26px;line-height:1.1;text-transform:uppercase;color:${NAVY}">${esc(title)}</h1>
 ${bodyHtml}${button}
-<p style="margin-top:28px;font-size:13px;color:#5b6784">Questions? Reply to this email or call ${esc(brand.contact.phone)}.</p>
+<p style="margin-top:28px;font-size:13px;color:#5b6784">Questions? Just reply to this email.</p>
 </td></tr></table>
 <p style="font-size:12px;color:#8a94ad;margin-top:16px">${esc(brand.name)} · ${esc(brand.city)}</p>
 </td></tr></table></body></html>`;
@@ -65,6 +65,16 @@ export type BookingEmailData = {
   depositCents: number;
   depositNote: string;
   receiptUrl?: string | null;
+  /** "You accepted the Rental Terms & Waiver (version X) on …" */
+  acceptance?: {
+    termsVersion: string;
+    waiverVersion: string;
+    acceptedAtLocal: string;
+    termsUrl: string;
+    waiverUrl: string;
+  } | null;
+  /** Shown under the receipt when taxes are charged. */
+  taxNumbers?: string | null;
 };
 
 export function bookingConfirmedEmail(d: BookingEmailData): EmailContent {
@@ -78,8 +88,8 @@ export function bookingConfirmedEmail(d: BookingEmailData): EmailContent {
   ]);
   const receipt = rows([
     ...d.lines.map((l): [string, string] => [l.label, formatCents(l.cents)]),
-    ["GST", formatCents(d.gstCents)],
-    ["PST", formatCents(d.pstCents)],
+    ...(d.gstCents > 0 ? [["GST", formatCents(d.gstCents)] as [string, string]] : []),
+    ...(d.pstCents > 0 ? [["PST", formatCents(d.pstCents)] as [string, string]] : []),
     ["Total paid", formatCents(d.totalCents)],
     ["Deposit", `${formatCents(d.depositCents)} — ${d.depositNote}`],
   ]);
@@ -89,7 +99,9 @@ export function bookingConfirmedEmail(d: BookingEmailData): EmailContent {
 ${summary}
 <h2 style="font-size:16px;margin:24px 0 8px;text-transform:uppercase;color:${NAVY}">Receipt</h2>
 ${receipt}
+${d.taxNumbers ? `<p style="font-size:12px;color:#5b6784">${esc(d.taxNumbers)}</p>` : ""}
 ${d.receiptUrl ? `<p style="font-size:13px"><a href="${d.receiptUrl}" style="color:${BLUE}">View your Stripe receipt</a></p>` : ""}
+${d.acceptance ? `<p style="font-size:13px">You accepted the <a href="${d.acceptance.termsUrl}" style="color:${BLUE}">Rental Terms (version ${esc(d.acceptance.termsVersion)})</a> &amp; <a href="${d.acceptance.waiverUrl}" style="color:${BLUE}">Waiver (version ${esc(d.acceptance.waiverVersion)})</a> on ${esc(d.acceptance.acceptedAtLocal)}.</p>` : ""}
 <p style="font-size:14px">Cancel 48 h or more before the start for a full refund (50% inside 48 h). Rainy day? Reply and we'll reschedule for free.</p>`,
     { label: "Manage my booking", url: manageUrl },
   );
@@ -97,7 +109,7 @@ ${d.receiptUrl ? `<p style="font-size:13px"><a href="${d.receiptUrl}" style="col
 ${d.machineName} · ${d.productName}
 ${formatRange(d.startsAt, d.endsAt)}
 Start: ${d.startHow}. End: ${d.endHow}.
-Total paid: ${formatCents(d.totalCents)} · Deposit: ${formatCents(d.depositCents)} (${d.depositNote})
+Total paid: ${formatCents(d.totalCents)} · Deposit: ${formatCents(d.depositCents)} (${d.depositNote})${d.acceptance ? `\nYou accepted the Rental Terms (version ${d.acceptance.termsVersion}) & Waiver (version ${d.acceptance.waiverVersion}) on ${d.acceptance.acceptedAtLocal}: ${d.acceptance.termsUrl}` : ""}
 Manage: ${manageUrl}`;
   return { subject: `Booking confirmed · ${d.code}`, html, text };
 }
@@ -291,5 +303,17 @@ export function waitlistEmail(d: { machineName: string }): EmailContent {
       { label: `See ${brand.name}`, url: siteUrl("/machines") },
     ),
     text: `Thanks! We'll email you as soon as the ${d.machineName} is ready to rent in Victoria. Reply "remove" to be taken off the list.`,
+  };
+}
+
+export function acceptanceRequestEmail(d: { code: string; customerName: string; url: string }): EmailContent {
+  return {
+    subject: `One step left: accept the rental terms (${d.code})`,
+    html: layout(
+      "Accept the rental terms",
+      `<p>Hi ${esc(d.customerName)}, before we can confirm booking <strong>${esc(d.code)}</strong> we need you to accept our Rental Terms and the Release of Liability. It takes a few seconds — just tick two boxes.</p>`,
+      { label: "Review and accept", url: d.url },
+    ),
+    text: `Before we can confirm booking ${d.code}, please accept our Rental Terms and Release of Liability: ${d.url}`,
   };
 }

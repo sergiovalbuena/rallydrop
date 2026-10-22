@@ -12,7 +12,7 @@ import { applyBps } from "@/lib/money";
  */
 
 export type PriceLine = {
-  key: "product" | "balls" | "delivery" | "promo";
+  key: "product" | "extra_balls" | "care" | "delivery" | "promo";
   label: string;
   cents: number;
   /** e.g. "Free inside the downtown zone" */
@@ -57,10 +57,15 @@ export function promoDiscount(grossCents: number, promo: PromoInput, minChargeCe
 }
 
 export type QuoteInput = {
-  product: { name: string; priceCents: number };
-  balls: { selected: boolean; name: string; priceCents: number };
+  /** Already priced for the season of the start date (see domain/season). */
+  product: { name: string; priceCents: number; note?: string };
+  /** Balls come with every rental; this is the optional extra bucket. */
+  extraBalls: { selected: boolean; name: string; priceCents: number };
+  /** RallyDrop Care damage protection. */
+  care: { selected: boolean; priceCents: number };
   /** Paid trips, already priced for the customer's zone (see domain/delivery). */
   delivery: { selected: boolean; label: string; priceCents: number };
+  /** Pass 0 for a tax that isn't charged (not registered / switched off). */
   taxes: { gstBps: number; pstBps: number };
   depositCents: number;
   /** Package sessions and other prepaid items price the product at 0. */
@@ -74,12 +79,16 @@ export function quote(input: QuoteInput): Quote {
       key: "product",
       label: input.product.name,
       cents: input.productIncluded ? 0 : input.product.priceCents,
-      note: input.productIncluded ? "Included in your package" : undefined,
+      note: input.productIncluded ? "Included in your package" : input.product.note,
     },
   ];
 
-  if (input.balls.selected) {
-    lines.push({ key: "balls", label: input.balls.name, cents: input.balls.priceCents });
+  if (input.extraBalls.selected) {
+    lines.push({ key: "extra_balls", label: input.extraBalls.name, cents: input.extraBalls.priceCents });
+  }
+
+  if (input.care.selected && !input.productIncluded) {
+    lines.push({ key: "care", label: "RallyDrop Care", cents: input.care.priceCents });
   }
 
   if (input.delivery.selected) {

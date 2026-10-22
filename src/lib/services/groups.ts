@@ -8,6 +8,7 @@ import { groupEnrollmentEmail } from "@/lib/notify/templates";
 import { upsertCustomer, type CustomerInput } from "./customers";
 import { BookingError } from "./errors";
 import { ensureStripeCustomer } from "./payments";
+import { chargedTaxes } from "@/lib/domain/rental";
 import { getSettings } from "./settings";
 
 /**
@@ -49,7 +50,7 @@ export async function startGroupEnrollment(input: { groupSessionId: string; cust
     });
   });
 
-  const price = withTaxes(enrollment.groupSession.priceCents, { gstBps: settings.gstBps, pstBps: settings.pstBps });
+  const price = withTaxes(enrollment.groupSession.priceCents, chargedTaxes(settings));
   const stripeCustomerId = await ensureStripeCustomer(enrollment.customerId);
   const pi = await stripe().paymentIntents.create(
     {
@@ -71,7 +72,12 @@ export async function startGroupEnrollment(input: { groupSessionId: string; cust
       stripePaymentIntentId: pi.id,
     },
   });
-  return { clientSecret: pi.client_secret!, enrollmentId: enrollment.id, ...price };
+  return {
+    clientSecret: pi.client_secret!,
+    enrollmentId: enrollment.id,
+    customerId: enrollment.customerId,
+    ...price,
+  };
 }
 
 /** Idempotent: confirm the seat when its payment succeeds. */

@@ -6,7 +6,10 @@ import { sendEmail } from "./email";
 import { sendSms } from "./sms";
 import { legsLabel } from "@/lib/domain/delivery";
 import { logistics } from "@/lib/domain/logistics";
+import { acceptanceToken } from "@/lib/services/legal";
+import { getSettings } from "@/lib/services/settings";
 import {
+  acceptanceRequestEmail,
   adminAlertEmail,
   bookingCancelledEmail,
   bookingConfirmedEmail,
@@ -30,6 +33,7 @@ async function loadBooking(bookingId: string) {
       deposit: true,
       addOns: { include: { addOn: true } },
       payments: { where: { kind: "RENTAL" }, orderBy: { createdAt: "desc" }, take: 1 },
+      acceptances: { orderBy: { acceptedAt: "desc" }, take: 1 },
     },
   });
 }
@@ -62,14 +66,21 @@ export async function notifyBookingConfirmed(bookingId: string) {
   const lines = [
     {
       label: b.product.name,
-      cents: b.subtotalCents + b.discountCents - b.deliveryFeeCents - b.addOns.reduce((s, a) => s + a.priceCents, 0),
+      cents:
+        b.subtotalCents +
+        b.discountCents -
+        b.deliveryFeeCents -
+        b.careCents -
+        b.addOns.reduce((s, a) => s + a.priceCents, 0),
     },
     ...b.addOns.map((a) => ({ label: a.addOn.name, cents: a.priceCents })),
+    ...(b.care ? [{ label: "RallyDrop Care", cents: b.careCents }] : []),
     ...(b.dropoff || b.collection
       ? [{ label: `${legsLabel(b)}${b.deliveryZone ? ` · Zone ${b.deliveryZone}` : ""}`, cents: b.deliveryFeeCents }]
       : []),
     ...(b.discountCents > 0 ? [{ label: `Promo ${b.promoCode?.code ?? ""}`.trim(), cents: -b.discountCents }] : []),
   ];
+  const taxNumbers = await taxNumbersLine(b.gstCents, b.pstCents);
   await toAll(
     b,
     () =>
@@ -94,6 +105,16 @@ export async function notifyBookingConfirmed(bookingId: string) {
           depositCents: b.deposit?.amountCents ?? 0,
           depositNote: depositNote(b),
           receiptUrl: b.payments[0]?.receiptUrl,
+          acceptance: b.acceptances[0]
+            ? {
+                termsVersion: b.acceptances[0].termsVersion,
+                waiverVersion: b.acceptances[0].waiverVersion,
+                acceptedAtLocal: b.acceptances[0].acceptedAtLocal,
+                termsUrl: siteUrl(`/legal/terms/${b.acceptances[0].termsVersion}`),
+                waiverUrl: siteUrl(`/legal/waiver/${b.acceptances[0].waiverVersion}`),
+              }
+            : null,
+          taxNumbers,
         }),
       }),
     `RallyDrop: booking ${b.code} confirmed. ${formatRange(b.startsAt, b.endsAt)}. Manage: ${siteUrl("/account")}`,
@@ -236,4 +257,43 @@ export async function alertAdmin(subject: string, lines: string[], path?: string
     dedupeKey,
     content: adminAlertEmail({ subject, lines, url: path ? siteUrl(path) : undefined }),
   });
+}
+
+/** "GST #… · PST #…" for receipts, only for taxes actually charged. */
+async function taxNumbersLine(gstCents: number, pstCents: number): Promise<string | null> {
+  if (gstCents <= 0 && pstCents <= 0) return null;
+  const s = await getSettings();
+  const parts = [
+    gstCents > 0 && s.gstNumber ? `GST #${s.gstNumber}` : null,
+    pstCents > 0 && s.pstNumber ? `PST #${s.pstNumber}` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
+/** Asks the customer to accept the Terms & Waiver through a signed link. */
+export async function notifyAcceptanceNeeded(bookingId: string) {
+  const b = await loadBooking(bookingId);
+  if (!b) return;
+  const url = siteUrl(`/accept/${acceptanceToken(b.id)}`);
+  const hour = new Date().toISOString().slice(0, 13);
+  await toAll(
+    b,
+    () =>
+      sendEmail({
+        to: b.customer.email!,
+        template: "acceptance_request",
+        dedupeKey: `acceptance_request:${b.id}:${hour}`,
+        content: acceptanceRequestEmail({ code: b.code, customerName: b.customer.name, url }),
+      }),
+    `RallyDrop: please accept the rental terms for booking ${b.code}: ${url}`,
+    `sms_acceptance:${b.id}:${hour}`,
+  );
+  if (b.status === "PENDING_PAYMENT") {
+    await alertAdmin(
+      `Paid but terms not accepted: ${b.code}`,
+      [`${b.customer.name} paid, but there's no acceptance on file. We sent them the link.`],
+      `/admin/bookings/${b.id}`,
+      `admin_awaiting_terms:${b.id}`,
+    );
+  }
 }

@@ -89,13 +89,28 @@ export function MachineForm({ machine }: { machine: PublicMachine | null }) {
       <F label="Extra specs (one “Label: value” per line)" htmlFor="specs" className="sm:col-span-2">
         <Textarea id="specs" name="specs" defaultValue={m?.specs.map((s) => `${s.label}: ${s.value}`).join("\n")} />
       </F>
-      <F label="Deposit (CAD)" htmlFor="deposit">
+      <F label="Card hold, up to 6 days (CAD)" htmlFor="deposit">
         <Input
           id="deposit"
           name="deposit"
           inputMode="decimal"
-          defaultValue={((m?.depositCents ?? 30000) / 100).toFixed(2)}
-          required
+          defaultValue={((m?.depositCents ?? 40000) / 100).toFixed(2)}
+        />
+      </F>
+      <F label="Saved-card deposit, week & month (CAD)" htmlFor="depositLong">
+        <Input
+          id="depositLong"
+          name="depositLong"
+          inputMode="decimal"
+          defaultValue={((m?.depositLongCents ?? 60000) / 100).toFixed(2)}
+        />
+      </F>
+      <F label="Purchase cost (CAD, for payback)" htmlFor="purchaseCost">
+        <Input
+          id="purchaseCost"
+          name="purchaseCost"
+          inputMode="decimal"
+          defaultValue={m?.purchaseCostCents != null ? (m.purchaseCostCents / 100).toFixed(2) : ""}
         />
       </F>
       <F label="Calendar colour" htmlFor="calendarColor">
@@ -119,6 +134,10 @@ export function MachineForm({ machine }: { machine: PublicMachine | null }) {
       <label className="flex items-center gap-2 self-end pb-3 text-sm">
         <input type="checkbox" name="bookable" defaultChecked={m?.bookable ?? true} className="size-4 accent-primary" />
         Bookable online (off = “Coming soon”)
+      </label>
+      <label className="flex items-center gap-2 self-end pb-3 text-sm">
+        <input type="checkbox" name="isPublic" defaultChecked={m?.isPublic ?? true} className="size-4 accent-primary" />
+        Public (off = hidden everywhere on the site)
       </label>
       <label className="flex items-center gap-2 self-end pb-3 text-sm">
         <input type="checkbox" name="aiCoach" defaultChecked={m?.aiCoach ?? false} className="size-4 accent-primary" />

@@ -2,7 +2,6 @@
  * PLACEHOLDER PRIVACY POLICY — NOT LEGAL ADVICE.
  * Must be reviewed for compliance with BC PIPA and federal PIPEDA before launch.
  */
-import { brand } from "@/config/brand";
 
 export const privacyUpdated = "October 2026";
 
@@ -41,8 +40,8 @@ export function PrivacyEn() {
 
       <h2>Your rights</h2>
       <p>
-        You can ask to see, correct or delete your personal information by emailing{" "}
-        <a href={`mailto:${brand.contact.email}`}>{brand.contact.email}</a>.
+        You can ask to see, correct or delete your personal information by replying to any of our emails or through our{" "}
+        <a href="/contact">contact page</a>.
       </p>
     </>
   );

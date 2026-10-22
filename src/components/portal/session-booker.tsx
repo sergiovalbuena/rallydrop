@@ -9,9 +9,27 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { bookSessionAction } from "@/app/(site)/account/actions";
+import {
+  EMPTY_CONSENT,
+  TermsConsent,
+  consentBoxes,
+  type ConsentDocs,
+  type ConsentValue,
+} from "@/components/legal/terms-consent";
 
-export function SessionBooker({ productId, courts }: { productId: string; courts: CatalogCourt[] }) {
+export function SessionBooker({
+  productId,
+  courts,
+  consentDocs,
+}: {
+  productId: string;
+  courts: CatalogCourt[];
+  /** Set when the member must (re)accept the live Terms & Waiver. */
+  consentDocs: ConsentDocs | null;
+}) {
   const router = useRouter();
+  const [consent, setConsent] = useState<ConsentValue>(EMPTY_CONSENT);
+  const consentOk = !consentDocs || (consent.terms_waiver && consent.age_19);
   const [when, setWhen] = useState<{ date: string | null; slot: Slot | null }>({ date: null, slot: null });
   const [courtId, setCourtId] = useState(courts[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
@@ -28,13 +46,20 @@ export function SessionBooker({ productId, courts }: { productId: string; courts
         </NativeSelect>
       </div>
       <DateTimePicker productId={productId} machineId={null} value={when} onChange={setWhen} />
+      {consentDocs && <TermsConsent docs={consentDocs} value={consent} onChange={setConsent} />}
       <Button
         size="lg"
-        disabled={!when.slot || !courtId || busy}
+        disabled={!when.slot || !courtId || busy || !consentOk}
         onClick={async () => {
           if (!when.slot) return;
           setBusy(true);
-          const r = await bookSessionAction({ startsAt: when.slot.start, courtId });
+          const r = await bookSessionAction({
+            startsAt: when.slot.start,
+            courtId,
+            consent: consentDocs
+              ? { termsId: consentDocs.terms.id, waiverId: consentDocs.waiver.id, boxes: consentBoxes(consent) }
+              : null,
+          });
           setBusy(false);
           if (r.ok) {
             toast.success(`Session booked · ${r.message}`);

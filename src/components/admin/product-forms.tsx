@@ -35,6 +35,7 @@ export function ProductRow({
     name: string;
     description: string;
     price: string;
+    offSeasonPrice: string;
     active: boolean;
     durationHours: number | null;
     sessionsPerMonth: number | null;
@@ -55,9 +56,14 @@ export function ProductRow({
       <F label="Name" className="md:col-span-2">
         <Input name="name" defaultValue={p.name} />
       </F>
-      <F label="Price (CAD)">
+      <F label={rental ? "High-season price (CAD)" : "Price (CAD)"}>
         <Input name="price" defaultValue={p.price} inputMode="decimal" />
       </F>
+      {rental && (
+        <F label="Off-season price (CAD)">
+          <Input name="offSeasonPrice" defaultValue={p.offSeasonPrice} inputMode="decimal" placeholder="Same" />
+        </F>
+      )}
       {rental && (
         <F label="Length (hours)">
           <Input name="durationHours" type="number" min={1} defaultValue={p.durationHours ?? undefined} />

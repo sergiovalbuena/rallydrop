@@ -1,17 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { Lock, TriangleAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCents } from "@/lib/money";
 import type { StartPaymentResult } from "@/app/(checkout)/book/extra-actions";
+import {
+  EMPTY_CONSENT,
+  TermsConsent,
+  consentBoxes,
+  type ConsentDocs,
+  type ConsentValue,
+} from "@/components/legal/terms-consent";
 import { getStripe, stripeAppearance } from "./stripe-client";
 
 /**
@@ -23,7 +28,9 @@ export function ContactPayFlow({
   start,
   successPath,
   cta,
+  consentDocs,
 }: {
+  consentDocs: ConsentDocs;
   targetId: string;
   start: (input: unknown) => Promise<StartPaymentResult>;
   successPath: string;
@@ -31,7 +38,8 @@ export function ContactPayFlow({
 }) {
   const t = useTranslations("book");
   const [contact, setContact] = useState({ name: "", email: "", phone: "" });
-  const [terms, setTerms] = useState(false);
+  const [consent, setConsent] = useState<ConsentValue>(EMPTY_CONSENT);
+  const consentOk = consent.terms_waiver && consent.age_19;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,7 +49,11 @@ export function ContactPayFlow({
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const r = await start({ targetId, contact, termsAccepted: terms });
+    const r = await start({
+      targetId,
+      contact,
+      consent: { termsId: consentDocs.terms.id, waiverId: consentDocs.waiver.id, boxes: consentBoxes(consent) },
+    });
     setBusy(false);
     if (r.ok) {
       setPayment({ clientSecret: r.clientSecret, amountCents: r.amountCents });
@@ -86,22 +98,14 @@ export function ContactPayFlow({
         </div>
       ))}
       <p className="text-xs text-muted-foreground">{t("contactHint")}</p>
-      <label className="flex cursor-pointer items-start gap-3 text-sm">
-        <Checkbox checked={terms} onCheckedChange={(v) => setTerms(v === true)} className="mt-0.5" />
-        <span>
-          {t("terms")}{" "}
-          <Link href="/terms" target="_blank" className="text-primary underline">
-            {t("termsLink")}
-          </Link>
-        </span>
-      </label>
+      <TermsConsent docs={consentDocs} value={consent} onChange={setConsent} />
       {error && (
         <Alert variant="destructive">
           <TriangleAlert />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <Button type="submit" size="lg" className="w-full" disabled={busy}>
+      <Button type="submit" size="lg" className="w-full" disabled={busy || !consentOk}>
         {busy ? t("processing") : cta}
       </Button>
     </form>

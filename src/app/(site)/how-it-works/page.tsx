@@ -11,13 +11,13 @@ import { getSettings } from "@/lib/services/settings";
 import { PageHero, Section, SectionHeading } from "@/components/marketing/section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { revealDelay } from "@/components/marketing/reveal-delay";
+import { faqItems } from "@/lib/services/faq";
 import { formatCentsShort } from "@/lib/money";
 
 export const metadata: Metadata = { title: "How it works & FAQ" };
 
 export default async function HowItWorksPage() {
   const t = await getTranslations("how");
-  const faq = [1, 2, 3, 4, 5].map((i) => ({ q: t(`q${i}` as "q1"), a: t(`a${i}` as "a1") }));
 
   return (
     <>
@@ -39,11 +39,18 @@ export default async function HowItWorksPage() {
       <Section id="faq" className="max-w-3xl pt-0">
         <SectionHeading title={t("faqTitle")} align="center" />
         <div data-reveal>
-          <FaqList items={faq} />
+          <Suspense fallback={<Skeleton className="h-96 rounded-2xl" />}>
+            <Faq />
+          </Suspense>
         </div>
       </Section>
     </>
   );
+}
+
+async function Faq() {
+  await connection();
+  return <FaqList items={await faqItems()} />;
 }
 
 function TopicsSkeleton() {

@@ -3,11 +3,12 @@ import { getTranslations } from "next-intl/server";
 import { Lock, Phone } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { brand } from "@/config/brand";
+import { getSiteInfo } from "@/lib/services/site-info";
 
 /** Focused checkout: no site navigation or footer to pull people out of the booking. */
 export default async function CheckoutLayout({ children }: LayoutProps<"/">) {
   const t = await getTranslations("checkout");
+  const site = await getSiteInfo();
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
@@ -19,19 +20,23 @@ export default async function CheckoutLayout({ children }: LayoutProps<"/">) {
             <Lock className="size-3.5" aria-hidden /> {t("secure")}
           </span>
           <div className="ml-auto flex items-center gap-1">
-            <a
-              href={`tel:${brand.contact.phone.replace(/[^+\d]/g, "")}`}
-              className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:inline-flex"
-            >
-              <Phone className="size-4" aria-hidden /> {t("help")} {brand.contact.phone}
-            </a>
-            <a
-              href={`tel:${brand.contact.phone.replace(/[^+\d]/g, "")}`}
-              aria-label={t("help")}
-              className="inline-flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary sm:hidden"
-            >
-              <Phone className="size-5" aria-hidden />
-            </a>
+            {site.phone && site.phoneHref && (
+              <>
+                <a
+                  href={site.phoneHref}
+                  className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:inline-flex"
+                >
+                  <Phone className="size-4" aria-hidden /> {t("help")} {site.phone}
+                </a>
+                <a
+                  href={site.phoneHref}
+                  aria-label={t("help")}
+                  className="inline-flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary sm:hidden"
+                >
+                  <Phone className="size-5" aria-hidden />
+                </a>
+              </>
+            )}
             <ThemeToggle />
           </div>
         </div>

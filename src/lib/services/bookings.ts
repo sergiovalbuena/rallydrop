@@ -5,24 +5,27 @@ import { generateBookingCode } from "@/lib/domain/booking-code";
 import { planDeposit } from "@/lib/domain/deposit";
 import type { LatLng } from "@/lib/domain/geo";
 import { legsLabel, resolveDelivery, type DeliveryResolution } from "@/lib/domain/delivery";
+import { carePrice, chargedTaxes, depositAmount } from "@/lib/domain/rental";
+import { isHighSeason, seasonalPrice } from "@/lib/domain/season";
 import { quote, type Quote } from "@/lib/domain/pricing";
 import { candidateStarts } from "@/lib/domain/availability";
 import { brand } from "@/config/brand";
-import { toLocalDate } from "@/lib/time";
+import { addLocalDays, localDateMinuteToUtc, toLocalDate } from "@/lib/time";
 import { productDurationMinutes, rulesFor } from "./availability";
 import { upsertCustomer } from "./customers";
 import { BookingError, isOverlapError, isUniqueViolation } from "./errors";
 import { findValidPromo, promoRedemptions, toPromoInput } from "./promo";
 import { getSettings } from "./settings";
 
-export const TERMS_VERSION = "2026-10";
-
 export type CreateBookingInput = {
   productId: string;
   machineId: string;
   startsAt: Date;
   customer: { name: string; email?: string | null; phone?: string | null; skillLevel?: SkillLevel | null };
-  balls: boolean;
+  /** Optional extra bucket (balls are always included). */
+  extraBalls?: boolean;
+  /** RallyDrop Care damage protection. */
+  care?: boolean;
   fulfillment: FulfillmentMethod;
   /** Paid trips we make (ignored for self-serve PICKUP). */
   dropoff?: boolean;
@@ -35,7 +38,6 @@ export type CreateBookingInput = {
   channel: BookingChannel;
   /** Package session: product price (and court delivery) covered by the subscription. */
   subscriptionId?: string | null;
-  termsAccepted: boolean;
   now?: Date;
   /** Admin bookings may skip the public slot rules (still no double booking). */
   skipSlotRules?: boolean;
@@ -46,7 +48,10 @@ export type CreateBookingInput = {
 export async function priceBooking(input: {
   productId: string;
   machineId: string;
-  balls: boolean;
+  /** Rental start: picks the season price. Defaults to today. */
+  startsAt?: Date | null;
+  extraBalls: boolean;
+  care: boolean;
   fulfillment: FulfillmentMethod;
   dropoff?: boolean;
   collection?: boolean;
@@ -56,7 +61,14 @@ export async function priceBooking(input: {
   productIncluded?: boolean;
   promoCode?: string | null;
   now?: Date;
-}): Promise<{ quote: Quote; delivery: DeliveryResolution; promoId: string | null; promoError: string | null }> {
+}): Promise<{
+  quote: Quote;
+  delivery: DeliveryResolution;
+  promoId: string | null;
+  promoError: string | null;
+  offSeason: boolean;
+  careCents: number;
+}> {
   const [settings, product, machine, addOns, court] = await Promise.all([
     getSettings(),
     db.product.findUnique({ where: { id: input.productId } }),
@@ -71,7 +83,7 @@ export async function priceBooking(input: {
 
   const promo = input.promoCode?.trim() ? await findValidPromo(input.promoCode, product.kind, input.now) : null;
 
-  const ballsAddOn = addOns.find((a) => a.kind === "BALLS");
+  const extraAddOn = addOns.find((a) => a.kind === "EXTRA_BALLS");
   const self = input.fulfillment === "PICKUP";
   const legs = { dropoff: !self && !!input.dropoff, collection: !self && !!input.collection };
 
@@ -87,20 +99,33 @@ export async function priceBooking(input: {
     zone1Fsas: brand.zone1Fsas,
   });
 
+  const startDate = toLocalDate(input.startsAt ?? input.now ?? new Date());
+  const price = seasonalPrice(product, startDate, { start: settings.seasonStart, end: settings.seasonEnd });
+  const care = carePrice(product.kind, settings);
+  const rentalHours = productDurationMinutes(product) / 60;
+
   const q = quote({
-    product: { name: product.name, priceCents: product.priceCents },
-    balls: {
-      selected: input.balls && !!ballsAddOn,
-      name: ballsAddOn?.name ?? "Balls",
-      priceCents: ballsAddOn?.priceCents ?? 0,
+    product: {
+      name: product.name,
+      priceCents: price.cents,
+      note:
+        price.offSeason && product.offSeasonPriceCents !== null
+          ? "Off-season price · balls included"
+          : "Balls included",
     },
+    extraBalls: {
+      selected: input.extraBalls && !!extraAddOn,
+      name: extraAddOn?.name ?? "Extra bucket",
+      priceCents: extraAddOn?.priceCents ?? 0,
+    },
+    care: { selected: input.care && care !== null, priceCents: care ?? 0 },
     delivery: {
       selected: delivery.status === "ok",
       label: delivery.status === "ok" ? `${legsLabel(legs)} · Zone ${delivery.zone}` : "",
       priceCents: delivery.status === "ok" ? delivery.feeCents : 0,
     },
-    taxes: { gstBps: settings.gstBps, pstBps: settings.pstBps },
-    depositCents: machine.depositCents,
+    taxes: chargedTaxes(settings),
+    depositCents: depositAmount(machine, rentalHours, settings.depositAuthMaxDays),
     productIncluded: input.productIncluded,
     promo: promo?.ok ? toPromoInput(promo.promo) : null,
   });
@@ -109,6 +134,8 @@ export async function priceBooking(input: {
     delivery,
     promoId: promo?.ok && q.discountCents > 0 ? promo.promo.id : null,
     promoError: promo && !promo.ok ? promo.error : null,
+    offSeason: price.offSeason,
+    careCents: q.lines.find((l) => l.key === "care")?.cents ?? 0,
   };
 }
 
@@ -120,9 +147,6 @@ export async function priceBooking(input: {
  */
 export async function createBooking(input: CreateBookingInput) {
   const now = input.now ?? new Date();
-  if (!input.termsAccepted && input.channel === "ONLINE") {
-    throw new BookingError("INVALID_STATE", "Please accept the rental terms.");
-  }
 
   const [settings, product, machine] = await Promise.all([
     getSettings(),
@@ -147,16 +171,26 @@ export async function createBooking(input: CreateBookingInput) {
       throw new BookingError("SLOT_NOT_ALLOWED", "That start time isn't available. Please pick another.");
     }
   }
+  if (await monthRentalsFull(product, startsAt, settings)) {
+    throw new BookingError(
+      "SLOT_NOT_ALLOWED",
+      "Month rentals are fully booked for that month in high season. Try a week, or another month.",
+    );
+  }
 
   const {
     quote: q,
     delivery,
     promoId,
     promoError,
+    offSeason,
+    careCents,
   } = await priceBooking({
     productId: product.id,
     machineId: machine.id,
-    balls: input.balls,
+    startsAt,
+    extraBalls: !!input.extraBalls,
+    care: !!input.care,
     fulfillment: input.fulfillment,
     dropoff: input.dropoff,
     collection: input.collection,
@@ -208,9 +242,9 @@ export async function createBooking(input: CreateBookingInput) {
       if (promoId) await claimPromo(tx, promoId);
 
       const addOnRows: Prisma.BookingAddOnCreateWithoutBookingInput[] = q.lines
-        .filter((l) => l.key === "balls")
+        .filter((l) => l.key === "extra_balls")
         .flatMap((l) => {
-          const addOn = addOns.find((a) => a.kind === "BALLS");
+          const addOn = addOns.find((a) => a.kind === "EXTRA_BALLS");
           return addOn ? [{ addOn: { connect: { id: addOn.id } }, priceCents: l.cents }] : [];
         });
 
@@ -246,8 +280,9 @@ export async function createBooking(input: CreateBookingInput) {
           totalCents: q.totalCents,
           gstBps: q.gstBps,
           pstBps: q.pstBps,
-          termsAcceptedAt: input.termsAccepted ? now : null,
-          termsVersion: input.termsAccepted ? TERMS_VERSION : null,
+          care: careCents > 0,
+          careCents,
+          offSeason,
           addOns: { create: addOnRows },
           occupancy: {
             create: {
@@ -322,6 +357,33 @@ async function claimPromo(tx: Prisma.TransactionClient, promoId: string) {
   if ((await promoRedemptions(promoId, undefined, tx)) >= promo.maxRedemptions) {
     throw new BookingError("INVALID_PROMO", "That code has been fully redeemed.");
   }
+}
+
+/**
+ * Month rentals block four weekends, so in high season the owner can cap how
+ * many start per calendar month (Settings.highSeasonMonthCap).
+ */
+export async function monthRentalsFull(
+  product: { kind: string },
+  startsAt: Date,
+  settings: { seasonStart: string; seasonEnd: string; highSeasonMonthCap: number | null },
+  excludeBookingId?: string,
+): Promise<boolean> {
+  if (product.kind !== "MONTH" || settings.highSeasonMonthCap === null) return false;
+  const date = toLocalDate(startsAt);
+  if (!isHighSeason(date, { start: settings.seasonStart, end: settings.seasonEnd })) return false;
+  if (settings.highSeasonMonthCap <= 0) return true;
+  const monthStart = localDateMinuteToUtc(`${date.slice(0, 7)}-01`, 0);
+  const nextMonth = localDateMinuteToUtc(addLocalDays(`${date.slice(0, 7)}-28`, 4).slice(0, 7) + "-01", 0);
+  const taken = await db.booking.count({
+    where: {
+      product: { kind: "MONTH" },
+      startsAt: { gte: monthStart, lt: nextMonth },
+      status: { notIn: ["CANCELLED", "EXPIRED"] },
+      ...(excludeBookingId ? { NOT: { id: excludeBookingId } } : {}),
+    },
+  });
+  return taken >= settings.highSeasonMonthCap;
 }
 
 async function uniqueCode(tx: Prisma.TransactionClient): Promise<string> {

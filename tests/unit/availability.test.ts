@@ -1,12 +1,6 @@
+import { isHighSeason } from "@/lib/domain/season";
 import { describe, expect, it } from "vitest";
-import {
-  bookingBlock,
-  candidateStarts,
-  isInSeason,
-  isMachineFree,
-  slotsForDate,
-  type SlotRules,
-} from "@/lib/domain/availability";
+import { bookingBlock, candidateStarts, isMachineFree, slotsForDate, type SlotRules } from "@/lib/domain/availability";
 import { localDateMinuteToUtc } from "@/lib/time";
 
 // Wednesday Apr 28 2027, 10:00 in Victoria (PDT, UTC-7)
@@ -20,7 +14,7 @@ const dayRules: SlotRules = {
   bufferMinutes: 120,
   minLeadHours: 12,
   maxAdvanceDays: 90,
-  season: { startMonth: 4, endMonth: 9, allowOffSeason: true },
+  season: { start: "04-01", end: "09-30", allowOffSeason: true },
   now,
 };
 
@@ -61,8 +55,8 @@ describe("candidate starts", () => {
   });
 
   it("handles seasons that wrap the year", () => {
-    expect(isInSeason(12, { startMonth: 11, endMonth: 2, allowOffSeason: false })).toBe(true);
-    expect(isInSeason(6, { startMonth: 11, endMonth: 2, allowOffSeason: false })).toBe(false);
+    expect(isHighSeason("2027-12-15", { start: "11-01", end: "02-28" })).toBe(true);
+    expect(isHighSeason("2027-06-15", { start: "11-01", end: "02-28" })).toBe(false);
   });
 });
 

@@ -29,11 +29,10 @@ describe.skipIf(!hasTestDb)("booking concurrency (Postgres)", () => {
       machineId: catalog.aura.id,
       startsAt: localDateMinuteToUtc("2027-05-03", 600), // Mon 10:00
       customer: { name: "Alex", email: `alex${Math.random()}@example.com` },
-      balls: true,
+      extraBalls: true,
       fulfillment: "DELIVERY_COURT",
       courtId: catalog.court.id,
       channel: "ONLINE",
-      termsAccepted: true,
       now,
       ...overrides,
     };
@@ -43,12 +42,12 @@ describe.skipIf(!hasTestDb)("booking concurrency (Postgres)", () => {
     const booking = await createBooking(input());
     expect(booking.status).toBe("PENDING_PAYMENT");
     expect(booking.code).toMatch(/^RD-[A-Z0-9]{5}$/);
-    // 45 + 10 balls + free court delivery = 55 → +12% tax
-    expect(booking.subtotalCents).toBe(5500);
-    expect(booking.totalCents).toBe(6160);
+    // 45 + 8 extra bucket (balls are included); taxes are off by default
+    expect(booking.subtotalCents).toBe(5300);
+    expect(booking.totalCents).toBe(5300);
     expect(booking.endsAt.getTime() - booking.startsAt.getTime()).toBe(25 * 60 * MIN);
     expect(booking.deposit?.strategy).toBe("AUTH_HOLD");
-    expect(booking.deposit?.amountCents).toBe(30000);
+    expect(booking.deposit?.amountCents).toBe(40000);
 
     const occ = await db.machineOccupancy.findUniqueOrThrow({ where: { bookingId: booking.id } });
     expect(occ.blockEnd.getTime() - booking.endsAt.getTime()).toBe(120 * MIN);

@@ -6,6 +6,7 @@ import { PricingGrid, PricingGridSkeleton } from "@/components/marketing/pricing
 import { DeliveryService, DeliveryServiceSkeleton } from "@/components/marketing/delivery-service";
 import { PageHero, Section, SectionHeading } from "@/components/marketing/section";
 import { getSettings } from "@/lib/services/settings";
+import { pricingContext } from "@/lib/services/pricing-context";
 import { listActiveAddOns, listActiveProducts, listPublicMachines } from "@/lib/services/catalog";
 
 export const metadata: Metadata = { title: "Pricing" };
@@ -50,6 +51,6 @@ async function Pricing() {
     listActiveAddOns(),
     listPublicMachines(),
   ]);
-  const deposit = machines.find((m) => m.bookable)?.depositCents ?? 30000;
-  return <PricingGrid products={products} addOns={addOns} depositCents={deposit} />;
+  const ctx = await pricingContext(machines);
+  return <PricingGrid products={products} addOns={addOns} ctx={ctx} />;
 }

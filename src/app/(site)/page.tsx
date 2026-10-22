@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { ArrowRight, Check, Quote } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { CourtIllustration } from "@/components/brand/court-illustration";
 import { DeliveryService, DeliveryServiceSkeleton } from "@/components/marketing/delivery-service";
 import { FaqList } from "@/components/marketing/faq-list";
@@ -14,24 +14,19 @@ import { Section, SectionHeading } from "@/components/marketing/section";
 import { StickyBookBar } from "@/components/marketing/sticky-book-bar";
 import { revealDelay } from "@/components/marketing/reveal-delay";
 import { Ticker } from "@/components/marketing/ticker";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCentsShort } from "@/lib/money";
 import { listActiveAddOns, listActiveProducts, listPublicMachines } from "@/lib/services/catalog";
+import { pricingContext } from "@/lib/services/pricing-context";
+import { faqItems } from "@/lib/services/faq";
+import { publicReviews } from "@/lib/services/reviews";
+import { formatLocal } from "@/lib/time";
 import { getSettings } from "@/lib/services/settings";
 
 export default async function HomePage() {
   const t = await getTranslations("home");
   const tc = await getTranslations("common");
-  const th = await getTranslations("how");
-
-  const testimonials = [
-    { quote: t("t1Quote"), name: t("t1Name"), meta: t("t1Meta") },
-    { quote: t("t2Quote"), name: t("t2Name"), meta: t("t2Meta") },
-    { quote: t("t3Quote"), name: t("t3Name"), meta: t("t3Meta") },
-  ];
-  const faq = [1, 2, 3, 4].map((i) => ({ q: th(`q${i}` as "q1"), a: th(`a${i}` as "a1") }));
   const trust = [t("trust1"), t("trust2"), t("trust3")];
 
   return (
@@ -124,45 +119,18 @@ export default async function HomePage() {
         </Section>
       </div>
 
-      {/* Testimonials — swipeable on phones */}
-      <div className="court-lines floodlight grain bg-court text-white">
-        <Section>
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <h2 data-reveal className="font-display text-5xl font-black uppercase sm:text-6xl">
-              {t("testimonialsTitle")}
-            </h2>
-            <Badge variant="accent">{tc("sampleBadge")}</Badge>
-          </div>
-          <div
-            role="region"
-            aria-label={t("testimonialsTitle")}
-            tabIndex={0}
-            className="-mx-4 flex snap-x snap-mandatory [scrollbar-width:none] gap-4 overflow-x-auto px-4 pb-2 focus-visible:outline-optic sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0"
-          >
-            {testimonials.map((r, i) => (
-              <figure
-                key={i}
-                data-reveal
-                style={revealDelay(i, 120)}
-                className="w-[82%] shrink-0 snap-center rounded-2xl border border-white/15 bg-white/[0.06] p-6 backdrop-blur sm:w-auto"
-              >
-                <Quote className="size-7 text-optic" aria-hidden />
-                <blockquote className="mt-3 text-lg leading-snug">“{r.quote}”</blockquote>
-                <figcaption className="mt-4 text-sm text-white/65">
-                  {r.name} · {r.meta}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-          <p className="mt-6 text-xs text-white/55">{t("testimonialsNote")}</p>
-        </Section>
-      </div>
+      {/* Real reviews only — the section appears once 2+ are published in the admin. */}
+      <Suspense>
+        <Testimonials />
+      </Suspense>
 
       {/* FAQ */}
       <Section id="faq" className="max-w-3xl">
         <SectionHeading title={t("faqTitle")} align="center" />
         <div data-reveal>
-          <FaqList items={faq} />
+          <Suspense fallback={<Skeleton className="h-72 rounded-2xl" />}>
+            <HomeFaq />
+          </Suspense>
         </div>
         <div className="mt-6 text-center">
           <Button asChild variant="link">
@@ -211,6 +179,52 @@ async function HomeMachines() {
   return <MachineFeature machines={await listPublicMachines()} />;
 }
 
+async function Testimonials() {
+  await connection();
+  const reviews = await publicReviews();
+  if (reviews.length === 0) return null;
+  const t = await getTranslations("home");
+  return (
+    <div className="court-lines floodlight grain bg-court text-white">
+      <Section>
+        <h2 data-reveal className="mb-8 font-display text-5xl font-black uppercase sm:text-6xl">
+          {t("testimonialsTitle")}
+        </h2>
+        <div
+          role="region"
+          aria-label={t("testimonialsTitle")}
+          tabIndex={0}
+          className="-mx-4 flex snap-x snap-mandatory [scrollbar-width:none] gap-4 overflow-x-auto px-4 pb-2 focus-visible:outline-optic sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0"
+        >
+          {reviews.map((r, i) => (
+            <figure
+              key={r.id}
+              data-reveal
+              style={revealDelay(i, 120)}
+              className="w-[82%] shrink-0 snap-center rounded-2xl border border-white/15 bg-white/[0.06] p-6 backdrop-blur sm:w-auto"
+            >
+              <p className="text-optic" aria-label={`${r.rating} out of 5 stars`}>
+                {"★".repeat(r.rating)}
+              </p>
+              <blockquote className="mt-3 text-lg leading-snug">“{r.text}”</blockquote>
+              <figcaption className="mt-4 text-sm text-white/65">
+                {r.customerName} · {formatLocal(r.reviewedOn, "MMMM yyyy")}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+async function HomeFaq() {
+  await connection();
+  const ids = ["where", "delivery", "deposit", "rain", "easy"];
+  const items = (await faqItems()).filter((i) => ids.includes(i.id));
+  return <FaqList items={items} />;
+}
+
 async function HomeDelivery() {
   await connection();
   const settings = await getSettings();
@@ -224,8 +238,8 @@ async function HomePricing() {
     listActiveAddOns(),
     listPublicMachines(),
   ]);
-  const deposit = machines.find((m) => m.bookable)?.depositCents ?? 30000;
-  return <PricingGrid products={products} addOns={addOns} depositCents={deposit} compact />;
+  const ctx = await pricingContext(machines);
+  return <PricingGrid products={products} addOns={addOns} ctx={ctx} compact />;
 }
 
 async function StickyBar() {

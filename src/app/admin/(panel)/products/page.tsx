@@ -20,7 +20,7 @@ export default async function ProductsPage() {
     <>
       <PageHeader
         title="Prices & products"
-        description="Prices in CAD before tax. Changes apply to new bookings only."
+        description="Prices in CAD before tax. Balls are included in every rental. Seasons are set in Settings; changes apply to new bookings only."
       />
       <div className="space-y-6">
         <Panel title="Products">
@@ -36,6 +36,7 @@ export default async function ProductsPage() {
                     name: p.name,
                     description: p.description ?? "",
                     price: (p.priceCents / 100).toFixed(2),
+                    offSeasonPrice: p.offSeasonPriceCents === null ? "" : (p.offSeasonPriceCents / 100).toFixed(2),
                     active: p.active,
                     durationHours: p.durationHours,
                     sessionsPerMonth: p.sessionsPerMonth,

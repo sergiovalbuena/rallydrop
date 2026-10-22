@@ -1,15 +1,18 @@
 "use server";
 
 import { z } from "zod";
-import { contactSchema, fieldErrors } from "@/lib/validation/booking";
+import { headers } from "next/headers";
+import { consentComplete } from "@/lib/domain/legal";
+import { recordAcceptance } from "@/lib/services/legal";
+import { clientIp } from "@/lib/request";
+import { consentSchema, contactSchema, fieldErrors } from "@/lib/validation/booking";
 import { BookingError } from "@/lib/services/errors";
-import { startGroupEnrollment } from "@/lib/services/groups";
 import { startSubscription } from "@/lib/services/subscriptions";
 
 const input = z.object({
   targetId: z.string().min(1),
   contact: contactSchema,
-  termsAccepted: z.literal(true, { error: "Please accept the rental terms." }),
+  consent: consentSchema,
 });
 
 export type StartPaymentResult =
@@ -23,6 +26,7 @@ async function run(
   const parsed = input.safeParse(raw);
   if (!parsed.success)
     return { ok: false, error: "Please check the highlighted fields.", fields: fieldErrors(parsed.error) };
+  if (!consentComplete(parsed.data.consent.boxes)) return { ok: false, error: "Tick both boxes to continue." };
   try {
     return { ok: true, ...(await start(parsed.data)) };
   } catch (e) {
@@ -36,14 +40,19 @@ async function run(
 export async function startPackageAction(raw: unknown): Promise<StartPaymentResult> {
   return run(raw, async (d) => {
     const r = await startSubscription({ productId: d.targetId, customer: d.contact });
+    // Members accept once here; their package sessions carry it over.
+    const h = await headers();
+    await recordAcceptance({
+      customerId: r.customerId,
+      name: r.customerName,
+      contact: d.contact.email ?? d.contact.phone ?? "",
+      termsId: d.consent.termsId,
+      waiverId: d.consent.waiverId,
+      boxes: d.consent.boxes,
+      method: "package",
+      ip: clientIp(h),
+      userAgent: h.get("user-agent"),
+    });
     return { clientSecret: r.clientSecret, amountCents: r.amountCents };
-  });
-}
-
-/** Group session seat. targetId = group session id. */
-export async function startGroupAction(raw: unknown): Promise<StartPaymentResult> {
-  return run(raw, async (d) => {
-    const r = await startGroupEnrollment({ groupSessionId: d.targetId, customer: d.contact });
-    return { clientSecret: r.clientSecret, amountCents: r.totalCents };
   });
 }

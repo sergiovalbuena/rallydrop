@@ -1,9 +1,9 @@
 import { connection } from "next/server";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, TriangleAlert } from "lucide-react";
 import { DepositBadge, Empty, PageHeader, Panel, StatCard, StatusBadge } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
-import { dashboardStats } from "@/lib/admin/queries";
+import { dashboardAlerts, dashboardStats } from "@/lib/admin/queries";
 import { formatCents } from "@/lib/money";
 import { logistics } from "@/lib/domain/logistics";
 import { formatLocal } from "@/lib/time";
@@ -14,7 +14,8 @@ export const instant = false;
 export default async function AdminDashboard() {
   await connection();
   const now = new Date();
-  const s = await dashboardStats(now);
+  const [s, alerts] = await Promise.all([dashboardStats(now), dashboardAlerts(now)]);
+  const alertCount = Number(alerts.insuranceMissing) + alerts.termsMissing.length + alerts.holdsExpiring.length;
   const held = s.deposits.filter((d) => d.status === "HELD").reduce((sum, d) => sum + d.amountCents, 0);
 
   return (
@@ -30,6 +31,46 @@ export default async function AdminDashboard() {
           </Button>
         }
       />
+      {alertCount > 0 && (
+        <section
+          aria-label="Alerts"
+          className="mb-6 space-y-2 rounded-xl border border-warning/50 bg-warning/10 p-4 text-sm"
+        >
+          {alerts.insuranceMissing && (
+            <p className="flex items-center gap-2 font-semibold">
+              <TriangleAlert className="size-4 shrink-0" aria-hidden />
+              No liability insurance on file.{" "}
+              <Link href="/admin/settings" className="font-normal text-primary underline">
+                Add it in Settings
+              </Link>
+            </p>
+          )}
+          {alerts.termsMissing.map((b) => (
+            <p key={b.id} className="flex items-center gap-2">
+              <TriangleAlert className="size-4 shrink-0" aria-hidden />
+              <span>
+                <Link href={`/admin/bookings/${b.id}`} className="font-semibold text-primary underline">
+                  {b.code}
+                </Link>{" "}
+                · {b.customer.name} hasn&apos;t accepted the Terms &amp; Waiver (starts{" "}
+                {formatLocal(b.startsAt, "MMM d")}).
+              </span>
+            </p>
+          ))}
+          {alerts.holdsExpiring.map((d) => (
+            <p key={d.bookingId} className="flex items-center gap-2">
+              <TriangleAlert className="size-4 shrink-0" aria-hidden />
+              <span>
+                <Link href={`/admin/bookings/${d.bookingId}`} className="font-semibold text-primary underline">
+                  {d.booking.code}
+                </Link>{" "}
+                · deposit hold expires {d.authExpiresAt ? formatLocal(d.authExpiresAt, "EEE h:mm a") : "soon"} and the
+                machine isn&apos;t back.
+              </span>
+            </p>
+          ))}
+        </section>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Revenue this month" value={formatCents(s.revenueCents)} hint="Net of refunds, incl. taxes" />
         <StatCard label="Today" value={s.todays.length} hint="Drop-offs and pickups" />

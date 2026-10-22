@@ -6,7 +6,7 @@ import { runDeposits, runExpireHolds, runReminders } from "@/lib/services/cron";
 import { handleRentalSucceeded, startRentalPayment } from "@/lib/services/payments";
 import { localDateMinuteToUtc } from "@/lib/time";
 import { createFakeStripe } from "../helpers/fake-stripe";
-import { hasTestDb, resetDb, seedCatalog } from "../helpers/fixtures";
+import { acceptTerms, hasTestDb, resetDb, seedCatalog } from "../helpers/fixtures";
 
 const now = localDateMinuteToUtc("2027-04-28", 600);
 
@@ -25,9 +25,8 @@ describe.skipIf(!hasTestDb)("cron jobs", () => {
     productId: catalog.day.id,
     machineId: catalog.aura.id,
     customer: { name: "Cam", email: "cam@example.com" },
-    balls: false,
+    extraBalls: false,
     fulfillment: "PICKUP" as const,
-    termsAccepted: true,
     now,
   });
 
@@ -55,6 +54,7 @@ describe.skipIf(!hasTestDb)("cron jobs", () => {
     const startsAt = localDateMinuteToUtc("2027-05-20", 600);
     const b = await createBooking({ ...base(), startsAt, channel: "ONLINE" });
     await startRentalPayment(b.id);
+    await acceptTerms(b.id);
     const payment = await db.payment.findFirstOrThrow({ where: { bookingId: b.id } });
     const pi = fake.succeed(payment.stripePaymentIntentId!);
     await handleRentalSucceeded(pi as unknown as Parameters<typeof handleRentalSucceeded>[0], { offSession: true });

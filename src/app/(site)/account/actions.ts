@@ -12,6 +12,11 @@ import { attachSubscriptionCardToDeposit, cancelBooking } from "@/lib/services/p
 import { customerPackage } from "@/lib/services/portal";
 import { getPortalCustomer, requestLoginCode, signOutPortal, verifyLoginCode } from "@/lib/services/portal-auth";
 import { billingPortalUrl } from "@/lib/services/subscriptions";
+import { headers } from "next/headers";
+import { consentComplete } from "@/lib/domain/legal";
+import { carryOverAcceptance, customerAcceptedLive, recordAcceptance } from "@/lib/services/legal";
+import { consentSchema } from "@/lib/validation/booking";
+import { clientIp } from "@/lib/request";
 import { siteUrl } from "@/lib/site-url";
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -81,7 +86,12 @@ export async function billingPortalAction(): Promise<void> {
   redirect(await billingPortalUrl(customer.id, siteUrl("/account")));
 }
 
-export async function bookSessionAction(input: { startsAt: string; courtId: string }): Promise<ActionResult> {
+export async function bookSessionAction(input: {
+  startsAt: string;
+  courtId: string;
+  /** Required only when the customer hasn't accepted the live Terms & Waiver. */
+  consent?: { termsId: string; waiverId: string; boxes: string[] } | null;
+}): Promise<ActionResult & { needsConsent?: boolean }> {
   try {
     const customer = await getPortalCustomer();
     if (!customer) return { ok: false, error: "Please sign in again." };
@@ -91,6 +101,14 @@ export async function bookSessionAction(input: { startsAt: string; courtId: stri
     const startsAt = new Date(z.iso.datetime().parse(input.startsAt));
     if (startsAt >= pkg.subscription.currentPeriodEnd) {
       return { ok: false, error: "Pick a date before your package renews." };
+    }
+    // Members accept once; a new version of the terms must be accepted again.
+    const alreadyAccepted = await customerAcceptedLive(customer.id);
+    if (!alreadyAccepted) {
+      const consent = consentSchema.safeParse(input.consent);
+      if (!consent.success || !consentComplete(consent.data.boxes)) {
+        return { ok: false, needsConsent: true, error: "Please accept the updated terms (tick both boxes)." };
+      }
     }
     const machineIds = await db.machine.findMany({
       where: { bookable: true, status: { in: ["AVAILABLE", "RENTED"] } },
@@ -104,7 +122,6 @@ export async function bookSessionAction(input: { startsAt: string; courtId: stri
           machineId: m.id,
           startsAt,
           customer: { name: customer.name, email: customer.email, phone: customer.phone },
-          balls: false,
           fulfillment: "DELIVERY_COURT",
           // Packages include the round trip to the court.
           dropoff: true,
@@ -112,8 +129,24 @@ export async function bookSessionAction(input: { startsAt: string; courtId: stri
           courtId: input.courtId,
           channel: "ONLINE",
           subscriptionId: pkg.subscription.id,
-          termsAccepted: true,
         });
+        if (alreadyAccepted) {
+          await carryOverAcceptance(customer.id, booking.id);
+        } else {
+          const h = await headers();
+          await recordAcceptance({
+            bookingId: booking.id,
+            customerId: customer.id,
+            name: customer.name,
+            contact: customer.email ?? customer.phone ?? "",
+            termsId: input.consent!.termsId,
+            waiverId: input.consent!.waiverId,
+            boxes: input.consent!.boxes,
+            method: "checkout",
+            ip: clientIp(h),
+            userAgent: h.get("user-agent"),
+          });
+        }
         await attachSubscriptionCardToDeposit(booking.id, pkg.subscription.stripeSubscriptionId).catch((e) =>
           console.error("deposit for session", e),
         );

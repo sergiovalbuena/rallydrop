@@ -152,6 +152,22 @@
         transparent 88%
       );
   }
+  /* Legal documents (public pages and checkout modals). */
+  .legal-prose {
+    @apply space-y-4 leading-relaxed text-foreground/90;
+  }
+  .legal-prose a {
+    @apply text-primary underline;
+  }
+  .legal-prose h2 {
+    @apply mt-8 font-display text-2xl font-extrabold uppercase first:mt-0;
+  }
+  .legal-prose h3 {
+    @apply mt-6 font-semibold;
+  }
+  .legal-prose ul {
+    @apply list-disc space-y-2 pl-6;
+  }
   .text-balance {
     text-wrap: balance;
   }

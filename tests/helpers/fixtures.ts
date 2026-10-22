@@ -34,14 +34,29 @@ export async function seedCatalog() {
     }),
   ]);
   const [aura, pace] = await Promise.all([
-    db.machine.create({ data: { slug: "aura", name: "PONGBOT Aura", model: "Aura", depositCents: 30000 } }),
+    db.machine.create({ data: { slug: "aura", name: "PONGBOT Aura", model: "Aura", depositCents: 40000 } }),
     db.machine.create({ data: { slug: "pace-s", name: "PONGBOT Pace S", model: "Pace S", depositCents: 40000 } }),
   ]);
   await db.addOn.createMany({
-    data: [{ kind: "BALLS", name: "Ball bucket", priceCents: 1000 }],
+    data: [{ kind: "EXTRA_BALLS", name: "Extra bucket (+50 balls)", priceCents: 800 }],
   });
   const court = await db.court.create({
     data: { name: "Beacon Hill Park", address: "Victoria", lat: 48.4125, lng: -123.364 },
   });
   return { day, weekend, week, aura, pace, court };
+}
+
+/** Records the clickwrap acceptance like the checkout does before charging. */
+export async function acceptTerms(bookingId: string) {
+  const { currentLegal, recordAcceptance } = await import("@/lib/services/legal");
+  const live = await currentLegal();
+  return recordAcceptance({
+    bookingId,
+    name: "Test",
+    contact: "test@example.com",
+    termsId: live.terms.id,
+    waiverId: live.waiver.id,
+    boxes: ["terms_waiver", "age_19"],
+    method: "checkout",
+  });
 }

@@ -157,6 +157,7 @@ async function FeatureCard({ featured, detailed }: { featured: PublicMachine; de
             ))}
           </dl>
         )}
+        {stats.length > 0 && <p className="-mt-4 text-xs text-muted-foreground">{t("specsNote")}</p>}
         {detailed && (
           <dl className="space-y-2 text-sm">
             {featured.levels.length > 0 && (

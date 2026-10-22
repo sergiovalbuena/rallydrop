@@ -8,6 +8,7 @@ import { subscriptionWelcomeEmail } from "@/lib/notify/templates";
 import { upsertCustomer, type CustomerInput } from "./customers";
 import { BookingError } from "./errors";
 import { ensureStripeCustomer } from "./payments";
+import { chargedTaxes } from "@/lib/domain/rental";
 import { getSettings } from "./settings";
 
 /*
@@ -18,9 +19,11 @@ import { getSettings } from "./settings";
 async function ensureTaxRates(): Promise<string[]> {
   const settings = await getSettings();
   const ids: string[] = [];
+  // Only taxes the owner is registered for and has switched on.
+  const taxes = chargedTaxes(settings);
   const specs = [
-    { field: "stripeGstTaxRateId" as const, name: "GST", bps: settings.gstBps, id: settings.stripeGstTaxRateId },
-    { field: "stripePstTaxRateId" as const, name: "PST", bps: settings.pstBps, id: settings.stripePstTaxRateId },
+    { field: "stripeGstTaxRateId" as const, name: "GST", bps: taxes.gstBps, id: settings.stripeGstTaxRateId },
+    { field: "stripePstTaxRateId" as const, name: "PST", bps: taxes.pstBps, id: settings.stripePstTaxRateId },
   ];
   for (const spec of specs) {
     if (spec.bps <= 0) continue;
@@ -104,7 +107,7 @@ export async function startSubscription(input: { productId: string; customer: Cu
   const clientSecret = invoice && typeof invoice === "object" ? invoice.confirmation_secret?.client_secret : null;
   if (!clientSecret) throw new BookingError("PAYMENT_FAILED", "Couldn't start the payment. Please try again.");
   const amountCents = invoice && typeof invoice === "object" ? invoice.amount_due : product.priceCents;
-  return { clientSecret, subscriptionId: sub.id, amountCents };
+  return { clientSecret, subscriptionId: sub.id, amountCents, customerId: customer.id, customerName: customer.name };
 }
 
 function mapStatus(status: Stripe.Subscription.Status): SubscriptionStatus {

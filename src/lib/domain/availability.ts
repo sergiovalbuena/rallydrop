@@ -1,4 +1,5 @@
-import { addLocalDays, localDateMinuteToUtc, localMonth, localWeekday, toLocalMinute } from "@/lib/time";
+import { addLocalDays, localDateMinuteToUtc, localWeekday, toLocalMinute } from "@/lib/time";
+import { isHighSeason, type Season } from "./season";
 
 /*
  * Availability engine (pure). The database is the final authority — the
@@ -25,7 +26,7 @@ export type SlotRules = {
   bufferMinutes: number;
   minLeadHours: number;
   maxAdvanceDays: number;
-  season: { startMonth: number; endMonth: number; allowOffSeason: boolean };
+  season: Season & { allowOffSeason: boolean };
   now: Date;
 };
 
@@ -42,21 +43,13 @@ export function bookingBlock(start: Date, end: Date, bufferMinutes: number): Int
   return { start, end: new Date(end.getTime() + bufferMinutes * MINUTE) };
 }
 
-export function isInSeason(month: number, season: SlotRules["season"]): boolean {
-  if (season.startMonth <= season.endMonth) {
-    return month >= season.startMonth && month <= season.endMonth;
-  }
-  // Season wrapping the new year (e.g. Nov–Feb).
-  return month >= season.startMonth || month <= season.endMonth;
-}
-
 function withinWindow(minute: number, rules: SlotRules): boolean {
   return minute >= rules.windowStartMinute && minute <= rules.windowEndMinute;
 }
 
 /** All start times the rules allow on a local date, before checking machines. */
 export function candidateStarts(date: string, rules: SlotRules): Date[] {
-  if (!rules.season.allowOffSeason && !isInSeason(localMonth(date), rules.season)) return [];
+  if (!rules.season.allowOffSeason && !isHighSeason(date, rules.season)) return [];
 
   const earliest = new Date(rules.now.getTime() + rules.minLeadHours * 60 * MINUTE);
   const latest = new Date(rules.now.getTime() + rules.maxAdvanceDays * 24 * 60 * MINUTE);

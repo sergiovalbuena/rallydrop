@@ -31,12 +31,13 @@ export async function listPublicMachines(): Promise<PublicMachine[]> {
     "machines",
     async () => {
       const machines = await db.machine.findMany({
-        where: { status: { not: "RETIRED" } },
+        // Hidden machines never reach the public site.
+        where: { status: { not: "RETIRED" }, isPublic: true },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       });
       return machines.map(toPublicMachine);
     },
-    fallbackMachines,
+    () => fallbackMachines().filter((m) => m.isPublic),
   );
 }
 

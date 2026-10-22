@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { BookingStatus, Prisma } from "@/generated/prisma/client";
+import { getSettings } from "@/lib/services/settings";
 import { addLocalDays, localDateMinuteToUtc, toLocalDate } from "@/lib/time";
 
 export const ACTIVE_STATUSES: BookingStatus[] = [
@@ -104,4 +105,39 @@ export function bookingWhere(f: BookingFilters): Prisma.BookingWhereInput {
     ];
   }
   return where;
+}
+
+/** Things the owner should act on, shown at the top of the dashboard. */
+export async function dashboardAlerts(now: Date) {
+  const soon = new Date(now.getTime() + 24 * 3_600_000);
+  const [settings, termsMissing, holdsExpiring] = await Promise.all([
+    getSettings(),
+    db.booking.findMany({
+      where: {
+        acceptances: { none: {} },
+        endsAt: { gte: new Date(now.getTime() - 30 * 86_400_000) },
+        OR: [
+          { status: { in: ACTIVE_STATUSES } },
+          { status: "PENDING_PAYMENT", payments: { some: { kind: "RENTAL", status: "SUCCEEDED" } } },
+        ],
+      },
+      select: { id: true, code: true, customer: { select: { name: true } }, startsAt: true },
+      orderBy: { startsAt: "asc" },
+      take: 20,
+    }),
+    // Card holds last ~7 days: warn a day ahead when the machine isn't back yet.
+    db.deposit.findMany({
+      where: {
+        status: "HELD",
+        authExpiresAt: { lte: soon },
+        booking: { status: { in: ["CONFIRMED", "CHECKED_OUT"] } },
+      },
+      select: { bookingId: true, authExpiresAt: true, booking: { select: { code: true } } },
+    }),
+  ]);
+  return {
+    insuranceMissing: !settings.insuranceProvider,
+    termsMissing,
+    holdsExpiring,
+  };
 }

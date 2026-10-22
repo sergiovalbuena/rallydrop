@@ -1,3 +1,4 @@
+import type { ConsentDocs } from "@/components/legal/terms-consent";
 import type { DeliveryZone } from "@/lib/domain/delivery";
 
 export type CatalogProduct = {
@@ -6,7 +7,10 @@ export type CatalogProduct = {
   kind: "DAY" | "WEEKEND" | "WEEK" | "MONTH" | "PACKAGE" | "GROUP_SESSION";
   name: string;
   description: string | null;
+  /** High-season price. */
   priceCents: number;
+  /** Off-season price (null = same all year). */
+  offSeasonPriceCents: number | null;
   durationHours: number | null;
 };
 
@@ -16,10 +20,11 @@ export type CatalogMachine = {
   name: string;
   description: string | null;
   depositCents: number;
+  depositLongCents: number;
   calendarColor: string;
 };
 
-export type CatalogAddOn = { kind: "BALLS"; name: string; description: string | null; priceCents: number };
+export type CatalogAddOn = { kind: "EXTRA_BALLS"; name: string; description: string | null; priceCents: number };
 export type CatalogCourt = { id: string; name: string; address: string };
 
 export type Catalog = {
@@ -31,6 +36,14 @@ export type Catalog = {
   depositAuthMaxDays: number;
   depositAuthLeadHours: number;
   deliveryZones: DeliveryZone[];
+  /** High season window ("MM-DD") and today's local date, for prices. */
+  season: { start: string; end: string };
+  today: string;
+  /** RallyDrop Care price per product kind (null = not offered). */
+  care: Partial<Record<CatalogProduct["kind"], number>> | null;
+  careCapCents: number;
+  /** Live Terms & Waiver shown at payment. */
+  legal: ConsentDocs;
 };
 
 export type Slot = {
@@ -43,7 +56,10 @@ export type Slot = {
 };
 
 export type Extras = {
-  balls: boolean;
+  /** Optional extra bucket (balls are included). */
+  extraBalls: boolean;
+  /** RallyDrop Care damage protection. */
+  care: boolean;
   /** Where our trips go (court or address). With no trips the server treats it as self-serve. */
   fulfillment: "DELIVERY_COURT" | "DELIVERY_ADDRESS";
   /** We bring it at the start / we come back for it at the end. */
@@ -59,5 +75,4 @@ export type Contact = {
   phone: string;
   skillLevel: "" | "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "PRO";
   notes: string;
-  termsAccepted: boolean;
 };
