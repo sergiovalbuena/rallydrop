@@ -162,7 +162,6 @@ Eventos de webhook necesarios:
 
 ## Pendiente de configurar antes de lanzar
 
-- [ ] **Enlace de reservas de canchas de la Ciudad** (Settings → City court booking page) para la pregunta "Do I need to book a court?".
 - [ ] **Cron horario**: el workflow ahora corre cada hora; revisa que los secretos `SITE_URL` y `CRON_SECRET` estén en GitHub.
 - [ ] **Datos reales de contacto** (Admin → Settings → Business details): teléfono, email, dominio, dirección del punto de recogida e Instagram. Mientras estén vacíos, el sitio simplemente no los muestra.
 - [ ] **Revisión legal**: los términos y el waiver son borradores (Admin → Terms & waiver, marcados DRAFT solo en el admin). Un abogado de BC debe revisarlos; publica la versión revisada y pulsa *Mark lawyer-reviewed*.

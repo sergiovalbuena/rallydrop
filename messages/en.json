@@ -502,8 +502,7 @@
     },
     "court": {
       "q": "Do I need to book a court?",
-      "a": "Not necessarily — use it at home, at your club or at a free public court. In Victoria you can also reserve some public courts online (about $10/h for adults, up to 3 weeks ahead). Note those court bookings aren't refunded for rain.",
-      "link": "Book a City court"
+      "a": "No. Use it at home, at your club or at any court you have access to. Court bookings and their rules are between you and the venue."
     },
     "speed": {
       "q": "How fast does it go? Is it good for my level?",

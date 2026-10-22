@@ -141,7 +141,6 @@ export function fallbackSettings(): AppSettings {
     rainCreditMonths: 6,
     packageRollover: false,
     pickleballEnabled: true,
-    courtBookingUrl: null,
     springPassEnabled: false,
     springPassPriceCents: 19900,
     springPassWeekends: 3,

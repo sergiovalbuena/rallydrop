@@ -69,7 +69,6 @@ type S = {
   rainCreditMonths: number;
   packageRollover: boolean;
   pickleballEnabled: boolean;
-  courtBookingUrl: string;
   springPassEnabled: boolean;
   springPassPrice: string;
   springPassWeekends: number;
@@ -266,9 +265,6 @@ export function SettingsForm({ s }: { s: S }) {
           <input type="checkbox" name="smsEnabled" defaultChecked={s.smsEnabled} className="size-4 accent-primary" />
           Send SMS (requires Twilio keys)
         </label>
-        <F label="City court booking page" hint="Linked from the FAQ “Do I need to book a court?”">
-          <Input name="courtBookingUrl" type="url" defaultValue={s.courtBookingUrl} placeholder="https://…" />
-        </F>
       </fieldset>
       <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <legend className="mb-1 font-semibold">Spring Pass</legend>

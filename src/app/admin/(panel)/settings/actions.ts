@@ -67,7 +67,6 @@ const settings = z.object({
     .transform((v) => (v === "" ? null : Number(v)))
     .refine((v) => v === null || (Number.isInteger(v) && v >= 0), "Month cap must be a whole number."),
   rainCreditMonths: z.coerce.number().int().min(1, "Rain credits: at least 1 month.").max(24),
-  courtBookingUrl: z.union([z.literal(""), z.url("The court booking link must be a full URL (https://…).")]).optional(),
   springPassPrice: z.coerce.number().min(1, "Spring Pass price must be more than $0."),
   springPassWeekends: z.coerce.number().int().min(1).max(12),
   springPassLimit: z.coerce.number().int().min(0).max(500),
@@ -152,7 +151,6 @@ export async function saveSettingsAction(_: SettingsState, formData: FormData): 
       rainCreditMonths: d.rainCreditMonths,
       packageRollover: formData.get("packageRollover") === "on",
       pickleballEnabled: formData.get("pickleballEnabled") === "on",
-      courtBookingUrl: d.courtBookingUrl || null,
       springPassEnabled: formData.get("springPassEnabled") === "on",
       springPassPriceCents: Math.round(d.springPassPrice * 100),
       springPassWeekends: d.springPassWeekends,

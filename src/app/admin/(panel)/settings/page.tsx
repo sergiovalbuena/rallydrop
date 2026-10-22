@@ -63,7 +63,6 @@ export default async function SettingsPage() {
               rainCreditMonths: settings.rainCreditMonths,
               packageRollover: settings.packageRollover,
               pickleballEnabled: settings.pickleballEnabled,
-              courtBookingUrl: settings.courtBookingUrl ?? "",
               springPassEnabled: settings.springPassEnabled,
               springPassPrice: (settings.springPassPriceCents / 100).toFixed(2),
               springPassWeekends: settings.springPassWeekends,

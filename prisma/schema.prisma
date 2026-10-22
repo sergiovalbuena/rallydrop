@@ -113,9 +113,6 @@ model Settings {
   /// Off = the word "pickleball" disappears from the whole site.
   pickleballEnabled Boolean @default(true)
 
-  /// City of Victoria public court booking page (FAQ link; blank = no link).
-  courtBookingUrl String?
-
   // Spring Pass: N weekends for a fixed price, used in a date window, limited
   // number of passes. Off by default.
   springPassEnabled    Boolean @default(false)
