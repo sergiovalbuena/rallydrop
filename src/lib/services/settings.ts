@@ -1,21 +1,22 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { Settings } from "@/generated/prisma/client";
+import { parseDeliveryZones, type DeliveryZone } from "@/lib/domain/delivery";
 import { fallbackSettings, readOr } from "./fallback";
 
 /** Settings with Decimal columns converted to plain numbers. */
-export type AppSettings = Omit<Settings, "freeDeliveryCenterLat" | "freeDeliveryCenterLng" | "freeDeliveryRadiusKm"> & {
-  freeDeliveryCenterLat: number;
-  freeDeliveryCenterLng: number;
-  freeDeliveryRadiusKm: number;
+export type AppSettings = Omit<Settings, "deliveryHubLat" | "deliveryHubLng" | "deliveryZones"> & {
+  deliveryHubLat: number;
+  deliveryHubLng: number;
+  deliveryZones: DeliveryZone[];
 };
 
 export function toAppSettings(s: Settings): AppSettings {
   return {
     ...s,
-    freeDeliveryCenterLat: Number(s.freeDeliveryCenterLat),
-    freeDeliveryCenterLng: Number(s.freeDeliveryCenterLng),
-    freeDeliveryRadiusKm: Number(s.freeDeliveryRadiusKm),
+    deliveryHubLat: Number(s.deliveryHubLat),
+    deliveryHubLng: Number(s.deliveryHubLng),
+    deliveryZones: parseDeliveryZones(s.deliveryZones),
   };
 }
 

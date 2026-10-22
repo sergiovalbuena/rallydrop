@@ -13,6 +13,7 @@ import { formatCents } from "@/lib/money";
 import { customerBookings, customerPackage } from "@/lib/services/portal";
 import { getPortalCustomer } from "@/lib/services/portal-auth";
 import { formatLocal, formatRange } from "@/lib/time";
+import { logistics } from "@/lib/domain/logistics";
 import { billingPortalAction, signOutAction } from "./actions";
 
 export const metadata: Metadata = { title: "My bookings", robots: { index: false } };
@@ -136,7 +137,7 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
                   <p className="text-sm">{formatRange(b.startsAt, b.endsAt)}</p>
                   <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <MapPin className="size-4" aria-hidden />
-                    {b.court?.name ?? b.deliveryAddress ?? "Pickup"}
+                    {logistics(b).short}
                   </p>
                   {b.deposit && (
                     <p className="flex items-center gap-1.5 text-sm">

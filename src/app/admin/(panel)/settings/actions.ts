@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { assertAdmin } from "@/lib/admin/guard";
 import { geocodeAddress } from "@/lib/services/geocode";
 import { EDITABLE_KEYS, SITE_CONTENT_TAG } from "@/lib/services/site-content";
+import { dollarsToCents } from "@/lib/money";
+import type { DeliveryZone } from "@/lib/domain/delivery";
 import en from "../../../../../messages/en.json";
 
 type Messages = { [k: string]: string | Messages };
@@ -53,14 +55,33 @@ const settings = z.object({
   cancelLatePercent: percent,
   deliveryStart: hhmm,
   deliveryEnd: hhmm,
-  freeDeliveryCenterLat: z.coerce.number().min(-90).max(90),
-  freeDeliveryCenterLng: z.coerce.number().min(-180).max(180),
-  freeDeliveryRadiusKm: z.coerce.number().min(0).max(100),
+  deliveryHubLat: z.coerce.number().min(-90).max(90),
+  deliveryHubLng: z.coerce.number().min(-180).max(180),
   seasonStartMonth: z.coerce.number().int().min(1).max(12),
   seasonEndMonth: z.coerce.number().int().min(1).max(12),
   contactEmail: z.string().trim().optional(),
   contactPhone: z.string().trim().optional(),
 });
+
+/** Zone rows from the form → validated, ascending zone table (or an error message). */
+function parseZoneRows(formData: FormData): DeliveryZone[] | string {
+  const zones: DeliveryZone[] = [];
+  for (let i = 0; i < 4; i++) {
+    const km = String(formData.get(`zone${i}Km`) ?? "").trim();
+    if (!km) continue;
+    const maxKm = Number(km);
+    const tripCents = dollarsToCents(String(formData.get(`zone${i}Trip`) ?? ""));
+    const roundTripCents = dollarsToCents(String(formData.get(`zone${i}Round`) ?? ""));
+    if (!(maxKm > 0) || tripCents === null || roundTripCents === null) {
+      return `Zone ${i + 1}: enter a distance and both prices.`;
+    }
+    zones.push({ maxKm, tripCents, roundTripCents });
+  }
+  zones.sort((a, b) => a.maxKm - b.maxKm);
+  if (zones.length === 0) return "Keep at least one delivery zone.";
+  if (new Set(zones.map((z) => z.maxKm)).size !== zones.length) return "Two zones have the same distance.";
+  return zones;
+}
 
 export async function saveSettingsAction(_: SettingsState, formData: FormData): Promise<SettingsState> {
   await assertAdmin();
@@ -69,6 +90,8 @@ export async function saveSettingsAction(_: SettingsState, formData: FormData): 
     return { ok: false, error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" · ") };
   const d = parsed.data;
   if (d.deliveryEnd <= d.deliveryStart) return { ok: false, error: "Delivery hours: end must be after start." };
+  const zones = parseZoneRows(formData);
+  if (typeof zones === "string") return { ok: false, error: zones };
   await db.settings.update({
     where: { id: "default" },
     data: {
@@ -84,9 +107,9 @@ export async function saveSettingsAction(_: SettingsState, formData: FormData): 
       cancelLateRefundBps: d.cancelLatePercent,
       deliveryStartMinute: d.deliveryStart,
       deliveryEndMinute: d.deliveryEnd,
-      freeDeliveryCenterLat: d.freeDeliveryCenterLat,
-      freeDeliveryCenterLng: d.freeDeliveryCenterLng,
-      freeDeliveryRadiusKm: d.freeDeliveryRadiusKm,
+      deliveryHubLat: d.deliveryHubLat,
+      deliveryHubLng: d.deliveryHubLng,
+      deliveryZones: zones,
       seasonStartMonth: d.seasonStartMonth,
       seasonEndMonth: d.seasonEndMonth,
       allowOffSeason: formData.get("allowOffSeason") === "on",

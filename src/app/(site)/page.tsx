@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { ArrowRight, Check, Quote } from "lucide-react";
 import { CourtIllustration } from "@/components/brand/court-illustration";
+import { DeliveryService, DeliveryServiceSkeleton } from "@/components/marketing/delivery-service";
 import { FaqList } from "@/components/marketing/faq-list";
 import { MachineFeature } from "@/components/marketing/machine-cards";
 import { PricingGrid, PricingGridSkeleton } from "@/components/marketing/pricing-grid";
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCentsShort } from "@/lib/money";
 import { listActiveAddOns, listActiveProducts, listPublicMachines } from "@/lib/services/catalog";
+import { getSettings } from "@/lib/services/settings";
 
 export default async function HomePage() {
   const t = await getTranslations("home");
@@ -112,6 +114,16 @@ export default async function HomePage() {
         </Button>
       </Section>
 
+      {/* Paid drop-off & collection */}
+      <div className="bg-muted/40">
+        <Section id="delivery">
+          <SectionHeading eyebrow={t("deliveryEyebrow")} title={t("deliveryTitle")} subtitle={t("deliverySubtitle")} />
+          <Suspense fallback={<DeliveryServiceSkeleton />}>
+            <HomeDelivery />
+          </Suspense>
+        </Section>
+      </div>
+
       {/* Testimonials — swipeable on phones */}
       <div className="court-lines floodlight grain bg-court text-white">
         <Section>
@@ -197,6 +209,12 @@ export default async function HomePage() {
 async function HomeMachines() {
   await connection();
   return <MachineFeature machines={await listPublicMachines()} />;
+}
+
+async function HomeDelivery() {
+  await connection();
+  const settings = await getSettings();
+  return <DeliveryService zones={settings.deliveryZones} />;
 }
 
 async function HomePricing() {

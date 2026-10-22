@@ -30,7 +30,11 @@ export const EDITABLE_KEYS = [
   { key: "home.ctaTitle", label: "Home · final call-to-action title", multiline: false },
   { key: "home.ctaBody", label: "Home · final call-to-action text", multiline: true },
   { key: "how.rainBody", label: "How it works · rain policy", multiline: true },
-  { key: "how.deliveryBody", label: "How it works · delivery ({fee} = delivery price)", multiline: true },
+  {
+    key: "how.deliveryBody",
+    label: "How it works · drop-off & collection ({trip} / {round} = cheapest prices)",
+    multiline: true,
+  },
   { key: "contact.subtitle", label: "Contact · intro", multiline: true },
   { key: "footer.blurb", label: "Footer · description", multiline: true },
 ] as const;

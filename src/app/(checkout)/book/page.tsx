@@ -63,6 +63,7 @@ async function Wizard({ searchParams }: { searchParams: PageProps<"/book">["sear
     holdMinutes: settings.holdMinutes,
     depositAuthMaxDays: settings.depositAuthMaxDays,
     depositAuthLeadHours: settings.depositAuthLeadHours,
+    deliveryZones: settings.deliveryZones,
   };
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   return <BookingWizard catalog={catalog} initialProduct={one(params.product)} initialMachine={one(params.machine)} />;

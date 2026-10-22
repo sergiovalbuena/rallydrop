@@ -1,5 +1,6 @@
 import "server-only";
 import type { AddOn, Product } from "@/generated/prisma/client";
+import { DEFAULT_DELIVERY_ZONES } from "@/lib/domain/delivery";
 import { DEFAULT_ADD_ONS, DEFAULT_COURTS, DEFAULT_MACHINES, DEFAULT_PRODUCTS } from "@/lib/catalog-defaults";
 import type { PublicMachine } from "./catalog";
 import type { AppSettings } from "./settings";
@@ -108,9 +109,9 @@ export function fallbackSettings(): AppSettings {
     cancelLateRefundBps: 5000,
     deliveryStartMinute: 480,
     deliveryEndMinute: 1260,
-    freeDeliveryCenterLat: 48.4284,
-    freeDeliveryCenterLng: -123.3656,
-    freeDeliveryRadiusKm: 5,
+    deliveryHubLat: 48.4284,
+    deliveryHubLng: -123.3656,
+    deliveryZones: DEFAULT_DELIVERY_ZONES,
     seasonStartMonth: 4,
     seasonEndMonth: 9,
     allowOffSeason: true,

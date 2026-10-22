@@ -19,23 +19,3 @@ export function extractFsa(address: string): string | null {
   const match = address.toUpperCase().match(/\b([A-Z]\d[A-Z])\s?\d[A-Z]\d\b/);
   return match ? match[1] : null;
 }
-
-export type DeliveryZoneInput = {
-  point: LatLng | null;
-  address?: string | null;
-  center: LatLng;
-  radiusKm: number;
-  freeFsas: readonly string[];
-};
-
-/**
- * Whether a delivery point is in the free zone. Prefers exact coordinates;
- * falls back to the postal-code area when the address couldn't be geocoded.
- * Returns null when neither is available (we can't tell → charge the fee).
- */
-export function isInFreeZone(input: DeliveryZoneInput): boolean | null {
-  if (input.point) return distanceKm(input.point, input.center) <= input.radiusKm;
-  const fsa = input.address ? extractFsa(input.address) : null;
-  if (fsa) return input.freeFsas.includes(fsa);
-  return null;
-}

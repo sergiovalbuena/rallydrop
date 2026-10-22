@@ -48,7 +48,7 @@ describe.skipIf(!hasTestDb)("promo codes (Postgres)", () => {
     expect(booking.totalCents).toBe(4675 + 234 + 327);
     expect(booking.promoCodeId).toBe(promo.id);
     // Add-on rows stay at their own price (the promo line isn't an add-on).
-    expect(booking.addOns.map((a) => a.priceCents).sort()).toEqual([0, 1000]);
+    expect(booking.addOns.map((a) => a.priceCents)).toEqual([1000]);
   });
 
   it("rejects unknown, inactive, expired, not-yet-active and wrong-product codes", async () => {

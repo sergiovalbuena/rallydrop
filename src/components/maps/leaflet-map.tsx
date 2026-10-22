@@ -35,7 +35,7 @@ function Follow({ point }: { point?: { lat: number; lng: number } | null }) {
   return null;
 }
 
-export default function LeafletMap({ center, zoom = 12, markers = [], circle, picker, className, label }: MapProps) {
+export default function LeafletMap({ center, zoom = 12, markers = [], zones, picker, className, label }: MapProps) {
   return (
     <div className={className} role="region" aria-label={label}>
       <MapContainer
@@ -49,13 +49,24 @@ export default function LeafletMap({ center, zoom = 12, markers = [], circle, pi
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {circle && (
-          <Circle
-            center={[circle.center.lat, circle.center.lng]}
-            radius={circle.radiusKm * 1000}
-            pathOptions={{ color: "#2457E6", weight: 2, fillColor: "#D9F23F", fillOpacity: 0.18 }}
-          />
-        )}
+        {/* Outer rings first so the inner (cheaper) zones sit on top. */}
+        {zones?.radiiKm
+          .map((km, i) => ({ km, i }))
+          .reverse()
+          .map(({ km, i }) => (
+            <Circle
+              key={km}
+              center={[zones.center.lat, zones.center.lng]}
+              radius={km * 1000}
+              pathOptions={{
+                color: "#2457E6",
+                weight: 2,
+                dashArray: i === 0 ? undefined : "6 6",
+                fillColor: "#D9F23F",
+                fillOpacity: i === 0 ? 0.22 : 0.08,
+              }}
+            />
+          ))}
         {markers.map((m) => (
           <Marker
             key={`${m.lat},${m.lng},${m.label}`}

@@ -15,6 +15,7 @@ import { formatCents, formatCentsShort } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { Quote } from "@/lib/domain/pricing";
+import type { DeliveryResolution } from "@/lib/domain/delivery";
 import { contactSchema, fieldErrors } from "@/lib/validation/booking";
 import {
   checkoutAction,
@@ -31,6 +32,7 @@ import { Stepper } from "./stepper";
 import type { Catalog, Contact, Extras, Slot } from "./types";
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
+type Service = "ROUND" | "DROPOFF" | "COLLECTION" | "SELF";
 
 export function BookingWizard({
   catalog,
@@ -56,6 +58,8 @@ export function BookingWizard({
   const [extras, setExtras] = useState<Extras>({
     balls: true,
     fulfillment: "DELIVERY_COURT",
+    dropoff: true,
+    collection: true,
     courtId: catalog.courts[0]?.id ?? null,
     deliveryAddress: "",
   });
@@ -69,7 +73,7 @@ export function BookingWizard({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [quote, setQuote] = useState<Quote | null>(null);
-  const [zone, setZone] = useState<boolean | null>(null);
+  const [delivery, setDelivery] = useState<DeliveryResolution | null>(null);
   const [quoting, startQuoting] = useTransition();
   const [checkout, setCheckout] = useState<Extract<CheckoutResult, { ok: true }> | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -92,7 +96,7 @@ export function BookingWizard({
         const r = await quoteAction({ productId, machineId, extras, promoCode: promo });
         if (r.ok) {
           setQuote(r.quote);
-          setZone(r.inFreeZone);
+          setDelivery(r.delivery);
           // A code can stop applying when the selection changes.
           if (promo && r.promoError) {
             setPromo(null);
@@ -162,7 +166,7 @@ export function BookingWizard({
       setPromo(r.quote.promoCode);
       setPromoInput(r.quote.promoCode);
       setQuote(r.quote);
-      setZone(r.inFreeZone);
+      setDelivery(r.delivery);
     });
   }
 
@@ -229,18 +233,43 @@ export function BookingWizard({
     setStep(2);
   }, [t]);
 
+  const selfServe = !extras.dropoff && !extras.collection;
+  const service: Service = selfServe
+    ? "SELF"
+    : extras.dropoff && extras.collection
+      ? "ROUND"
+      : extras.dropoff
+        ? "DROPOFF"
+        : "COLLECTION";
+  const setService = (next: Service) =>
+    setExtras((e) => ({
+      ...e,
+      dropoff: next === "ROUND" || next === "DROPOFF",
+      collection: next === "ROUND" || next === "COLLECTION",
+    }));
+  // Prices for the customer's zone once we know it, otherwise the cheapest zone ("from").
+  const knownZone = delivery?.status === "ok" ? catalog.deliveryZones[delivery.zone - 1] : undefined;
+  const priceZone = knownZone ?? catalog.deliveryZones[0];
+  const servicePrice = (next: Service) => {
+    if (next === "SELF" || !priceZone) return t("free");
+    const cents = next === "ROUND" ? priceZone.roundTripCents : priceZone.tripCents;
+    return knownZone ? `+${formatCentsShort(cents)}` : t("fromPrice", { price: formatCentsShort(cents) });
+  };
+  const roundTripSaving = priceZone ? 2 * priceZone.tripCents - priceZone.roundTripCents : 0;
+
   const canContinue =
     (step === 0 && !!productId) ||
     (step === 1 && !!machineId) ||
     (step === 2 && !!when.slot) ||
     (step === 3 &&
-      (extras.fulfillment === "PICKUP" ||
-        (extras.fulfillment === "DELIVERY_COURT" && !!extras.courtId) ||
-        (extras.fulfillment === "DELIVERY_ADDRESS" && extras.deliveryAddress.trim().length > 5))) ||
+      (selfServe ||
+        (((extras.fulfillment === "DELIVERY_COURT" && !!extras.courtId) ||
+          (extras.fulfillment === "DELIVERY_ADDRESS" && extras.deliveryAddress.trim().length > 5)) &&
+          !quoting &&
+          delivery?.status === "ok"))) ||
     step === 4;
 
   const ballsAddOn = catalog.addOns.find((a) => a.kind === "BALLS");
-  const deliveryAddOn = catalog.addOns.find((a) => a.kind === "DELIVERY");
 
   const header = (
     <div className="mt-3 space-y-1 text-sm">
@@ -365,74 +394,115 @@ export function BookingWizard({
               )}
 
               <fieldset className="space-y-3">
-                <legend className="mb-3 text-lg font-semibold">{t("fulfillment")}</legend>
+                <legend className="mb-1 text-lg font-semibold">{t("serviceTitle")}</legend>
+                <p className="mb-3 text-sm text-muted-foreground">{t("serviceIntro")}</p>
                 <OptionCard
-                  name="fulfillment"
-                  value="DELIVERY_COURT"
-                  selected={extras.fulfillment === "DELIVERY_COURT"}
-                  onSelect={() => setExtras((e) => ({ ...e, fulfillment: "DELIVERY_COURT" }))}
-                  title={t("deliveryCourt")}
-                  aside={deliveryAddOn ? `+${formatCentsShort(deliveryAddOn.priceCents)}*` : undefined}
+                  name="service"
+                  value="ROUND"
+                  selected={service === "ROUND"}
+                  onSelect={() => setService("ROUND")}
+                  title={
+                    <span className="flex flex-wrap items-center gap-2">
+                      {t("serviceRound")}
+                      {roundTripSaving > 0 && (
+                        <Badge variant="accent">
+                          {t("serviceSave", { amount: formatCentsShort(roundTripSaving) })}
+                        </Badge>
+                      )}
+                    </span>
+                  }
+                  aside={servicePrice("ROUND")}
                 >
-                  {t("addressHint")}
+                  {t("serviceRoundHint")}
                 </OptionCard>
-                {extras.fulfillment === "DELIVERY_COURT" && (
-                  <div className="pl-2 sm:pl-9">
-                    <Label htmlFor="court" className="mb-2 block">
-                      {t("court")}
-                    </Label>
-                    <NativeSelect
-                      id="court"
-                      value={extras.courtId ?? ""}
-                      onChange={(e) => setExtras((x) => ({ ...x, courtId: e.target.value }))}
-                    >
-                      {catalog.courts.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </div>
-                )}
                 <OptionCard
-                  name="fulfillment"
-                  value="DELIVERY_ADDRESS"
-                  selected={extras.fulfillment === "DELIVERY_ADDRESS"}
-                  onSelect={() => setExtras((e) => ({ ...e, fulfillment: "DELIVERY_ADDRESS" }))}
-                  title={t("deliveryAddress")}
-                  aside={deliveryAddOn ? `+${formatCentsShort(deliveryAddOn.priceCents)}*` : undefined}
+                  name="service"
+                  value="DROPOFF"
+                  selected={service === "DROPOFF"}
+                  onSelect={() => setService("DROPOFF")}
+                  title={t("serviceDropoff")}
+                  aside={servicePrice("DROPOFF")}
                 >
-                  {t("addressHint")}
+                  {t("serviceDropoffHint")}
                 </OptionCard>
-                {extras.fulfillment === "DELIVERY_ADDRESS" && (
-                  <div className="space-y-2 pl-2 sm:pl-9">
-                    <Label htmlFor="address">{t("address")}</Label>
-                    <Input
-                      id="address"
-                      autoComplete="street-address"
-                      placeholder="1234 Fort St, Victoria, BC V8W 1H2"
-                      value={extras.deliveryAddress}
-                      onChange={(e) => setExtras((x) => ({ ...x, deliveryAddress: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {extras.fulfillment !== "PICKUP" && (
-                  <p className="flex items-center gap-2 pl-2 text-sm sm:pl-9" role="status">
-                    <MapPin className="size-4 text-primary" aria-hidden />
-                    {zone === true ? t("freeZone") : zone === false ? t("paidZone") : t("unknownZone")}
-                  </p>
-                )}
                 <OptionCard
-                  name="fulfillment"
-                  value="PICKUP"
-                  selected={extras.fulfillment === "PICKUP"}
-                  onSelect={() => setExtras((e) => ({ ...e, fulfillment: "PICKUP" }))}
-                  title={t("pickup")}
-                  aside={formatCentsShort(0)}
+                  name="service"
+                  value="COLLECTION"
+                  selected={service === "COLLECTION"}
+                  onSelect={() => setService("COLLECTION")}
+                  title={t("serviceCollection")}
+                  aside={servicePrice("COLLECTION")}
                 >
-                  {t("pickupHint")}
+                  {t("serviceCollectionHint")}
+                </OptionCard>
+                <OptionCard
+                  name="service"
+                  value="SELF"
+                  selected={service === "SELF"}
+                  onSelect={() => setService("SELF")}
+                  title={t("serviceSelf")}
+                  aside={servicePrice("SELF")}
+                >
+                  {t("serviceSelfHint")}
                 </OptionCard>
               </fieldset>
+
+              {!selfServe && (
+                <fieldset className="space-y-3">
+                  <legend className="mb-3 text-lg font-semibold">
+                    {service === "COLLECTION" ? t("whereCollect") : t("whereDropoff")}
+                  </legend>
+                  <OptionCard
+                    name="location"
+                    value="DELIVERY_COURT"
+                    selected={extras.fulfillment === "DELIVERY_COURT"}
+                    onSelect={() => setExtras((e) => ({ ...e, fulfillment: "DELIVERY_COURT" }))}
+                    title={t("deliveryCourt")}
+                  >
+                    {t("deliveryCourtHint")}
+                  </OptionCard>
+                  {extras.fulfillment === "DELIVERY_COURT" && (
+                    <div className="pl-2 sm:pl-9">
+                      <Label htmlFor="court" className="mb-2 block">
+                        {t("court")}
+                      </Label>
+                      <NativeSelect
+                        id="court"
+                        value={extras.courtId ?? ""}
+                        onChange={(e) => setExtras((x) => ({ ...x, courtId: e.target.value }))}
+                      >
+                        {catalog.courts.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    </div>
+                  )}
+                  <OptionCard
+                    name="location"
+                    value="DELIVERY_ADDRESS"
+                    selected={extras.fulfillment === "DELIVERY_ADDRESS"}
+                    onSelect={() => setExtras((e) => ({ ...e, fulfillment: "DELIVERY_ADDRESS" }))}
+                    title={t("deliveryAddress")}
+                  >
+                    {t("deliveryAddressHint")}
+                  </OptionCard>
+                  {extras.fulfillment === "DELIVERY_ADDRESS" && (
+                    <div className="space-y-2 pl-2 sm:pl-9">
+                      <Label htmlFor="address">{t("address")}</Label>
+                      <Input
+                        id="address"
+                        autoComplete="street-address"
+                        placeholder="1234 Fort St, Victoria, BC V8W 1H2"
+                        value={extras.deliveryAddress}
+                        onChange={(e) => setExtras((x) => ({ ...x, deliveryAddress: e.target.value }))}
+                      />
+                    </div>
+                  )}
+                  <ZoneStatus delivery={delivery} loading={quoting} />
+                </fieldset>
+              )}
             </div>
           )}
 
@@ -659,7 +729,6 @@ export function BookingWizard({
             </li>
           ))}
         </ul>
-        {deliveryAddOn && <p className="text-xs text-muted-foreground">* {deliveryAddOn.description}</p>}
       </aside>
     </div>
   );
@@ -676,5 +745,33 @@ function Field({ id, label, error, children }: { id: string; label: string; erro
         </p>
       )}
     </div>
+  );
+}
+
+/** Zone and distance for the chosen spot, or why we can't deliver there. */
+function ZoneStatus({ delivery, loading }: { delivery: DeliveryResolution | null; loading: boolean }) {
+  const t = useTranslations("book");
+  let text: string;
+  let tone = "text-foreground";
+  if (loading || !delivery || delivery.status === "none") {
+    text = t("zoneChecking");
+    tone = "text-muted-foreground";
+  } else if (delivery.status === "ok") {
+    text =
+      delivery.distanceKm !== null
+        ? t("zoneOk", { zone: delivery.zone, km: delivery.distanceKm })
+        : t("zoneOkPostal", { zone: delivery.zone });
+  } else if (delivery.status === "unknown") {
+    text = t("zoneUnknown");
+    tone = "text-destructive";
+  } else {
+    text = t("zoneOut", { km: delivery.distanceKm });
+    tone = "text-destructive";
+  }
+  return (
+    <p className={cn("flex items-center gap-2 pl-2 text-sm sm:pl-9", tone)} role="status" aria-live="polite">
+      <MapPin className="size-4 shrink-0" aria-hidden />
+      {text}
+    </p>
   );
 }

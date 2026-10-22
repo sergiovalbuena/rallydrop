@@ -61,9 +61,10 @@ type S = {
   cancelLatePercent: number;
   deliveryStart: string;
   deliveryEnd: string;
-  freeDeliveryCenterLat: number;
-  freeDeliveryCenterLng: number;
-  freeDeliveryRadiusKm: number;
+  deliveryHubLat: number;
+  deliveryHubLng: number;
+  /** One row per zone, dollars. */
+  zones: { maxKm: number; trip: string; roundTrip: string }[];
   seasonStartMonth: number;
   seasonEndMonth: number;
   allowOffSeason: boolean;
@@ -124,17 +125,39 @@ export function SettingsForm({ s }: { s: S }) {
         <F label="Delivery hours to">
           <Input name="deliveryEnd" type="time" defaultValue={s.deliveryEnd} />
         </F>
-        <F label="Free zone radius (km)">
-          <Input name="freeDeliveryRadiusKm" type="number" step="0.1" defaultValue={s.freeDeliveryRadiusKm} />
-        </F>
-        <div className="grid grid-cols-2 gap-2">
-          <F label="Centre lat">
-            <Input name="freeDeliveryCenterLat" type="number" step="0.000001" defaultValue={s.freeDeliveryCenterLat} />
+        <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+          <F label="Hub lat" hint="Trips are measured from here">
+            <Input name="deliveryHubLat" type="number" step="0.000001" defaultValue={s.deliveryHubLat} />
           </F>
-          <F label="Centre lng">
-            <Input name="freeDeliveryCenterLng" type="number" step="0.000001" defaultValue={s.freeDeliveryCenterLng} />
+          <F label="Hub lng">
+            <Input name="deliveryHubLng" type="number" step="0.000001" defaultValue={s.deliveryHubLng} />
           </F>
         </div>
+      </fieldset>
+      <fieldset className="space-y-3">
+        <legend className="mb-1 font-semibold">Drop-off & collection prices (CAD, before tax)</legend>
+        <p className="text-sm text-muted-foreground">
+          Priced per trip by straight-line distance from the hub. A round trip (drop-off + collection) should cost less
+          than two single trips. Leave a zone&apos;s distance empty to remove it; beyond the last zone customers can
+          only choose self-serve online.
+        </p>
+        {[0, 1, 2, 3].map((i) => {
+          const z = s.zones[i];
+          return (
+            <div key={i} className="grid grid-cols-[auto_1fr_1fr_1fr] items-end gap-3">
+              <span className="pb-2.5 font-display text-lg font-bold">Zone {i + 1}</span>
+              <F label="Up to (km)">
+                <Input name={`zone${i}Km`} type="number" step="0.5" min={0} defaultValue={z?.maxKm} />
+              </F>
+              <F label="One trip">
+                <Input name={`zone${i}Trip`} inputMode="decimal" defaultValue={z?.trip} />
+              </F>
+              <F label="Round trip">
+                <Input name={`zone${i}Round`} inputMode="decimal" defaultValue={z?.roundTrip} />
+              </F>
+            </div>
+          );
+        })}
       </fieldset>
       <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <legend className="mb-3 font-semibold">Season & contact</legend>
@@ -259,20 +282,20 @@ export function CourtRow({ court, center }: { court: Court | null; center: LatLn
 
 export function ZonePreview({
   center,
-  radiusKm,
+  radiiKm,
   courts,
 }: {
   center: LatLng;
-  radiusKm: number;
+  radiiKm: number[];
   courts: (LatLng & { label: string })[];
 }) {
   return (
     <LocationMap
-      label="Free delivery zone and courts"
+      label="Delivery zones and courts"
       center={center}
-      zoom={12}
-      circle={{ center, radiusKm }}
-      markers={[{ ...center, label: "Zone centre", color: "#2457E6" }, ...courts]}
+      zoom={11}
+      zones={{ center, radiiKm }}
+      markers={[{ ...center, label: "Delivery hub", color: "#2457E6" }, ...courts]}
       className="h-80"
     />
   );

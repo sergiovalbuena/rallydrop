@@ -52,11 +52,15 @@ model Settings {
   cancelLateRefundBps   Int @default(5000) // 50% refund inside the window
 
   // Delivery
-  deliveryStartMinute   Int     @default(480) // 08:00, minutes from midnight local
-  deliveryEndMinute     Int     @default(1260) // 21:00 (Friday-night weekend start)
-  freeDeliveryCenterLat Decimal @default(48.4284) @db.Decimal(9, 6) // downtown Victoria
-  freeDeliveryCenterLng Decimal @default(-123.3656) @db.Decimal(9, 6)
-  freeDeliveryRadiusKm  Decimal @default(5) @db.Decimal(5, 2)
+  deliveryStartMinute Int     @default(480) // 08:00, minutes from midnight local
+  deliveryEndMinute   Int     @default(1260) // 21:00 (Friday-night weekend start)
+  /// Where trips are measured from (and where self-serve customers collect).
+  deliveryHubLat      Decimal @default(48.4284) @db.Decimal(9, 6) // downtown Victoria
+  deliveryHubLng      Decimal @default(-123.3656) @db.Decimal(9, 6)
+  /// Paid drop-off / collection, priced per trip by distance from the hub:
+  /// [{ "maxKm": 5, "tripCents": 1500, "roundTripCents": 2500 }, ...] (ascending).
+  /// Beyond the last zone we don't deliver online.
+  deliveryZones       Json    @default("[{\"maxKm\":5,\"tripCents\":1500,\"roundTripCents\":2500},{\"maxKm\":12,\"tripCents\":2500,\"roundTripCents\":4000},{\"maxKm\":20,\"tripCents\":3500,\"roundTripCents\":6000}]")
 
   // Season (high season only affects messaging/defaults; blackouts block dates)
   seasonStartMonth Int     @default(4) // April
@@ -205,7 +209,6 @@ model Product {
 
 enum AddOnKind {
   BALLS
-  DELIVERY
 }
 
 model AddOn {
@@ -380,6 +383,8 @@ enum BookingChannel {
   ADMIN // phone booking entered by the owner
 }
 
+/// Where we meet the machine. PICKUP = self-serve: the customer collects and
+/// returns it at the hub, so neither trip below is ours.
 enum FulfillmentMethod {
   PICKUP
   DELIVERY_COURT
@@ -407,13 +412,21 @@ model Booking {
   startsAt DateTime @db.Timestamptz
   endsAt   DateTime @db.Timestamptz
 
-  fulfillment     FulfillmentMethod @default(PICKUP)
-  courtId         String?
-  court           Court?            @relation(fields: [courtId], references: [id])
-  deliveryAddress String?
-  deliveryLat     Decimal?          @db.Decimal(9, 6)
-  deliveryLng     Decimal?          @db.Decimal(9, 6)
-  customerNotes   String?
+  fulfillment      FulfillmentMethod @default(PICKUP)
+  courtId          String?
+  court            Court?            @relation(fields: [courtId], references: [id])
+  deliveryAddress  String?
+  deliveryLat      Decimal?          @db.Decimal(9, 6)
+  deliveryLng      Decimal?          @db.Decimal(9, 6)
+  /// Paid trips we make: bring it at the start / come back for it at the end.
+  dropoff          Boolean           @default(false)
+  collection       Boolean           @default(false)
+  /// 1-based zone and distance from the hub when either trip is ours.
+  deliveryZone     Int?
+  deliveryKm       Decimal?          @db.Decimal(5, 2)
+  /// Snapshot of what the trips cost (part of subtotalCents).
+  deliveryFeeCents Int               @default(0)
+  customerNotes    String?
 
   // Price snapshot at booking time (cents). Product price changes never
   // alter existing bookings. subtotalCents is after the promo discount.

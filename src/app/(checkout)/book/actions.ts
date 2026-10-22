@@ -14,9 +14,10 @@ import { BookingError } from "@/lib/services/errors";
 import { geocodeAddress } from "@/lib/services/geocode";
 import { cancelBooking, finalizeRentalPayment, startRentalPayment, type FinalizeResult } from "@/lib/services/payments";
 import type { Quote } from "@/lib/domain/pricing";
+import type { DeliveryResolution } from "@/lib/domain/delivery";
 
 export type QuoteResult =
-  { ok: true; quote: Quote; inFreeZone: boolean | null; promoError: string | null } | { ok: false; error: string };
+  { ok: true; quote: Quote; delivery: DeliveryResolution; promoError: string | null } | { ok: false; error: string };
 
 /** Live price summary (server is the source of truth for prices). */
 export async function quoteAction(input: QuoteInput): Promise<QuoteResult> {
@@ -28,17 +29,19 @@ export async function quoteAction(input: QuoteInput): Promise<QuoteResult> {
       ? await geocodeAddress(extras.deliveryAddress)
       : null;
   try {
-    const { quote, inFreeZone, promoError } = await priceBooking({
+    const { quote, delivery, promoError } = await priceBooking({
       productId,
       machineId,
       balls: extras.balls,
       fulfillment: extras.fulfillment,
+      dropoff: extras.dropoff,
+      collection: extras.collection,
       courtId: extras.fulfillment === "DELIVERY_COURT" ? extras.courtId : null,
       deliveryAddress: extras.deliveryAddress,
       deliveryPoint: point,
       promoCode,
     });
-    return { ok: true, quote, inFreeZone, promoError };
+    return { ok: true, quote, delivery, promoError };
   } catch (e) {
     return { ok: false, error: e instanceof BookingError ? e.message : "Couldn't calculate the price." };
   }
@@ -76,6 +79,8 @@ export async function checkoutAction(input: CheckoutInput): Promise<CheckoutResu
       customer: data.contact,
       balls: data.extras.balls,
       fulfillment: data.extras.fulfillment,
+      dropoff: data.extras.dropoff,
+      collection: data.extras.collection,
       courtId: data.extras.fulfillment === "DELIVERY_COURT" ? data.extras.courtId : null,
       deliveryAddress: data.extras.deliveryAddress,
       deliveryPoint: point,

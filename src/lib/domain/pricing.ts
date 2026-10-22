@@ -59,13 +59,8 @@ export function promoDiscount(grossCents: number, promo: PromoInput, minChargeCe
 export type QuoteInput = {
   product: { name: string; priceCents: number };
   balls: { selected: boolean; name: string; priceCents: number };
-  delivery: {
-    selected: boolean;
-    name: string;
-    priceCents: number;
-    /** true = free zone, false = outside, null = unknown (fee applies) */
-    inFreeZone: boolean | null;
-  };
+  /** Paid trips, already priced for the customer's zone (see domain/delivery). */
+  delivery: { selected: boolean; label: string; priceCents: number };
   taxes: { gstBps: number; pstBps: number };
   depositCents: number;
   /** Package sessions and other prepaid items price the product at 0. */
@@ -88,12 +83,12 @@ export function quote(input: QuoteInput): Quote {
   }
 
   if (input.delivery.selected) {
-    const free = input.delivery.inFreeZone === true;
     lines.push({
       key: "delivery",
-      label: input.delivery.name,
-      cents: free ? 0 : input.delivery.priceCents,
-      note: free ? "Free inside the delivery zone" : undefined,
+      label: input.delivery.label,
+      // Package sessions include the round trip to the court.
+      cents: input.productIncluded ? 0 : input.delivery.priceCents,
+      note: input.productIncluded ? "Included in your package" : undefined,
     });
   }
 

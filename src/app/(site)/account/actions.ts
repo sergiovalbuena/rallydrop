@@ -106,6 +106,9 @@ export async function bookSessionAction(input: { startsAt: string; courtId: stri
           customer: { name: customer.name, email: customer.email, phone: customer.phone },
           balls: false,
           fulfillment: "DELIVERY_COURT",
+          // Packages include the round trip to the court.
+          dropoff: true,
+          collection: true,
           courtId: input.courtId,
           channel: "ONLINE",
           subscriptionId: pkg.subscription.id,

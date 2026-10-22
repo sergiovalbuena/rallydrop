@@ -4,6 +4,8 @@ import { siteUrl } from "@/lib/site-url";
 import { formatRange } from "@/lib/time";
 import { sendEmail } from "./email";
 import { sendSms } from "./sms";
+import { legsLabel } from "@/lib/domain/delivery";
+import { logistics } from "@/lib/domain/logistics";
 import {
   adminAlertEmail,
   bookingCancelledEmail,
@@ -34,10 +36,10 @@ async function loadBooking(bookingId: string) {
 
 type LoadedBooking = NonNullable<Awaited<ReturnType<typeof loadBooking>>>;
 
-export function bookingWhere(b: Pick<LoadedBooking, "fulfillment" | "court" | "deliveryAddress">): string {
-  if (b.fulfillment === "DELIVERY_COURT" && b.court) return b.court.name;
-  if (b.fulfillment === "DELIVERY_ADDRESS" && b.deliveryAddress) return b.deliveryAddress;
-  return "Pickup in downtown Victoria (address in your confirmation)";
+export function bookingWhere(
+  b: Pick<LoadedBooking, "fulfillment" | "dropoff" | "collection" | "court" | "deliveryAddress">,
+): string {
+  return logistics(b).short;
 }
 
 function depositNote(b: LoadedBooking): string {
@@ -60,9 +62,12 @@ export async function notifyBookingConfirmed(bookingId: string) {
   const lines = [
     {
       label: b.product.name,
-      cents: b.subtotalCents + b.discountCents - b.addOns.reduce((s, a) => s + a.priceCents, 0),
+      cents: b.subtotalCents + b.discountCents - b.deliveryFeeCents - b.addOns.reduce((s, a) => s + a.priceCents, 0),
     },
     ...b.addOns.map((a) => ({ label: a.addOn.name, cents: a.priceCents })),
+    ...(b.dropoff || b.collection
+      ? [{ label: `${legsLabel(b)}${b.deliveryZone ? ` · Zone ${b.deliveryZone}` : ""}`, cents: b.deliveryFeeCents }]
+      : []),
     ...(b.discountCents > 0 ? [{ label: `Promo ${b.promoCode?.code ?? ""}`.trim(), cents: -b.discountCents }] : []),
   ];
   await toAll(
@@ -79,7 +84,8 @@ export async function notifyBookingConfirmed(bookingId: string) {
           machineName: b.machine.name,
           startsAt: b.startsAt,
           endsAt: b.endsAt,
-          where: bookingWhere(b),
+          startHow: logistics(b).start,
+          endHow: logistics(b).end,
           lines,
           subtotalCents: b.subtotalCents,
           gstCents: b.gstCents,
@@ -117,7 +123,8 @@ export async function notifyReminder(bookingId: string) {
           machineName: b.machine.name,
           startsAt: b.startsAt,
           endsAt: b.endsAt,
-          where: bookingWhere(b),
+          startHow: logistics(b).start,
+          endHow: logistics(b).end,
         }),
       }),
     `RallyDrop reminder: ${b.machine.name} tomorrow, ${formatRange(b.startsAt, b.endsAt)}. Code ${b.code}.`,

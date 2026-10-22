@@ -5,6 +5,7 @@ import { DepositBadge, Empty, PageHeader, Panel, StatCard, StatusBadge } from "@
 import { Button } from "@/components/ui/button";
 import { dashboardStats } from "@/lib/admin/queries";
 import { formatCents } from "@/lib/money";
+import { logistics } from "@/lib/domain/logistics";
 import { formatLocal } from "@/lib/time";
 
 /** Internal admin: always rendered per request, no instant-navigation shell. */
@@ -48,13 +49,21 @@ export default async function AdminDashboard() {
                   <li key={b.id} className="flex items-center justify-between gap-3 py-3">
                     <div>
                       <p className="font-semibold">
-                        {formatLocal(dropOff ? b.startsAt : b.endsAt, "h:mm a")} · {dropOff ? "Drop-off" : "Pickup"} ·{" "}
+                        {formatLocal(dropOff ? b.startsAt : b.endsAt, "h:mm a")} ·{" "}
+                        {dropOff
+                          ? b.dropoff
+                            ? "Drop-off (us)"
+                            : "Customer collects (hub)"
+                          : b.collection
+                            ? "Collection (us)"
+                            : "Customer returns (hub)"}{" "}
+                        ·{" "}
                         <Link href={`/admin/bookings/${b.id}`} className="text-primary hover:underline">
                           {b.code}
                         </Link>
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {b.customer.name} · {b.machine.name} · {b.court?.name ?? b.deliveryAddress ?? "Pickup"}
+                        {b.customer.name} · {b.machine.name} · {logistics(b).place ?? "Hub"}
                       </p>
                     </div>
                     <StatusBadge status={b.status} />

@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
+import { logistics } from "@/lib/domain/logistics";
 import { formatLocal, formatRange } from "@/lib/time";
 
 /** Internal admin: always rendered per request, no instant-navigation shell. */
@@ -47,7 +48,8 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
   const checkOut = b.inspections.find((i) => i.kind === "CHECK_OUT");
   const checkIn = b.inspections.find((i) => i.kind === "CHECK_IN");
   const closed = ["CANCELLED", "EXPIRED", "COMPLETED"].includes(b.status);
-  const where = b.fulfillment === "PICKUP" ? "Customer pickup" : b.court ? b.court.name : (b.deliveryAddress ?? "—");
+  const how = logistics(b);
+  const where = how.place ?? "Self-serve at the hub";
 
   return (
     <>
@@ -90,6 +92,18 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
                     >
                       <ExternalLink className="size-3.5" />
                     </a>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Trips</dt>
+                <dd className="font-medium">
+                  {how.start} → {how.end}
+                  {(b.dropoff || b.collection) && (
+                    <span className="block text-muted-foreground">
+                      {b.deliveryZone ? `Zone ${b.deliveryZone}` : "Zone not set"}
+                      {b.deliveryKm !== null && ` · ${Number(b.deliveryKm)} km`} · {formatCents(b.deliveryFeeCents)}
+                    </span>
                   )}
                 </dd>
               </div>

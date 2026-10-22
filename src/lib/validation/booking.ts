@@ -31,7 +31,11 @@ export const contactSchema = z
 export const extrasSchema = z
   .object({
     balls: z.boolean(),
+    /** Where we meet: PICKUP = self-serve at the hub (no trips). */
     fulfillment: z.enum(["PICKUP", "DELIVERY_COURT", "DELIVERY_ADDRESS"]),
+    /** Paid trips: we bring it / we come back for it. */
+    dropoff: z.boolean().default(false),
+    collection: z.boolean().default(false),
     courtId: z.string().nullish(),
     deliveryAddress: optionalText(200),
   })
@@ -39,6 +43,11 @@ export const extrasSchema = z
   .refine((e) => e.fulfillment !== "DELIVERY_ADDRESS" || !!e.deliveryAddress, {
     message: "Enter the delivery address.",
     path: ["deliveryAddress"],
+  })
+  // Self-serve means no trips; no trips means self-serve.
+  .transform((e) => {
+    const legs = e.fulfillment !== "PICKUP" && (e.dropoff || e.collection);
+    return legs ? e : { ...e, fulfillment: "PICKUP" as const, dropoff: false, collection: false };
   });
 
 const promoCodeSchema = z

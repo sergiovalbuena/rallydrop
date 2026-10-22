@@ -38,10 +38,7 @@ export async function seedCatalog() {
     db.machine.create({ data: { slug: "pace-s", name: "PONGBOT Pace S", model: "Pace S", depositCents: 40000 } }),
   ]);
   await db.addOn.createMany({
-    data: [
-      { kind: "BALLS", name: "Ball bucket", priceCents: 1000 },
-      { kind: "DELIVERY", name: "Delivery & pickup", priceCents: 1500 },
-    ],
+    data: [{ kind: "BALLS", name: "Ball bucket", priceCents: 1000 }],
   });
   const court = await db.court.create({
     data: { name: "Beacon Hill Park", address: "Victoria", lat: 48.4125, lng: -123.364 },

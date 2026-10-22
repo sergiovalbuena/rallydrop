@@ -1,3 +1,5 @@
+import type { DeliveryZone } from "@/lib/domain/delivery";
+
 export type CatalogProduct = {
   id: string;
   slug: string;
@@ -17,7 +19,7 @@ export type CatalogMachine = {
   calendarColor: string;
 };
 
-export type CatalogAddOn = { kind: "BALLS" | "DELIVERY"; name: string; description: string | null; priceCents: number };
+export type CatalogAddOn = { kind: "BALLS"; name: string; description: string | null; priceCents: number };
 export type CatalogCourt = { id: string; name: string; address: string };
 
 export type Catalog = {
@@ -28,6 +30,7 @@ export type Catalog = {
   holdMinutes: number;
   depositAuthMaxDays: number;
   depositAuthLeadHours: number;
+  deliveryZones: DeliveryZone[];
 };
 
 export type Slot = {
@@ -41,7 +44,11 @@ export type Slot = {
 
 export type Extras = {
   balls: boolean;
-  fulfillment: "PICKUP" | "DELIVERY_COURT" | "DELIVERY_ADDRESS";
+  /** Where our trips go (court or address). With no trips the server treats it as self-serve. */
+  fulfillment: "DELIVERY_COURT" | "DELIVERY_ADDRESS";
+  /** We bring it at the start / we come back for it at the end. */
+  dropoff: boolean;
+  collection: boolean;
   courtId: string | null;
   deliveryAddress: string;
 };

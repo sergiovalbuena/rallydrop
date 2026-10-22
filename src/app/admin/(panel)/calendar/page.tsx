@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/admin/ui";
 import { db } from "@/lib/db";
 import { ACTIVE_STATUSES } from "@/lib/admin/queries";
 import { listActiveCourts } from "@/lib/services/catalog";
+import { logistics } from "@/lib/domain/logistics";
 import { addLocalDays, formatLocal, localDateMinuteToUtc, localWeekday, toLocalDate, toLocalMinute } from "@/lib/time";
 
 /** Internal admin: always rendered per request, no instant-navigation shell. */
@@ -77,7 +78,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/admin/c
       id: b.id,
       kind: "booking" as const,
       title: `${b.customer.name} · ${b.product.name}`,
-      subtitle: `${b.code}${b.court ? ` · ${b.court.name}` : ""}`,
+      subtitle: `${b.code} · ${logistics(b).short}`,
       machineId: b.machineId,
       color: color(b.machineId),
       href: `/admin/bookings/${b.id}`,

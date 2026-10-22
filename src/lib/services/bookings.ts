@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 import type { BookingChannel, BookingStatus, FulfillmentMethod, Prisma, SkillLevel } from "@/generated/prisma/client";
 import { generateBookingCode } from "@/lib/domain/booking-code";
 import { planDeposit } from "@/lib/domain/deposit";
-import { isInFreeZone, type LatLng } from "@/lib/domain/geo";
+import type { LatLng } from "@/lib/domain/geo";
+import { legsLabel, resolveDelivery, type DeliveryResolution } from "@/lib/domain/delivery";
 import { quote, type Quote } from "@/lib/domain/pricing";
 import { candidateStarts } from "@/lib/domain/availability";
 import { brand } from "@/config/brand";
@@ -12,7 +13,7 @@ import { productDurationMinutes, rulesFor } from "./availability";
 import { upsertCustomer } from "./customers";
 import { BookingError, isOverlapError, isUniqueViolation } from "./errors";
 import { findValidPromo, promoRedemptions, toPromoInput } from "./promo";
-import { getSettings, type AppSettings } from "./settings";
+import { getSettings } from "./settings";
 
 export const TERMS_VERSION = "2026-10";
 
@@ -23,6 +24,9 @@ export type CreateBookingInput = {
   customer: { name: string; email?: string | null; phone?: string | null; skillLevel?: SkillLevel | null };
   balls: boolean;
   fulfillment: FulfillmentMethod;
+  /** Paid trips we make (ignored for self-serve PICKUP). */
+  dropoff?: boolean;
+  collection?: boolean;
   courtId?: string | null;
   deliveryAddress?: string | null;
   /** Geocoded delivery address, when available. */
@@ -38,51 +42,50 @@ export type CreateBookingInput = {
   promoCode?: string | null;
 };
 
-export type PriceContext = {
-  settings: AppSettings;
-  inFreeZone: boolean | null;
-};
-
 /** Everything needed to price a booking. Used by the live summary and checkout. */
 export async function priceBooking(input: {
   productId: string;
   machineId: string;
   balls: boolean;
   fulfillment: FulfillmentMethod;
+  dropoff?: boolean;
+  collection?: boolean;
   courtId?: string | null;
   deliveryAddress?: string | null;
   deliveryPoint?: LatLng | null;
   productIncluded?: boolean;
   promoCode?: string | null;
   now?: Date;
-}): Promise<{ quote: Quote; inFreeZone: boolean | null; promoId: string | null; promoError: string | null }> {
+}): Promise<{ quote: Quote; delivery: DeliveryResolution; promoId: string | null; promoError: string | null }> {
   const [settings, product, machine, addOns, court] = await Promise.all([
     getSettings(),
     db.product.findUnique({ where: { id: input.productId } }),
     db.machine.findUnique({ where: { id: input.machineId } }),
     db.addOn.findMany({ where: { active: true } }),
-    input.courtId ? db.court.findUnique({ where: { id: input.courtId } }) : null,
+    // The court only matters when that's where we're going.
+    input.courtId && input.fulfillment === "DELIVERY_COURT"
+      ? db.court.findUnique({ where: { id: input.courtId } })
+      : null,
   ]);
   if (!product || !machine) throw new BookingError("NOT_FOUND", "That product or machine no longer exists.");
 
   const promo = input.promoCode?.trim() ? await findValidPromo(input.promoCode, product.kind, input.now) : null;
 
   const ballsAddOn = addOns.find((a) => a.kind === "BALLS");
-  const deliveryAddOn = addOns.find((a) => a.kind === "DELIVERY");
-  const isDelivery = input.fulfillment !== "PICKUP";
+  const self = input.fulfillment === "PICKUP";
+  const legs = { dropoff: !self && !!input.dropoff, collection: !self && !!input.collection };
 
   const point: LatLng | null = court
     ? { lat: Number(court.lat), lng: Number(court.lng) }
     : (input.deliveryPoint ?? null);
-  const inFreeZone = isDelivery
-    ? isInFreeZone({
-        point,
-        address: input.deliveryAddress,
-        center: { lat: settings.freeDeliveryCenterLat, lng: settings.freeDeliveryCenterLng },
-        radiusKm: settings.freeDeliveryRadiusKm,
-        freeFsas: brand.freeDeliveryFsas,
-      })
-    : null;
+  const delivery = resolveDelivery({
+    legs,
+    point,
+    address: input.deliveryAddress,
+    hub: { lat: settings.deliveryHubLat, lng: settings.deliveryHubLng },
+    zones: settings.deliveryZones,
+    zone1Fsas: brand.zone1Fsas,
+  });
 
   const q = quote({
     product: { name: product.name, priceCents: product.priceCents },
@@ -92,11 +95,9 @@ export async function priceBooking(input: {
       priceCents: ballsAddOn?.priceCents ?? 0,
     },
     delivery: {
-      selected: isDelivery && !!deliveryAddOn,
-      name: deliveryAddOn?.name ?? "Delivery",
-      priceCents: deliveryAddOn?.priceCents ?? 0,
-      // Package sessions include delivery to the court.
-      inFreeZone: input.productIncluded ? true : inFreeZone,
+      selected: delivery.status === "ok",
+      label: delivery.status === "ok" ? `${legsLabel(legs)} · Zone ${delivery.zone}` : "",
+      priceCents: delivery.status === "ok" ? delivery.feeCents : 0,
     },
     taxes: { gstBps: settings.gstBps, pstBps: settings.pstBps },
     depositCents: machine.depositCents,
@@ -105,7 +106,7 @@ export async function priceBooking(input: {
   });
   return {
     quote: q,
-    inFreeZone,
+    delivery,
     promoId: promo?.ok && q.discountCents > 0 ? promo.promo.id : null,
     promoError: promo && !promo.ok ? promo.error : null,
   };
@@ -149,6 +150,7 @@ export async function createBooking(input: CreateBookingInput) {
 
   const {
     quote: q,
+    delivery,
     promoId,
     promoError,
   } = await priceBooking({
@@ -156,6 +158,8 @@ export async function createBooking(input: CreateBookingInput) {
     machineId: machine.id,
     balls: input.balls,
     fulfillment: input.fulfillment,
+    dropoff: input.dropoff,
+    collection: input.collection,
     courtId: input.courtId,
     deliveryAddress: input.deliveryAddress,
     deliveryPoint: input.deliveryPoint,
@@ -164,6 +168,23 @@ export async function createBooking(input: CreateBookingInput) {
     now,
   });
   if (promoError) throw new BookingError("INVALID_PROMO", promoError);
+  const isOnline = input.channel === "ONLINE";
+  // Phone bookings can still record trips the owner prices by hand.
+  if (delivery.status === "unknown" && isOnline) {
+    throw new BookingError(
+      "DELIVERY_UNAVAILABLE",
+      "We couldn't find that address on the map. Check it (add the postal code) or choose a court.",
+    );
+  }
+  if (delivery.status === "out_of_area" && isOnline) {
+    throw new BookingError(
+      "DELIVERY_UNAVAILABLE",
+      `That's ${delivery.distanceKm} km from downtown — outside our delivery area. Choose self-serve or call us.`,
+    );
+  }
+  const trips = delivery.status !== "none";
+  const zone = delivery.status === "ok" ? delivery.zone : null;
+  const km = delivery.status === "ok" || delivery.status === "out_of_area" ? delivery.distanceKm : null;
 
   const deposit = planDeposit({
     startsAt,
@@ -174,7 +195,6 @@ export async function createBooking(input: CreateBookingInput) {
   });
 
   const blockEnd = new Date(endsAt.getTime() + settings.bufferMinutes * 60_000);
-  const isOnline = input.channel === "ONLINE";
   // Package sessions with nothing to pay are confirmed straight away.
   const needsPayment = isOnline && q.totalCents > 0;
   const holdExpiresAt = needsPayment ? new Date(now.getTime() + settings.holdMinutes * 60_000) : null;
@@ -188,9 +208,9 @@ export async function createBooking(input: CreateBookingInput) {
       if (promoId) await claimPromo(tx, promoId);
 
       const addOnRows: Prisma.BookingAddOnCreateWithoutBookingInput[] = q.lines
-        .filter((l) => l.key === "balls" || l.key === "delivery")
+        .filter((l) => l.key === "balls")
         .flatMap((l) => {
-          const addOn = addOns.find((a) => a.kind === (l.key === "balls" ? "BALLS" : "DELIVERY"));
+          const addOn = addOns.find((a) => a.kind === "BALLS");
           return addOn ? [{ addOn: { connect: { id: addOn.id } }, priceCents: l.cents }] : [];
         });
 
@@ -205,11 +225,18 @@ export async function createBooking(input: CreateBookingInput) {
           ...(input.subscriptionId ? { subscription: { connect: { id: input.subscriptionId } } } : {}),
           startsAt,
           endsAt,
-          fulfillment: input.fulfillment,
-          ...(input.courtId ? { court: { connect: { id: input.courtId } } } : {}),
-          deliveryAddress: input.fulfillment === "DELIVERY_ADDRESS" ? input.deliveryAddress : null,
-          deliveryLat: input.deliveryPoint?.lat ?? null,
-          deliveryLng: input.deliveryPoint?.lng ?? null,
+          fulfillment: trips ? input.fulfillment : "PICKUP",
+          dropoff: trips && !!input.dropoff,
+          collection: trips && !!input.collection,
+          deliveryZone: zone,
+          deliveryKm: km,
+          deliveryFeeCents: q.lines.find((l) => l.key === "delivery")?.cents ?? 0,
+          ...(trips && input.fulfillment === "DELIVERY_COURT" && input.courtId
+            ? { court: { connect: { id: input.courtId } } }
+            : {}),
+          deliveryAddress: trips && input.fulfillment === "DELIVERY_ADDRESS" ? input.deliveryAddress : null,
+          deliveryLat: trips ? (input.deliveryPoint?.lat ?? null) : null,
+          deliveryLng: trips ? (input.deliveryPoint?.lng ?? null) : null,
           customerNotes: input.customerNotes,
           subtotalCents: q.subtotalCents,
           discountCents: q.discountCents,

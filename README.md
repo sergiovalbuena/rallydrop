@@ -58,6 +58,7 @@ tests/             unit/ e integration/ (doble reserva concurrente, webhooks Str
   - Las reservas telefónicas no tienen tarjeta: el depósito se gestiona en persona.
 - **Precios.** Se calculan siempre en el servidor, en centavos, y se guarda una copia en cada reserva.
 - **Códigos promocionales.** Se crean en Admin → Promo codes (% o monto fijo, fechas, usos máximos, tipos de alquiler). El cliente lo escribe justo antes de pagar; el descuento se aplica antes de impuestos, nunca baja el cobro de $1 (el pago con tarjeta es lo que guarda la tarjeta para el depósito) y no afecta el depósito. El seed crea `FIRSTSERVE` (10%) para probar.
+- **Entrega y recogida (pagadas).** Recoger y devolver en el punto del centro es gratis. Si el cliente prefiere, compramos los trayectos: *drop-off* (la llevamos), *collection* (la recogemos) o ambos (ida y vuelta, más barato que dos viajes). Precio fijo por trayecto según la distancia en línea recta desde el centro: zona 1 hasta 5 km ($15 / $25 ida y vuelta), zona 2 hasta 12 km ($25 / $40), zona 3 hasta 20 km ($35 / $60); más lejos solo autoservicio online. Todo editable en Admin → Settings. Los paquetes mensuales incluyen ida y vuelta a la cancha.
   - GST y PST se configuran en el admin. ⚠️ **Confírmalos con tu contador**, sobre todo si el PST aplica al alquiler de equipo.
 - **Hora de BC.** Todo el sitio funciona en hora de Victoria: horarios, calendario, emails y admin se calculan en el servidor.
   - Desde el 1 de noviembre de 2026 BC queda en UTC-7 fijo, sin más cambios de hora.
@@ -163,7 +164,7 @@ Eventos de webhook necesarios:
 - **Admin en inglés.** Los textos del admin están en el código; los del sitio público están en `messages/en.json`.
 - **Componentes UI.** Los componentes de `src/components/ui` siguen el estilo de shadcn/ui. `components.json` está listo para `npx shadcn add …`.
 - **Mapas y geocodificación (OpenStreetMap, gratis).**
-  - **Direcciones**: las de los clientes y las canchas se ubican con Nominatim. Si falla, la zona gratis se decide por el código postal (FSA) listado en `brand.ts`.
+  - **Direcciones**: las de los clientes y las canchas se ubican con Nominatim. Si falla, una dirección con código postal del centro (FSA en `brand.ts` → `zone1Fsas`) cuenta como zona 1; si no, se le pide al cliente revisar la dirección o elegir una cancha.
   - **Canchas en el admin**: Admin → Settings → Courts. "Find on map" ubica la dirección; después haces clic en el mapa o arrastras el pin.
-  - **Mapa público**: `/how-it-works#zone` muestra el círculo de entrega gratis y las canchas.
+  - **Mapa público**: `/how-it-works#zone` muestra los anillos de las zonas de entrega y las canchas.
   - **Tiles**: los de `tile.openstreetmap.org` están bien para tráfico bajo. Si el sitio crece, cambia la URL en `src/components/maps/leaflet-map.tsx` por un proveedor como MapTiler o Stadia.

@@ -7,7 +7,8 @@ export type BookingErrorCode =
   | "NO_SESSIONS_LEFT"
   | "GROUP_FULL"
   | "PAYMENT_FAILED"
-  | "INVALID_PROMO";
+  | "INVALID_PROMO"
+  | "DELIVERY_UNAVAILABLE";
 
 export class BookingError extends Error {
   constructor(

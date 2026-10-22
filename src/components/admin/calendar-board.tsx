@@ -391,6 +391,7 @@ function NewBookingDialog({
     email: "",
     phone: "",
     fulfillment: "DELIVERY_COURT" as "PICKUP" | "DELIVERY_COURT" | "DELIVERY_ADDRESS",
+    trips: "ROUND" as "ROUND" | "DROPOFF" | "COLLECTION",
     courtId: courts[0]?.id ?? "",
     address: "",
     balls: true,
@@ -452,16 +453,25 @@ function NewBookingDialog({
           <Field label="Phone">
             <Input type="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
           </Field>
-          <Field label="Delivery">
+          <Field label="Where">
             <NativeSelect
               value={f.fulfillment}
               onChange={(e) => set("fulfillment", e.target.value as typeof f.fulfillment)}
             >
               <option value="DELIVERY_COURT">Court</option>
               <option value="DELIVERY_ADDRESS">Address</option>
-              <option value="PICKUP">Customer pickup</option>
+              <option value="PICKUP">Self-serve at the hub</option>
             </NativeSelect>
           </Field>
+          {f.fulfillment !== "PICKUP" && (
+            <Field label="Our trips (priced by zone)">
+              <NativeSelect value={f.trips} onChange={(e) => set("trips", e.target.value as typeof f.trips)}>
+                <option value="ROUND">Drop-off & collection</option>
+                <option value="DROPOFF">Drop-off only</option>
+                <option value="COLLECTION">Collection only</option>
+              </NativeSelect>
+            </Field>
+          )}
           {f.fulfillment === "DELIVERY_COURT" && (
             <Field label="Court">
               <NativeSelect value={f.courtId} onChange={(e) => set("courtId", e.target.value)}>

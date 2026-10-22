@@ -83,12 +83,6 @@ export const DEFAULT_ADD_ONS = [
     priceCents: 1000,
     description: "100–120 pressureless balls that keep their bounce.",
   },
-  {
-    kind: "DELIVERY",
-    name: "Delivery & pickup",
-    priceCents: 1500,
-    description: "Free within 5 km of downtown Victoria.",
-  },
 ] as const;
 
 export const DEFAULT_MACHINES = [

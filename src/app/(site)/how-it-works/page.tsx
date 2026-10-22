@@ -5,7 +5,8 @@ import { getTranslations } from "next-intl/server";
 import { CircleDollarSign, CloudRain, MapPin, RotateCcw, Truck, XCircle } from "lucide-react";
 import { FaqList } from "@/components/marketing/faq-list";
 import { ZoneMap } from "@/components/marketing/zone-map";
-import { listActiveAddOns, listCourtsWithLocation } from "@/lib/services/catalog";
+import { DeliveryZoneTable } from "@/components/marketing/delivery-service";
+import { listCourtsWithLocation } from "@/lib/services/catalog";
 import { getSettings } from "@/lib/services/settings";
 import { PageHero, Section, SectionHeading } from "@/components/marketing/section";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,10 +59,13 @@ function TopicsSkeleton() {
 async function Topics() {
   await connection();
   const t = await getTranslations("how");
-  const delivery = (await listActiveAddOns()).find((a) => a.kind === "DELIVERY");
-  const fee = formatCentsShort(delivery?.priceCents ?? 1500);
+  const zone1 = (await getSettings()).deliveryZones[0];
+  const prices = {
+    trip: formatCentsShort(zone1?.tripCents ?? 1500),
+    round: formatCentsShort(zone1?.roundTripCents ?? 2500),
+  };
   const topics = [
-    { id: "delivery", icon: Truck, title: t("deliveryTitle"), body: t("deliveryBody", { fee }) },
+    { id: "delivery", icon: Truck, title: t("deliveryTitle"), body: t("deliveryBody", prices) },
     { id: "returns", icon: RotateCcw, title: t("returnTitle"), body: t("returnBody") },
     { id: "deposit", icon: CircleDollarSign, title: t("depositTitle"), body: t("depositBody") },
     { id: "rain", icon: CloudRain, title: t("rainTitle"), body: t("rainBody") },
@@ -107,19 +111,16 @@ async function Topics() {
 async function DeliveryZone() {
   await connection();
   const t = await getTranslations("how");
-  const [settings, courts, addOns] = await Promise.all([getSettings(), listCourtsWithLocation(), listActiveAddOns()]);
-  const delivery = addOns.find((a) => a.kind === "DELIVERY");
+  const [settings, courts] = await Promise.all([getSettings(), listCourtsWithLocation()]);
   return (
     <Section id="zone" className="pt-0">
       <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
         <div data-reveal="left">
           <h2 className="font-display text-3xl font-extrabold uppercase">{t("zoneTitle")}</h2>
-          <p className="mt-3 text-muted-foreground">
-            {t("zoneBody", {
-              radius: settings.freeDeliveryRadiusKm,
-              fee: formatCentsShort(delivery?.priceCents ?? 1500),
-            })}
-          </p>
+          <p className="mt-3 text-muted-foreground">{t("zoneBody")}</p>
+          <div className="mt-5">
+            <DeliveryZoneTable zones={settings.deliveryZones} />
+          </div>
           <h3 className="mt-6 font-semibold">{t("courtsTitle")}</h3>
           <ul className="mt-2 space-y-1.5 text-sm">
             {courts.map((c) => (
@@ -135,8 +136,8 @@ async function DeliveryZone() {
         </div>
         <ZoneMap
           label={t("zoneMapLabel")}
-          center={{ lat: settings.freeDeliveryCenterLat, lng: settings.freeDeliveryCenterLng }}
-          radiusKm={settings.freeDeliveryRadiusKm}
+          center={{ lat: settings.deliveryHubLat, lng: settings.deliveryHubLng }}
+          radiiKm={settings.deliveryZones.map((z) => z.maxKm)}
           courts={courts.map((c) => ({ lat: c.lat, lng: c.lng, label: c.name }))}
         />
       </div>

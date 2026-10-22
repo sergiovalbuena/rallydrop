@@ -54,7 +54,9 @@ export type BookingEmailData = {
   machineName: string;
   startsAt: Date;
   endsAt: Date;
-  where: string;
+  /** "We drop it off at …" / "You collect it at …" */
+  startHow: string;
+  endHow: string;
   lines: { label: string; cents: number }[];
   subtotalCents: number;
   gstCents: number;
@@ -71,9 +73,8 @@ export function bookingConfirmedEmail(d: BookingEmailData): EmailContent {
     ["Booking code", d.code],
     ["Machine", d.machineName],
     ["Rental", d.productName],
-    ["Drop-off", formatSlot(d.startsAt)],
-    ["Pickup", formatSlot(d.endsAt)],
-    ["Where", d.where],
+    ["Start", `${formatSlot(d.startsAt)} — ${d.startHow}`],
+    ["End", `${formatSlot(d.endsAt)} — ${d.endHow}`],
   ]);
   const receipt = rows([
     ...d.lines.map((l): [string, string] => [l.label, formatCents(l.cents)]),
@@ -89,20 +90,20 @@ ${summary}
 <h2 style="font-size:16px;margin:24px 0 8px;text-transform:uppercase;color:${NAVY}">Receipt</h2>
 ${receipt}
 ${d.receiptUrl ? `<p style="font-size:13px"><a href="${d.receiptUrl}" style="color:${BLUE}">View your Stripe receipt</a></p>` : ""}
-<p style="font-size:14px">Cancel 48 h or more before drop-off for a full refund (50% inside 48 h). Rainy day? Reply and we'll reschedule for free.</p>`,
+<p style="font-size:14px">Cancel 48 h or more before the start for a full refund (50% inside 48 h). Rainy day? Reply and we'll reschedule for free.</p>`,
     { label: "Manage my booking", url: manageUrl },
   );
   const text = `You're booked! Code ${d.code}
 ${d.machineName} · ${d.productName}
 ${formatRange(d.startsAt, d.endsAt)}
-Where: ${d.where}
+Start: ${d.startHow}. End: ${d.endHow}.
 Total paid: ${formatCents(d.totalCents)} · Deposit: ${formatCents(d.depositCents)} (${d.depositNote})
 Manage: ${manageUrl}`;
   return { subject: `Booking confirmed · ${d.code}`, html, text };
 }
 
 export function reminderEmail(
-  d: Pick<BookingEmailData, "code" | "customerName" | "machineName" | "startsAt" | "endsAt" | "where">,
+  d: Pick<BookingEmailData, "code" | "customerName" | "machineName" | "startsAt" | "endsAt" | "startHow" | "endHow">,
 ): EmailContent {
   const html = layout(
     "See you tomorrow",
@@ -110,9 +111,8 @@ export function reminderEmail(
 ${rows([
   ["Booking code", d.code],
   ["Machine", d.machineName],
-  ["Drop-off", formatSlot(d.startsAt)],
-  ["Pickup", formatSlot(d.endsAt)],
-  ["Where", d.where],
+  ["Start", `${formatSlot(d.startsAt)} — ${d.startHow}`],
+  ["End", `${formatSlot(d.endsAt)} — ${d.endHow}`],
 ])}
 <p style="font-size:14px">Tips: use pressureless balls, keep the machine dry, and never stand in front of it while it's running.</p>`,
     { label: "Quick-start guide", url: siteUrl("/account/guide") },
@@ -120,7 +120,7 @@ ${rows([
   return {
     subject: `Reminder: your ${brand.name} rental is tomorrow (${d.code})`,
     html,
-    text: `Reminder: ${d.machineName}, ${formatRange(d.startsAt, d.endsAt)} at ${d.where}. Code ${d.code}.`,
+    text: `Reminder: ${d.machineName}, ${formatRange(d.startsAt, d.endsAt)}. ${d.startHow}. Code ${d.code}.`,
   };
 }
 

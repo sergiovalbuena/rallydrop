@@ -5,7 +5,7 @@ import { applyBps } from "@/lib/money";
 const base = {
   product: { name: "Day rental", priceCents: 4500 },
   balls: { selected: false, name: "Ball bucket", priceCents: 1000 },
-  delivery: { selected: false, name: "Delivery & pickup", priceCents: 1500, inFreeZone: null },
+  delivery: { selected: false, label: "Drop-off & collection · Zone 1", priceCents: 2500 },
   taxes: { gstBps: 500, pstBps: 700 },
   depositCents: 30000,
 };
@@ -20,32 +20,26 @@ describe("quote", () => {
     expect(q.depositCents).toBe(30000);
   });
 
-  it("adds balls and paid delivery outside the free zone", () => {
+  it("adds balls and the drop-off & collection fee", () => {
     const q = quote({
       ...base,
       balls: { ...base.balls, selected: true },
-      delivery: { ...base.delivery, selected: true, inFreeZone: false },
+      delivery: { ...base.delivery, selected: true },
     });
     expect(q.lines.map((l) => [l.key, l.cents])).toEqual([
       ["product", 4500],
       ["balls", 1000],
-      ["delivery", 1500],
+      ["delivery", 2500],
     ]);
-    expect(q.subtotalCents).toBe(7000);
-    expect(q.totalCents).toBe(7000 + 350 + 490);
+    expect(q.subtotalCents).toBe(8000);
+    expect(q.totalCents).toBe(8000 + 400 + 560);
   });
 
-  it("makes delivery free inside the zone", () => {
-    const q = quote({ ...base, delivery: { ...base.delivery, selected: true, inFreeZone: true } });
+  it("includes the trips in package sessions", () => {
+    const q = quote({ ...base, productIncluded: true, delivery: { ...base.delivery, selected: true } });
     const delivery = q.lines.find((l) => l.key === "delivery");
     expect(delivery?.cents).toBe(0);
-    expect(delivery?.note).toMatch(/free/i);
-    expect(q.subtotalCents).toBe(4500);
-  });
-
-  it("charges delivery when the zone is unknown", () => {
-    const q = quote({ ...base, delivery: { ...base.delivery, selected: true, inFreeZone: null } });
-    expect(q.lines.find((l) => l.key === "delivery")?.cents).toBe(1500);
+    expect(delivery?.note).toMatch(/included/i);
   });
 
   it("prices package sessions at zero but still charges add-ons", () => {

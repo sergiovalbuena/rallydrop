@@ -9,8 +9,8 @@ export type MapProps = {
   center: LatLng;
   zoom?: number;
   markers?: (LatLng & { label: string; color?: string })[];
-  /** Free-delivery zone. */
-  circle?: { center: LatLng; radiusKm: number };
+  /** Delivery zones: rings around the hub (km, ascending). */
+  zones?: { center: LatLng; radiiKm: number[] };
   /** Admin: click or drag to choose a point. */
   picker?: { point: LatLng | null; onChange: (p: LatLng) => void };
   className?: string;

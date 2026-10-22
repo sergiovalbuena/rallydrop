@@ -2,15 +2,15 @@
 
 import { LocationMap, type LatLng } from "@/components/maps/map";
 
-/** Public map: free-delivery circle + court pins (client-only Leaflet). */
+/** Public map: delivery zone rings + court pins (client-only Leaflet). */
 export function ZoneMap({
   center,
-  radiusKm,
+  radiiKm,
   courts,
   label,
 }: {
   center: LatLng;
-  radiusKm: number;
+  radiiKm: number[];
   courts: (LatLng & { label: string })[];
   label: string;
 }) {
@@ -18,8 +18,8 @@ export function ZoneMap({
     <LocationMap
       label={label}
       center={center}
-      zoom={12}
-      circle={{ center, radiusKm }}
+      zoom={11}
+      zones={{ center, radiiKm }}
       markers={courts}
       className="h-80 overflow-hidden rounded-2xl border sm:h-[28rem]"
     />

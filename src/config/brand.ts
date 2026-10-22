@@ -20,10 +20,10 @@ export const brand = {
     instagram: "https://instagram.com/rallydrop",
   },
   /**
-   * Postal-code areas (FSA) inside the free-delivery zone, used when an
-   * address can't be geocoded. Roughly downtown Victoria + 5 km.
+   * Postal-code areas (FSA) treated as delivery zone 1 when an address
+   * can't be located on the map. Roughly downtown Victoria + 5 km.
    */
-  freeDeliveryFsas: ["V8W", "V8V", "V8T", "V8R", "V8S", "V9A"],
+  zone1Fsas: ["V8W", "V8V", "V8T", "V8R", "V8S", "V9A"],
 } as const;
 
 export type Brand = typeof brand;

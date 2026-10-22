@@ -28,7 +28,8 @@ export default async function SettingsPage() {
     db.court.findMany({ orderBy: { sortOrder: "asc" } }),
     db.siteContent.findMany({ where: { locale: "en" } }),
   ]);
-  const center = { lat: settings.freeDeliveryCenterLat, lng: settings.freeDeliveryCenterLng };
+  const center = { lat: settings.deliveryHubLat, lng: settings.deliveryHubLng };
+  const dollars = (c: number) => (c / 100).toFixed(2);
   const mm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   return (
     <>
@@ -49,9 +50,13 @@ export default async function SettingsPage() {
               cancelLatePercent: settings.cancelLateRefundBps / 100,
               deliveryStart: mm(settings.deliveryStartMinute),
               deliveryEnd: mm(settings.deliveryEndMinute),
-              freeDeliveryCenterLat: settings.freeDeliveryCenterLat,
-              freeDeliveryCenterLng: settings.freeDeliveryCenterLng,
-              freeDeliveryRadiusKm: settings.freeDeliveryRadiusKm,
+              deliveryHubLat: settings.deliveryHubLat,
+              deliveryHubLng: settings.deliveryHubLng,
+              zones: settings.deliveryZones.map((z) => ({
+                maxKm: z.maxKm,
+                trip: dollars(z.tripCents),
+                roundTrip: dollars(z.roundTripCents),
+              })),
               seasonStartMonth: settings.seasonStartMonth,
               seasonEndMonth: settings.seasonEndMonth,
               allowOffSeason: settings.allowOffSeason,
@@ -61,14 +66,14 @@ export default async function SettingsPage() {
             }}
           />
         </Panel>
-        <Panel title="Delivery zone">
+        <Panel title="Delivery zones">
           <p className="mb-3 text-sm text-muted-foreground">
-            Free delivery within {settings.freeDeliveryRadiusKm} km of the centre (edit centre and radius above). Pins
-            are your active courts.
+            Rings at {settings.deliveryZones.map((z) => `${z.maxKm} km`).join(", ")} around the hub (edit them above).
+            Pins are your active courts.
           </p>
           <ZonePreview
             center={center}
-            radiusKm={settings.freeDeliveryRadiusKm}
+            radiiKm={settings.deliveryZones.map((z) => z.maxKm)}
             courts={courts
               .filter((c) => c.active)
               .map((c) => ({ lat: Number(c.lat), lng: Number(c.lng), label: c.name }))}
