@@ -92,13 +92,8 @@ export function quote(input: QuoteInput): Quote {
   }
 
   if (input.delivery.selected) {
-    lines.push({
-      key: "delivery",
-      label: input.delivery.label,
-      // Package sessions include the round trip to the court.
-      cents: input.productIncluded ? 0 : input.delivery.priceCents,
-      note: input.productIncluded ? "Included in your package" : undefined,
-    });
+    // Package sessions are self-serve downtown; delivery is paid per session.
+    lines.push({ key: "delivery", label: input.delivery.label, cents: input.delivery.priceCents });
   }
 
   const grossCents = lines.reduce((sum, l) => sum + l.cents, 0);

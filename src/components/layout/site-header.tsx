@@ -14,7 +14,7 @@ export async function SiteHeader() {
       {announcement && (
         <p className="bg-accent px-4 py-2 text-center text-sm font-semibold text-accent-foreground">{announcement}</p>
       )}
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 print:hidden">
         <a
           href="#main"
           className="sr-only z-50 rounded-md bg-primary px-3 py-2 text-primary-foreground focus:not-sr-only focus:absolute focus:top-2 focus:left-2"

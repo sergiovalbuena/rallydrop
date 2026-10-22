@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import type { BookingStatus, Prisma } from "@/generated/prisma/client";
 import { getSettings } from "@/lib/services/settings";
 import { addLocalDays, localDateMinuteToUtc, toLocalDate } from "@/lib/time";
+import { occupancy as occupancyOf } from "@/lib/domain/occupancy";
 
 export const ACTIVE_STATUSES: BookingStatus[] = [
   "CONFIRMED",
@@ -27,10 +28,16 @@ export async function dashboardStats(now: Date) {
   const dayEnd = localDateMinuteToUtc(addLocalDays(today, 1), 0);
   const weekEnd = localDateMinuteToUtc(addLocalDays(today, 7), 0);
 
-  const [payments, todays, week, out, deposits, machines, monthBookings] = await Promise.all([
+  const [payments, todays, week, out, deposits, machines, monthBookings, blackouts] = await Promise.all([
     db.payment.findMany({
       where: { createdAt: { gte: from, lt: to }, status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"] } },
-      select: { amountCents: true, refundedCents: true, kind: true },
+      select: {
+        amountCents: true,
+        refundedCents: true,
+        kind: true,
+        booking: { select: { product: { select: { name: true } } } },
+        subscription: { select: { product: { select: { name: true } } } },
+      },
     }),
     db.booking.findMany({
       where: {
@@ -59,22 +66,41 @@ export async function dashboardStats(now: Date) {
       where: { status: { in: ACTIVE_STATUSES }, startsAt: { lt: to }, endsAt: { gt: from } },
       select: { machineId: true, startsAt: true, endsAt: true },
     }),
+    db.blackout.findMany({
+      where: { startsAt: { lt: to }, endsAt: { gt: from } },
+      select: { machineId: true, startsAt: true, endsAt: true },
+    }),
   ]);
 
   const revenueCents = payments.reduce((s, p) => s + p.amountCents - p.refundedCents, 0);
-  const monthHours = (to.getTime() - from.getTime()) / 3_600_000;
-  const occupancy = machines.map((m) => {
-    const hours = monthBookings
-      .filter((b) => b.machineId === m.id)
-      .reduce((s, b) => {
-        const start = Math.max(b.startsAt.getTime(), from.getTime());
-        const end = Math.min(b.endsAt.getTime(), to.getTime());
-        return s + Math.max(0, end - start) / 3_600_000;
-      }, 0);
-    return { machine: m, hours, percent: Math.round((hours / monthHours) * 100) };
-  });
+  // Revenue by product: rentals by what was rented, package invoices by package.
+  const byProduct = new Map<string, number>();
+  for (const p of payments) {
+    const label =
+      p.kind === "DEPOSIT_CAPTURE"
+        ? "Damage & late charges"
+        : p.kind === "GROUP_SESSION"
+          ? "Group sessions"
+          : (p.booking?.product.name ?? p.subscription?.product.name ?? "Other");
+    byProduct.set(label, (byProduct.get(label) ?? 0) + p.amountCents - p.refundedCents);
+  }
+  const revenueByProduct = [...byProduct.entries()]
+    .map(([label, cents]) => ({ label, cents }))
+    .sort((a, b) => b.cents - a.cents);
 
-  return { revenueCents, todays, weekCount: week, out, deposits, occupancy, dayStart, dayEnd };
+  const occupancy = machines.map((m) => ({
+    machine: m,
+    ...occupancyOf({
+      rentals: monthBookings.filter((b) => b.machineId === m.id).map((b) => ({ start: b.startsAt, end: b.endsAt })),
+      blocked: blackouts
+        .filter((b) => b.machineId === null || b.machineId === m.id)
+        .map((b) => ({ start: b.startsAt, end: b.endsAt })),
+      from,
+      to,
+    }),
+  }));
+
+  return { revenueCents, revenueByProduct, todays, weekCount: week, out, deposits, occupancy, dayStart, dayEnd };
 }
 
 export type BookingFilters = {
@@ -139,5 +165,30 @@ export async function dashboardAlerts(now: Date) {
     insuranceMissing: !settings.insuranceProvider,
     termsMissing,
     holdsExpiring,
+  };
+}
+
+/**
+ * Lifetime money a machine has brought in (rentals net of refunds; damage
+ * charges shown apart) against what it cost, for the payback panel.
+ */
+export async function machineEarnings(machineId: string) {
+  const [payments, maintenance] = await Promise.all([
+    db.payment.findMany({
+      where: {
+        booking: { machineId },
+        kind: { in: ["RENTAL", "MANUAL", "DEPOSIT_CAPTURE"] },
+        status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"] },
+      },
+      select: { kind: true, amountCents: true, refundedCents: true },
+    }),
+    db.maintenanceLog.aggregate({ where: { machineId }, _sum: { costCents: true } }),
+  ]);
+  const net = (kinds: string[]) =>
+    payments.filter((p) => kinds.includes(p.kind)).reduce((s, p) => s + p.amountCents - p.refundedCents, 0);
+  return {
+    rentalCents: net(["RENTAL", "MANUAL"]),
+    damageCents: net(["DEPOSIT_CAPTURE"]),
+    maintenanceCents: maintenance._sum.costCents ?? 0,
   };
 }

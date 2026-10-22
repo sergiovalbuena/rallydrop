@@ -62,6 +62,8 @@ export type BookingEmailData = {
   gstCents: number;
   pstCents: number;
   totalCents: number;
+  /** Customer credit applied (totalCents is already net of it). */
+  creditCents?: number;
   depositCents: number;
   depositNote: string;
   receiptUrl?: string | null;
@@ -90,6 +92,7 @@ export function bookingConfirmedEmail(d: BookingEmailData): EmailContent {
     ...d.lines.map((l): [string, string] => [l.label, formatCents(l.cents)]),
     ...(d.gstCents > 0 ? [["GST", formatCents(d.gstCents)] as [string, string]] : []),
     ...(d.pstCents > 0 ? [["PST", formatCents(d.pstCents)] as [string, string]] : []),
+    ...(d.creditCents ? [["Credit applied", `−${formatCents(d.creditCents)}`] as [string, string]] : []),
     ["Total paid", formatCents(d.totalCents)],
     ["Deposit", `${formatCents(d.depositCents)} — ${d.depositNote}`],
   ]);
@@ -102,7 +105,7 @@ ${receipt}
 ${d.taxNumbers ? `<p style="font-size:12px;color:#5b6784">${esc(d.taxNumbers)}</p>` : ""}
 ${d.receiptUrl ? `<p style="font-size:13px"><a href="${d.receiptUrl}" style="color:${BLUE}">View your Stripe receipt</a></p>` : ""}
 ${d.acceptance ? `<p style="font-size:13px">You accepted the <a href="${d.acceptance.termsUrl}" style="color:${BLUE}">Rental Terms (version ${esc(d.acceptance.termsVersion)})</a> &amp; <a href="${d.acceptance.waiverUrl}" style="color:${BLUE}">Waiver (version ${esc(d.acceptance.waiverVersion)})</a> on ${esc(d.acceptance.acceptedAtLocal)}.</p>` : ""}
-<p style="font-size:14px">Cancel 48 h or more before the start for a full refund (50% inside 48 h). Rainy day? Reply and we'll reschedule for free.</p>`,
+<p style="font-size:14px">Cancel 48 h or more before the start for a full refund (50% inside 48 h). Rain on your start day? Before your start time, open My bookings to reschedule free or take a 100% credit.</p>`,
     { label: "Manage my booking", url: manageUrl },
   );
   const text = `You're booked! Code ${d.code}
@@ -315,5 +318,48 @@ export function acceptanceRequestEmail(d: { code: string; customerName: string; 
       { label: "Review and accept", url: d.url },
     ),
     text: `Before we can confirm booking ${d.code}, please accept our Rental Terms and Release of Liability: ${d.url}`,
+  };
+}
+
+export function rainDayEmail(d: {
+  code: string;
+  customerName: string;
+  date: string;
+  url: string;
+  creditMonths: number;
+}): EmailContent {
+  return {
+    subject: `Rain day: reschedule free or take a credit (${d.code})`,
+    html: layout(
+      "It's a rain day",
+      `<p>Hi ${esc(d.customerName)}, it looks too wet to play on ${esc(d.date)}, so your booking <strong>${esc(d.code)}</strong> is covered by our rain policy. Pick what suits you:</p>
+<ul style="font-size:15px;line-height:1.6"><li><strong>Reschedule for free</strong> to another day.</li><li><strong>Take a credit</strong> for 100% of what you paid, valid ${d.creditMonths} months and applied automatically to your next booking.</li></ul>
+<p style="font-size:14px">Prefer to play anyway? Do nothing and your booking stays as it is.</p>`,
+      { label: "Choose an option", url: d.url },
+    ),
+    text: `Rain day on ${d.date} for booking ${d.code}: reschedule free or take a 100% credit (valid ${d.creditMonths} months): ${d.url}`,
+  };
+}
+
+export function rainCreditEmail(d: {
+  code: string;
+  customerName: string;
+  amountCents: number;
+  expiresOn: string;
+}): EmailContent {
+  const body =
+    d.amountCents > 0
+      ? `We've cancelled booking ${esc(d.code)} and added a credit of <strong>${formatCents(d.amountCents)}</strong> to your account, valid until ${esc(d.expiresOn)}. It comes off your next booking automatically — just use the same email or phone.`
+      : `We've cancelled booking ${esc(d.code)}. Any credit or package session it used is back in your account.`;
+  return {
+    subject: `Rain credit added (${d.code})`,
+    html: layout("Rain credit added", `<p>Hi ${esc(d.customerName)}, ${body} Any deposit hold has been released.</p>`, {
+      label: "Book another day",
+      url: siteUrl("/book"),
+    }),
+    text:
+      d.amountCents > 0
+        ? `Booking ${d.code} cancelled for rain. Credit of ${formatCents(d.amountCents)} valid until ${d.expiresOn}, applied automatically to your next booking.`
+        : `Booking ${d.code} cancelled for rain. Any credit or package session it used is back in your account.`,
   };
 }

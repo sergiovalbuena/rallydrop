@@ -4,16 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 import {
+  BellRing,
   CalendarDays,
   ClipboardList,
+  CloudRain,
   Download,
+  FileText,
   Gauge,
   Settings,
   ShoppingBag,
-  TicketPercent,
-  BellRing,
-  FileText,
   Star,
+  TicketPercent,
   Users,
   UsersRound,
   Wrench,
@@ -30,6 +31,7 @@ const ITEMS = [
   { href: "/admin/products", label: "Prices & products", icon: ShoppingBag },
   { href: "/admin/promo-codes", label: "Promo codes", icon: TicketPercent },
   { href: "/admin/waitlist", label: "Waitlist", icon: BellRing },
+  { href: "/admin/rain", label: "Rain day", icon: CloudRain },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/legal", label: "Terms & waiver", icon: FileText },
   { href: "/admin/settings", label: "Settings", icon: Settings },

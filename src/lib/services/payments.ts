@@ -4,7 +4,8 @@ import { stripe, type Stripe } from "@/lib/stripe";
 import { brand } from "@/config/brand";
 import { refundFor } from "@/lib/domain/cancellation";
 import { validateCapture } from "@/lib/domain/deposit";
-import type { BookingStatus } from "@/generated/prisma/client";
+import type { BookingStatus, Prisma } from "@/generated/prisma/client";
+import { restoreCredits } from "./credits";
 import {
   notifyBookingConfirmed,
   notifyCancelled,
@@ -202,11 +203,14 @@ export async function completeConfirmation(
   if (!confirmed) {
     // Paid after the hold expired and someone else took the slot → full refund.
     await stripe().refunds.create({ payment_intent: pi.id }, { idempotencyKey: `slot_lost:${pi.id}` });
-    await db.booking.update({
-      where: { id: bookingId },
-      data: { status: "CANCELLED", cancelReason: "slot_lost", cancelledAt: new Date() },
+    await db.$transaction(async (tx) => {
+      await tx.booking.update({
+        where: { id: bookingId },
+        data: { status: "CANCELLED", cancelReason: "slot_lost", cancelledAt: new Date() },
+      });
+      await restoreCredits(tx, [bookingId], 10_000);
+      await tx.bookingEvent.create({ data: { bookingId, type: "slot_lost_refunded", actor: "system" } });
     });
-    await db.bookingEvent.create({ data: { bookingId, type: "slot_lost_refunded", actor: "system" } });
     await notifySlotLost(bookingId, pi.amount);
     return { kind: "slot_lost" };
   }
@@ -501,7 +505,18 @@ export async function refundRental(bookingId: string, amountCents: number, reaso
  */
 export async function cancelBooking(
   bookingId: string,
-  opts: { actor: string; refund: "policy" | "full" | "none" | { cents: number }; reason?: string; now?: Date },
+  opts: {
+    actor: string;
+    refund: "policy" | "full" | "none" | { cents: number };
+    reason?: string;
+    now?: Date;
+    /** Share of any customer credit used that goes back (defaults to the refund share). */
+    restoreCreditBps?: number;
+    /** Runs inside the cancellation transaction (e.g. issue a rain credit). */
+    within?: (tx: Prisma.TransactionClient, paidCents: number) => Promise<unknown>;
+    /** Send the usual cancellation email (default true). */
+    notify?: boolean;
+  },
 ): Promise<{ refundedCents: number }> {
   const now = opts.now ?? new Date();
   const booking = await db.booking.findUniqueOrThrow({
@@ -517,17 +532,30 @@ export async function cancelBooking(
     .reduce((s, p) => s + p.amountCents - p.refundedCents, 0);
 
   let refundCents = 0;
+  // Credit used on the booking follows the cash: same share comes back.
+  let creditBps = 10_000;
   if (opts.refund === "full") refundCents = paid;
+  else if (opts.refund === "none") creditBps = 0;
   else if (opts.refund === "policy") {
     const settings = await getSettings();
-    refundCents = refundFor(paid, booking.startsAt, now, {
+    const decision = refundFor(paid, booking.startsAt, now, {
       fullRefundHours: settings.cancelFullRefundHours,
       lateRefundBps: settings.cancelLateRefundBps,
-    }).refundCents;
-  } else if (typeof opts.refund === "object") refundCents = Math.min(opts.refund.cents, paid);
+    });
+    refundCents = decision.refundCents;
+    creditBps = decision.tier === "full" ? 10_000 : decision.tier === "partial" ? settings.cancelLateRefundBps : 0;
+  } else {
+    refundCents = Math.min(opts.refund.cents, paid);
+    creditBps = paid > 0 ? Math.round((refundCents / paid) * 10_000) : 10_000;
+  }
+  // Never paid (abandoned checkout): everything comes back.
+  if (booking.status === "PENDING_PAYMENT") creditBps = 10_000;
+  if (opts.restoreCreditBps !== undefined) creditBps = opts.restoreCreditBps;
 
   await db.$transaction(async (tx) => {
     await releaseOccupancy(tx, bookingId);
+    await restoreCredits(tx, [bookingId], creditBps);
+    if (opts.within) await opts.within(tx, paid);
     await tx.booking.update({
       where: { id: bookingId },
       data: { status: "CANCELLED", cancelledAt: now, cancelReason: opts.reason ?? null },
@@ -549,7 +577,7 @@ export async function cancelBooking(
 
   const refundedCents = await refundRental(bookingId, refundCents, opts.reason ?? "cancellation", opts.actor);
   await releaseDeposit(bookingId, opts.actor);
-  if (booking.status !== "PENDING_PAYMENT") await notifyCancelled(bookingId, refundedCents);
+  if (booking.status !== "PENDING_PAYMENT" && opts.notify !== false) await notifyCancelled(bookingId, refundedCents);
   return { refundedCents };
 }
 
@@ -607,9 +635,7 @@ export async function setBookingStatus(bookingId: string, status: BookingStatus,
  * the hold now or leave it to the daily cron (the day before).
  */
 export async function attachSubscriptionCardToDeposit(bookingId: string, stripeSubscriptionId: string) {
-  const sub = await stripe().subscriptions.retrieve(stripeSubscriptionId);
-  const pm =
-    typeof sub.default_payment_method === "string" ? sub.default_payment_method : sub.default_payment_method?.id;
+  const pm = await subscriptionCard(stripeSubscriptionId);
   const deposit = await db.deposit.findUnique({ where: { bookingId } });
   if (!deposit || !pm) return;
   await db.deposit.update({
@@ -618,4 +644,69 @@ export async function attachSubscriptionCardToDeposit(bookingId: string, stripeS
   });
   if (deposit.strategy === "AUTH_HOLD" && !deposit.authScheduledFor)
     await placeDepositHold(bookingId, { offSession: true });
+}
+
+/** The card a package member pays their subscription with. */
+async function subscriptionCard(stripeSubscriptionId: string): Promise<string | null> {
+  const sub = await stripe().subscriptions.retrieve(stripeSubscriptionId);
+  return typeof sub.default_payment_method === "string"
+    ? sub.default_payment_method
+    : (sub.default_payment_method?.id ?? null);
+}
+
+/**
+ * Package session with paid delivery: charge the trip fee to the member's
+ * package card right away (off-session) and confirm the booking. If the card
+ * can't be charged without the member present, the session is released.
+ */
+export async function chargeSessionOnFile(
+  bookingId: string,
+  stripeSubscriptionId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const booking = await db.booking.findUniqueOrThrow({
+    where: { id: bookingId },
+    include: { product: true, machine: true },
+  });
+  const failed = async (error: string) => {
+    await cancelBooking(bookingId, { actor: "system", refund: "none", reason: "payment_init_failed" }).catch(() => {});
+    return { ok: false as const, error };
+  };
+  const paymentMethod = await subscriptionCard(stripeSubscriptionId);
+  if (!paymentMethod) return failed("We couldn't find a card on your package. Update it from My bookings.");
+
+  const customer = await ensureStripeCustomer(booking.customerId);
+  const pi = await stripe().paymentIntents.create(
+    {
+      amount: booking.totalCents,
+      currency: brand.currency,
+      customer,
+      payment_method: paymentMethod,
+      allowed_payment_method_types: ["card"],
+      description: `${brand.name} session delivery · ${booking.code}`,
+      metadata: metadata("rental", { bookingId: booking.id, code: booking.code }),
+    },
+    { idempotencyKey: `rental:${booking.id}` },
+  );
+  // Record the payment before confirming so the webhook always finds it.
+  await db.payment.create({
+    data: {
+      kind: "RENTAL",
+      status: "PENDING",
+      amountCents: booking.totalCents,
+      bookingId: booking.id,
+      stripePaymentIntentId: pi.id,
+    },
+  });
+  let confirmed: Stripe.PaymentIntent;
+  try {
+    confirmed = await stripe().paymentIntents.confirm(pi.id, { off_session: true });
+  } catch (e) {
+    console.error("session charge failed", e);
+    return failed("Your card couldn't be charged for the delivery. Choose self-serve pickup, or update your card.");
+  }
+  if (confirmed.status !== "succeeded") {
+    return failed("Your card needs confirmation for this charge. Choose self-serve pickup, or update your card.");
+  }
+  await handleRentalSucceeded(confirmed, { offSession: true });
+  return { ok: true };
 }

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, Mail, MapPin, Phone } from "lucide-react";
 import {
   CancelBookingButton,
+  RainCreditAdminButton,
   DepositControls,
   AcceptanceLinkControls,
   InspectionForm,
@@ -70,6 +71,7 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
         actions={
           <>
             <StatusBadge status={b.status} />
+            {b.status === "CONFIRMED" && <RainCreditAdminButton bookingId={b.id} />}
             {!closed && <CancelBookingButton bookingId={b.id} />}
           </>
         }
@@ -232,7 +234,8 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
               <Row label={`Subtotal${b.offSeason ? " (off-season)" : ""}`} value={formatCents(b.subtotalCents)} />
               {b.gstBps > 0 && <Row label={`GST ${b.gstBps / 100}%`} value={formatCents(b.gstCents)} />}
               {b.pstBps > 0 && <Row label={`PST ${b.pstBps / 100}%`} value={formatCents(b.pstCents)} />}
-              <Row label="Total" value={formatCents(b.totalCents)} strong />
+              {b.creditCents > 0 && <Row label="Customer credit" value={formatCents(-b.creditCents)} />}
+              <Row label={b.creditCents > 0 ? "Charged to card" : "Total"} value={formatCents(b.totalCents)} strong />
             </dl>
             <ul className="mt-4 space-y-2 border-t pt-4 text-sm">
               {b.payments.length === 0 && <li className="text-muted-foreground">No payments yet.</li>}

@@ -53,21 +53,23 @@ export const DEFAULT_PRODUCTS = [
     slug: "package-basic",
     kind: "PACKAGE",
     name: "Basic package",
-    priceCents: 4000,
+    priceCents: 4900,
     sortOrder: 5,
     sessionsPerMonth: 4,
     sessionMinutes: 90,
-    description: "4 sessions of 1.5 h per month, delivered to your court.",
+    description:
+      "4 sessions of 1.5 h per month. Pick up and return downtown, or add delivery to your court per session.",
   },
   {
     slug: "package-frequent",
     kind: "PACKAGE",
     name: "Frequent package",
-    priceCents: 7000,
+    priceCents: 8900,
     sortOrder: 6,
     sessionsPerMonth: 8,
     sessionMinutes: 90,
-    description: "8 sessions of 1.5 h per month, delivered to your court.",
+    description:
+      "8 sessions of 1.5 h per month. Pick up and return downtown, or add delivery to your court per session.",
   },
   {
     slug: "group-session",

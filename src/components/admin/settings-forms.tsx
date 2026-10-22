@@ -66,6 +66,8 @@ type S = {
   seasonEnd: string;
   allowOffSeason: boolean;
   highSeasonMonthCap: string;
+  rainCreditMonths: number;
+  packageRollover: boolean;
   smsEnabled: boolean;
   contactEmail: string;
   contactPhone: string;
@@ -229,7 +231,19 @@ export function SettingsForm({ s }: { s: S }) {
             defaultChecked={s.allowOffSeason}
             className="size-4 accent-primary"
           />
-          Accept bookings outside the season (use “Block days” for rainy days)
+          Accept bookings outside the season
+        </label>
+        <F label="Rain credits valid (months)" hint="100% of what was paid; see Rain day">
+          <Input name="rainCreditMonths" type="number" min={1} max={24} defaultValue={s.rainCreditMonths} />
+        </F>
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            name="packageRollover"
+            defaultChecked={s.packageRollover}
+            className="size-4 accent-primary"
+          />
+          Packages: unused sessions roll over one month
         </label>
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
           <input type="checkbox" name="smsEnabled" defaultChecked={s.smsEnabled} className="size-4 accent-primary" />

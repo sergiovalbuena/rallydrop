@@ -43,7 +43,7 @@ export async function faqItems(): Promise<FaqItem[]> {
       q: t("care.q"),
       a: t("care.a", { price: money(ctx.care.short), cap: money(ctx.care.cap) }),
     },
-    { id: "rain", q: t("rain.q"), a: t("rain.a") },
+    { id: "rain", q: t("rain.q"), a: t("rain.a", { months: settings.rainCreditMonths }) },
     { id: "breaks", q: t("breaks.q"), a: t("breaks.a") },
     { id: "friends", q: t("friends.q"), a: t("friends.a") },
     { id: "cancel", q: t("cancel.q"), a: t("cancel.a") },

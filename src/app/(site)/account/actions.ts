@@ -4,14 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { notifyRescheduled } from "@/lib/notify/booking-notifications";
+import { notifyBookingConfirmed, notifyRescheduled } from "@/lib/notify/booking-notifications";
 import { createBooking } from "@/lib/services/bookings";
 import { rescheduleBooking } from "@/lib/services/bookings";
 import { BookingError } from "@/lib/services/errors";
-import { attachSubscriptionCardToDeposit, cancelBooking } from "@/lib/services/payments";
+import { attachSubscriptionCardToDeposit, cancelBooking, chargeSessionOnFile } from "@/lib/services/payments";
+import { takeRainCredit } from "@/lib/services/rain";
 import { customerPackage } from "@/lib/services/portal";
 import { getPortalCustomer, requestLoginCode, signOutPortal, verifyLoginCode } from "@/lib/services/portal-auth";
-import { billingPortalUrl } from "@/lib/services/subscriptions";
+import { billingPortalUrl, setCancelAtPeriodEnd } from "@/lib/services/subscriptions";
 import { headers } from "next/headers";
 import { consentComplete } from "@/lib/domain/legal";
 import { carryOverAcceptance, customerAcceptedLive, recordAcceptance } from "@/lib/services/legal";
@@ -88,7 +89,9 @@ export async function billingPortalAction(): Promise<void> {
 
 export async function bookSessionAction(input: {
   startsAt: string;
-  courtId: string;
+  /** Self-serve downtown (free) or delivery to a court (paid per session). */
+  delivery: boolean;
+  courtId?: string | null;
   /** Required only when the customer hasn't accepted the live Terms & Waiver. */
   consent?: { termsId: string; waiverId: string; boxes: string[] } | null;
 }): Promise<ActionResult & { needsConsent?: boolean }> {
@@ -102,6 +105,7 @@ export async function bookSessionAction(input: {
     if (startsAt >= pkg.subscription.currentPeriodEnd) {
       return { ok: false, error: "Pick a date before your package renews." };
     }
+    if (input.delivery && !input.courtId) return { ok: false, error: "Choose the court we should bring it to." };
     // Members accept once; a new version of the terms must be accepted again.
     const alreadyAccepted = await customerAcceptedLive(customer.id);
     if (!alreadyAccepted) {
@@ -111,7 +115,7 @@ export async function bookSessionAction(input: {
       }
     }
     const machineIds = await db.machine.findMany({
-      where: { bookable: true, status: { in: ["AVAILABLE", "RENTED"] } },
+      where: { bookable: true, isPublic: true, status: { in: ["AVAILABLE", "RENTED"] } },
       select: { id: true },
     });
     let lastError: unknown = null;
@@ -122,11 +126,10 @@ export async function bookSessionAction(input: {
           machineId: m.id,
           startsAt,
           customer: { name: customer.name, email: customer.email, phone: customer.phone },
-          fulfillment: "DELIVERY_COURT",
-          // Packages include the round trip to the court.
-          dropoff: true,
-          collection: true,
-          courtId: input.courtId,
+          // Sessions are self-serve downtown; delivery is the zone's round trip.
+          ...(input.delivery
+            ? { fulfillment: "DELIVERY_COURT" as const, dropoff: true, collection: true, courtId: input.courtId }
+            : { fulfillment: "PICKUP" as const }),
           channel: "ONLINE",
           subscriptionId: pkg.subscription.id,
         });
@@ -147,9 +150,16 @@ export async function bookSessionAction(input: {
             userAgent: h.get("user-agent"),
           });
         }
-        await attachSubscriptionCardToDeposit(booking.id, pkg.subscription.stripeSubscriptionId).catch((e) =>
-          console.error("deposit for session", e),
-        );
+        if (booking.status === "PENDING_PAYMENT") {
+          // Delivery fee → charged to the package card, which also confirms it.
+          const charged = await chargeSessionOnFile(booking.id, pkg.subscription.stripeSubscriptionId);
+          if (!charged.ok) return { ok: false, error: charged.error };
+        } else {
+          await attachSubscriptionCardToDeposit(booking.id, pkg.subscription.stripeSubscriptionId).catch((e) =>
+            console.error("deposit for session", e),
+          );
+          await notifyBookingConfirmed(booking.id);
+        }
         revalidatePath("/account");
         return { ok: true, message: booking.code };
       } catch (e) {
@@ -158,6 +168,31 @@ export async function bookSessionAction(input: {
       }
     }
     return fail(lastError);
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Cancel the package at the end of the paid month, or keep it after all. */
+export async function cancelPackageAction(cancel: boolean): Promise<ActionResult> {
+  try {
+    const customer = await getPortalCustomer();
+    if (!customer) return { ok: false, error: "Please sign in again." };
+    await setCancelAtPeriodEnd(customer.id, cancel);
+    revalidatePath("/account");
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Rained out: cancel and turn what was paid into a credit. */
+export async function rainCreditAction(bookingId: string): Promise<ActionResult> {
+  try {
+    await ownBooking(bookingId);
+    await takeRainCredit(bookingId, "customer");
+    revalidatePath("/account");
+    return { ok: true };
   } catch (e) {
     return fail(e);
   }

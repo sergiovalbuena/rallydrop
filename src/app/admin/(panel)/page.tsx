@@ -155,30 +155,51 @@ export default async function AdminDashboard() {
 
         <Panel title="Occupancy this month">
           <ul className="space-y-4">
-            {s.occupancy.map((o) => (
-              <li key={o.machine.id}>
-                <div className="mb-1 flex justify-between text-sm">
-                  <span className="font-semibold">{o.machine.name}</span>
-                  <span className="text-muted-foreground">
-                    {Math.round(o.hours)} h · {o.percent}%
-                  </span>
-                </div>
-                <div
-                  className="h-2.5 overflow-hidden rounded-full bg-muted"
-                  role="progressbar"
-                  aria-valuenow={o.percent}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={`${o.machine.name} occupancy`}
-                >
+            {s.occupancy
+              .filter((o) => o.machine.isPublic || o.rentedDays > 0)
+              .map((o) => (
+                <li key={o.machine.id}>
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="font-semibold">{o.machine.name}</span>
+                    <span className="text-muted-foreground">
+                      {o.rentedDays} of {o.availableDays} days · {o.percent}%
+                    </span>
+                  </div>
                   <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${Math.min(100, o.percent)}%`, background: o.machine.calendarColor }}
-                  />
-                </div>
-              </li>
-            ))}
+                    className="h-2.5 overflow-hidden rounded-full bg-muted"
+                    role="progressbar"
+                    aria-valuenow={o.percent}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${o.machine.name} occupancy`}
+                  >
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${Math.min(100, o.percent)}%`, background: o.machine.calendarColor }}
+                    />
+                  </div>
+                </li>
+              ))}
           </ul>
+        </Panel>
+
+        <Panel title="Revenue by product this month">
+          {s.revenueByProduct.length === 0 ? (
+            <Empty>No payments yet this month.</Empty>
+          ) : (
+            <dl className="space-y-2 text-sm">
+              {s.revenueByProduct.map((r) => (
+                <div key={r.label} className="flex justify-between gap-4">
+                  <dt>{r.label}</dt>
+                  <dd className="font-semibold tabular-nums">{formatCents(r.cents)}</dd>
+                </div>
+              ))}
+              <div className="flex justify-between gap-4 border-t pt-2 font-semibold">
+                <dt>Total</dt>
+                <dd className="tabular-nums">{formatCents(s.revenueCents)}</dd>
+              </div>
+            </dl>
+          )}
         </Panel>
       </div>
     </>

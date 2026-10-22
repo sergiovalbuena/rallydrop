@@ -60,6 +60,8 @@ export default async function SettingsPage() {
               seasonStart: settings.seasonStart,
               seasonEnd: settings.seasonEnd,
               allowOffSeason: settings.allowOffSeason,
+              rainCreditMonths: settings.rainCreditMonths,
+              packageRollover: settings.packageRollover,
               highSeasonMonthCap: settings.highSeasonMonthCap === null ? "" : String(settings.highSeasonMonthCap),
               siteDomain: settings.siteDomain ?? "",
               hubAddress: settings.hubAddress ?? "",

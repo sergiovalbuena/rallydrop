@@ -101,6 +101,14 @@ model Settings {
   /// month in high season (null = no limit, 0 = not offered in high season).
   highSeasonMonthCap Int?    @default(1)
 
+  // Rain policy: a rained-out rental can be rescheduled free or turned into
+  // a credit for 100% of what was paid, valid this many months.
+  rainCreditMonths Int @default(6)
+
+  /// Monthly packages: unused sessions carry over to the next month only
+  /// when this is on (off by default).
+  packageRollover Boolean @default(false)
+
   // Notifications
   smsEnabled Boolean @default(false) // also requires Twilio env vars
 
@@ -400,6 +408,7 @@ model Customer {
   subscriptions Subscription[]
   enrollments   GroupEnrollment[]
   acceptances   WaiverAcceptance[]
+  credits       CustomerCredit[]
   otpCodes      CustomerOtp[]
   sessions      CustomerSession[]
 }
@@ -503,6 +512,9 @@ model Booking {
   careCents        Int               @default(0)
   /// The off-season price applied (by start date).
   offSeason        Boolean           @default(false)
+  /// Customer credit (e.g. rain credit) applied to this booking, after taxes.
+  /// totalCents is what the card was charged, i.e. already net of this.
+  creditCents      Int               @default(0)
   customerNotes    String?
 
   // Price snapshot at booking time (cents). Product price changes never
@@ -530,6 +542,7 @@ model Booking {
 
   addOns      BookingAddOn[]
   acceptances WaiverAcceptance[]
+  creditUses  CreditUse[]
   occupancy   MachineOccupancy?
   deposit     Deposit?
   payments    Payment[]
@@ -1009,4 +1022,61 @@ model Review {
   reviewedOn   DateTime @db.Date
   published    Boolean  @default(false)
   createdAt    DateTime @default(now()) @db.Timestamptz
+}
+
+// -----------------------------------------------------------------------------
+// Rain policy & customer credits
+// -----------------------------------------------------------------------------
+
+enum CreditReason {
+  RAIN
+  GOODWILL
+}
+
+/// Money the customer can spend on a future booking. Applied automatically
+/// at checkout (soonest expiry first), never paid out in cash.
+model CustomerCredit {
+  id              String       @id @default(cuid())
+  customerId      String
+  customer        Customer     @relation(fields: [customerId], references: [id])
+  reason          CreditReason
+  amountCents     Int
+  remainingCents  Int
+  expiresAt       DateTime     @db.Timestamptz
+  /// The booking that was rained out (or the reason for a goodwill credit).
+  sourceBookingId String?
+  note            String?
+  createdBy       String // "customer" | "system" | admin user id
+  createdAt       DateTime     @default(now()) @db.Timestamptz
+
+  uses CreditUse[]
+
+  @@index([customerId, expiresAt])
+}
+
+/// A credit spent on a booking. Restored (fully or by the refund policy) if
+/// that booking is abandoned or cancelled.
+model CreditUse {
+  id            String         @id @default(cuid())
+  creditId      String
+  credit        CustomerCredit @relation(fields: [creditId], references: [id], onDelete: Cascade)
+  bookingId     String
+  booking       Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amountCents   Int
+  restoredCents Int            @default(0)
+  createdAt     DateTime       @default(now()) @db.Timestamptz
+
+  @@index([bookingId])
+}
+
+/// A date the owner declared rained out (Admin → Rain day). Rentals starting
+/// that day can be rescheduled free or turned into a credit, even after the
+/// start time.
+model RainDay {
+  id            String   @id @default(cuid())
+  date          DateTime @unique @db.Date
+  note          String?
+  notifiedCount Int      @default(0)
+  createdBy     String?
+  createdAt     DateTime @default(now()) @db.Timestamptz
 }

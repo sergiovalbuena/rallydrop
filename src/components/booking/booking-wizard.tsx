@@ -750,7 +750,13 @@ export function BookingWizard({
       {/* Full summary: always on desktop; on phones only at review/pay (the bar shows the total before). */}
       <aside className={cn("space-y-4 lg:sticky lg:top-24 lg:block lg:self-start", step >= 4 ? "block" : "hidden")}>
         {productId && machineId && (
-          <PriceSummary quote={quote} loading={quoting} depositKind={depositKind} header={header} />
+          <PriceSummary
+            quote={quote}
+            loading={quoting}
+            depositKind={depositKind}
+            header={header}
+            creditCents={step === 5 && checkout ? checkout.creditCents : 0}
+          />
         )}
         <ul className="space-y-2 rounded-2xl border bg-card p-4 text-sm">
           {[

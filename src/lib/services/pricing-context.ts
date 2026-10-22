@@ -11,6 +11,7 @@ export type PricingContext = {
   deposit: { short: number; long: number };
   care: { short: number; week: number; month: number; cap: number } | null;
   taxesCharged: boolean;
+  packageRollover: boolean;
 };
 
 export async function pricingContext(machines: PublicMachine[], now = new Date()): Promise<PricingContext> {
@@ -27,5 +28,6 @@ export async function pricingContext(machines: PublicMachine[], now = new Date()
         ? null
         : { short, week: carePrice("WEEK", s) ?? 0, month: carePrice("MONTH", s) ?? 0, cap: s.careCapCents },
     taxesCharged: taxes.gstBps > 0 || taxes.pstBps > 0,
+    packageRollover: s.packageRollover,
   };
 }

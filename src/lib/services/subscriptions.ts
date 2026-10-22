@@ -183,18 +183,41 @@ export async function recordInvoicePaid(invoice: Stripe.Invoice) {
   });
 }
 
-/** Sessions used / left in the current billing period. */
+/**
+ * Sessions used / left in the current billing period. Unused sessions only
+ * carry over (one month) when the owner turns on Settings.packageRollover.
+ */
 export async function sessionsUsage(subscriptionId: string) {
-  const sub = await db.subscription.findUniqueOrThrow({ where: { id: subscriptionId }, include: { product: true } });
-  const used = await db.booking.count({
-    where: {
-      subscriptionId,
-      startsAt: { gte: sub.currentPeriodStart, lt: sub.currentPeriodEnd },
-      status: { notIn: ["CANCELLED", "EXPIRED"] },
-    },
-  });
+  const [sub, settings] = await Promise.all([
+    db.subscription.findUniqueOrThrow({ where: { id: subscriptionId }, include: { product: true } }),
+    getSettings(),
+  ]);
+  const countIn = (from: Date, to: Date) =>
+    db.booking.count({
+      where: { subscriptionId, startsAt: { gte: from, lt: to }, status: { notIn: ["CANCELLED", "EXPIRED"] } },
+    });
   const total = sub.product.sessionsPerMonth ?? 0;
-  return { used, total, left: Math.max(0, total - used), periodEnd: sub.currentPeriodEnd };
+  const used = await countIn(sub.currentPeriodStart, sub.currentPeriodEnd);
+  let carried = 0;
+  const periodMs = sub.currentPeriodEnd.getTime() - sub.currentPeriodStart.getTime();
+  const prevStart = new Date(sub.currentPeriodStart.getTime() - periodMs);
+  // Only members who were already subscribed for the whole previous period.
+  if (settings.packageRollover && sub.createdAt <= prevStart) {
+    carried = Math.max(0, total - (await countIn(prevStart, sub.currentPeriodStart)));
+  }
+  return { used, total, carried, left: Math.max(0, total + carried - used), periodEnd: sub.currentPeriodEnd };
+}
+
+/** Cancel at the end of the paid month (or undo that). */
+export async function setCancelAtPeriodEnd(customerId: string, cancel: boolean) {
+  const sub = await db.subscription.findFirst({
+    where: { customerId, status: { in: ["ACTIVE", "PAST_DUE"] } },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!sub) throw new BookingError("NOT_FOUND", "You don't have an active package.");
+  const updated = await stripe().subscriptions.update(sub.stripeSubscriptionId, { cancel_at_period_end: cancel });
+  await syncSubscription(updated);
+  return updated;
 }
 
 /** Stripe Customer Portal for updating the card or cancelling. */

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
 import { toPublicMachine } from "@/lib/services/catalog";
+import { machineEarnings } from "@/lib/admin/queries";
+import { payback } from "@/lib/domain/occupancy";
 import { formatLocal, toLocalDate } from "@/lib/time";
 
 /** Internal admin: always rendered per request, no instant-navigation shell. */
@@ -19,7 +21,7 @@ export default async function MachinePage({ params }: PageProps<"/admin/machines
   const isNew = id === "new";
   const machine = isNew ? null : await db.machine.findUnique({ where: { id } });
   if (!isNew && !machine) notFound();
-  const [logs, bookings] = machine
+  const [logs, bookings, earnings] = machine
     ? await Promise.all([
         db.maintenanceLog.findMany({ where: { machineId: machine.id }, orderBy: { performedAt: "desc" } }),
         db.booking.findMany({
@@ -28,8 +30,10 @@ export default async function MachinePage({ params }: PageProps<"/admin/machines
           take: 25,
           include: { customer: true },
         }),
+        machineEarnings(machine.id),
       ])
-    : [[], []];
+    : [[], [], null];
+  const pb = machine && earnings ? payback(earnings.rentalCents, machine.purchaseCostCents) : null;
 
   return (
     <>
@@ -45,6 +49,48 @@ export default async function MachinePage({ params }: PageProps<"/admin/machines
         </Panel>
         {machine && (
           <div className="space-y-6">
+            {earnings && (
+              <Panel title="Payback">
+                {pb ? (
+                  <>
+                    <p className="font-display text-4xl font-extrabold">{pb.percent}%</p>
+                    <p className="text-sm text-muted-foreground">
+                      of the {formatCents(machine.purchaseCostCents!)} purchase cost earned back
+                      {pb.remainingCents > 0 ? ` · ${formatCents(pb.remainingCents)} to go` : " · paid off"}
+                    </p>
+                    <div
+                      className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted"
+                      role="progressbar"
+                      aria-valuenow={Math.min(100, pb.percent)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label="Payback"
+                    >
+                      <div
+                        className="h-full rounded-full bg-success"
+                        style={{ width: `${Math.min(100, pb.percent)}%` }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Add the purchase cost in the details to see payback.</p>
+                )}
+                <dl className="mt-4 space-y-1.5 border-t pt-3 text-sm">
+                  <div className="flex justify-between">
+                    <dt>Rental revenue (net of refunds)</dt>
+                    <dd className="font-semibold tabular-nums">{formatCents(earnings.rentalCents)}</dd>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <dt>Damage charges</dt>
+                    <dd className="tabular-nums">{formatCents(earnings.damageCents)}</dd>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <dt>Maintenance spent</dt>
+                    <dd className="tabular-nums">{formatCents(earnings.maintenanceCents)}</dd>
+                  </div>
+                </dl>
+              </Panel>
+            )}
             <Panel title="Maintenance">
               <MaintenanceForm machineId={machine.id} today={toLocalDate(new Date())} />
               <ul className="mt-5 divide-y text-sm">

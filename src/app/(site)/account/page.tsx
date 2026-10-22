@@ -2,15 +2,27 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
-import { BookOpen, CalendarClock, CreditCard, LogOut, MapPin, Receipt, ShieldCheck } from "lucide-react";
+import {
+  BookOpen,
+  CalendarClock,
+  CloudRain,
+  CreditCard,
+  FileCheck,
+  LogOut,
+  MapPin,
+  Receipt,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react";
 import { Section } from "@/components/marketing/section";
 import { CancelButton } from "@/components/portal/cancel-button";
+import { PackageCancel } from "@/components/portal/package-cancel";
 import { SignInForm } from "@/components/portal/sign-in-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCents } from "@/lib/money";
-import { customerBookings, customerPackage } from "@/lib/services/portal";
+import { customerBookings, customerCredits, customerPackage } from "@/lib/services/portal";
 import { getPortalCustomer } from "@/lib/services/portal-auth";
 import { formatLocal, formatRange } from "@/lib/time";
 import { logistics } from "@/lib/domain/logistics";
@@ -49,7 +61,11 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
   const t = await getTranslations("portal");
   const ts = await getTranslations("status");
   const now = new Date();
-  const [bookings, pkg] = await Promise.all([customerBookings(customer.id, now), customerPackage(customer.id)]);
+  const [bookings, pkg, credit] = await Promise.all([
+    customerBookings(customer.id, now),
+    customerPackage(customer.id),
+    customerCredits(customer.id, now),
+  ]);
   const upcoming = bookings.filter((b) => b.upcoming).reverse();
   const past = bookings.filter((b) => !b.upcoming);
 
@@ -80,8 +96,11 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
             <p className="text-sm font-semibold tracking-wide text-optic uppercase">{t("package")}</p>
             <h2 className="font-display text-3xl font-extrabold uppercase">{pkg.subscription.product.name}</h2>
             <p className="mt-1 text-white/85">
-              {t("sessionsLeft", { left: pkg.usage.left, total: pkg.usage.total })} ·{" "}
-              {t("renews", { date: formatLocal(pkg.usage.periodEnd, "MMM d") })}
+              {t("sessionsLeft", { left: pkg.usage.left, total: pkg.usage.total })}
+              {pkg.usage.carried > 0 && ` (${t("carried", { count: pkg.usage.carried })})`} ·{" "}
+              {pkg.subscription.cancelAtPeriodEnd
+                ? t("endsOn", { date: formatLocal(pkg.usage.periodEnd, "MMM d") })
+                : t("renews", { date: formatLocal(pkg.usage.periodEnd, "MMM d") })}
             </p>
             {pkg.subscription.status === "PAST_DUE" && (
               <Badge variant="warning" className="mt-2">
@@ -102,8 +121,39 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
                 <CreditCard /> {t("manageCard")}
               </Button>
             </form>
+            {pkg.subscription.status === "ACTIVE" && (
+              <PackageCancel
+                cancelling={pkg.subscription.cancelAtPeriodEnd}
+                endsOn={formatLocal(pkg.usage.periodEnd, "MMM d")}
+              />
+            )}
           </div>
         </div>
+      )}
+
+      {credit.balanceCents > 0 && (
+        <section className="flex flex-col gap-3 rounded-2xl border bg-card p-6 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex gap-3">
+            <Wallet className="mt-1 size-6 shrink-0 text-primary" aria-hidden />
+            <div>
+              <h2 className="font-display text-2xl font-extrabold uppercase">
+                {t("creditTitle")} · {formatCents(credit.balanceCents)}
+              </h2>
+              <p className="text-sm text-muted-foreground">{t("creditBody")}</p>
+            </div>
+          </div>
+          <ul className="space-y-1 text-sm sm:text-right">
+            {credit.credits.map((c) => (
+              <li key={c.id}>
+                <span className="font-medium">{t(`creditReason_${c.reason}`)}</span>{" "}
+                {t("creditRow", {
+                  amount: formatCents(c.remainingCents),
+                  date: formatLocal(c.expiresAt, "MMM d, yyyy"),
+                })}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {[
@@ -147,6 +197,24 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
                     </p>
                   )}
                   {b.deposit?.captureNote && <p className="text-xs text-muted-foreground">“{b.deposit.captureNote}”</p>}
+                  {b.creditCents > 0 && (
+                    <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Wallet className="size-4" aria-hidden />
+                      {t("creditUsed", { amount: formatCents(b.creditCents) })}
+                    </p>
+                  )}
+                  {b.acceptance && (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <FileCheck className="size-4" aria-hidden />
+                      <Link
+                        href={`/legal/terms/${b.acceptance.termsVersion}`}
+                        className="underline underline-offset-2 hover:text-foreground"
+                      >
+                        {t("termsAccepted", { version: b.acceptance.termsVersion })}
+                      </Link>
+                      · {b.acceptance.acceptedAtLocal}
+                    </p>
+                  )}
                   <div className="mt-auto flex flex-wrap gap-2 pt-2">
                     {b.receipts.map((url, i) => (
                       <Button key={url} asChild variant="ghost" size="sm">
@@ -156,6 +224,13 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
                         </a>
                       </Button>
                     ))}
+                    {b.rainEligible && (
+                      <Button asChild variant="accent" size="sm">
+                        <Link href={`/account/rain/${b.id}`}>
+                          <CloudRain /> {t("rained")}
+                        </Link>
+                      </Button>
+                    )}
                     {b.canReschedule && (
                       <Button asChild variant="outline" size="sm">
                         <Link href={`/account/reschedule/${b.id}`}>{t("reschedule")}</Link>

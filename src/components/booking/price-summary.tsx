@@ -12,11 +12,14 @@ export function PriceSummary({
   loading,
   depositKind,
   header,
+  creditCents = 0,
 }: {
   quote: Quote | null;
   loading: boolean;
   depositKind: "hold" | "saved" | "scheduled";
   header?: ReactNode;
+  /** Customer credit applied at checkout (known once the booking is held). */
+  creditCents?: number;
 }) {
   const t = useTranslations("book");
   return (
@@ -66,9 +69,17 @@ export function PriceSummary({
               <dd className="tabular-nums">{formatCents(quote.pstCents)}</dd>
             </div>
           )}
+          {creditCents > 0 && (
+            <div className="flex justify-between text-success">
+              <dt>{t("creditApplied")}</dt>
+              <dd className="tabular-nums">−{formatCents(creditCents)}</dd>
+            </div>
+          )}
           <div className="flex items-baseline justify-between border-t pt-3">
             <dt className="font-semibold">{t("total")}</dt>
-            <dd className="font-display text-3xl font-extrabold tabular-nums">{formatCents(quote.totalCents)}</dd>
+            <dd className="font-display text-3xl font-extrabold tabular-nums">
+              {formatCents(quote.totalCents - creditCents)}
+            </dd>
           </div>
           {quote.depositCents > 0 && (
             <div className="mt-3 flex gap-3 rounded-lg bg-muted/60 p-3">

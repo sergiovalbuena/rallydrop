@@ -32,6 +32,7 @@ export function createFakeStripe(options: { declineOffSession?: boolean } = {}) 
   let n = 0;
   const next = (prefix: string) => `${prefix}_${++n}`;
   const record = (method: string, ...args: unknown[]) => calls.push({ method, args });
+  const subscriptions = new Map<string, Record<string, unknown>>();
 
   const fake = {
     webhooks: real.webhooks,
@@ -81,6 +82,15 @@ export function createFakeStripe(options: { declineOffSession?: boolean } = {}) 
         if (!pi) throw new Error(`No such payment_intent: ${id}`);
         return pi;
       },
+      confirm: async (id: string, params: Stripe.PaymentIntentConfirmParams = {}) => {
+        record("paymentIntents.confirm", id, params);
+        if (options.declineOffSession && params.off_session) throw new Error("Your card was declined.");
+        const pi = intents.get(id)!;
+        pi.status = pi.capture_method === "manual" ? "requires_capture" : "succeeded";
+        pi.amount_received = pi.status === "succeeded" ? pi.amount : 0;
+        pi.latest_charge = next("ch");
+        return pi;
+      },
       cancel: async (id: string) => {
         record("paymentIntents.cancel", id);
         const pi = intents.get(id)!;
@@ -93,6 +103,19 @@ export function createFakeStripe(options: { declineOffSession?: boolean } = {}) 
         pi.status = "succeeded";
         pi.amount_received = params.amount_to_capture ?? pi.amount;
         return pi;
+      },
+    },
+    subscriptions: {
+      retrieve: async (id: string) => {
+        const sub = subscriptions.get(id);
+        if (!sub) throw new Error(`No such subscription: ${id}`);
+        return sub;
+      },
+      update: async (id: string, params: Stripe.SubscriptionUpdateParams) => {
+        record("subscriptions.update", id, params);
+        const sub = { ...subscriptions.get(id)!, ...params };
+        subscriptions.set(id, sub);
+        return sub;
       },
     },
     refunds: {
@@ -119,5 +142,32 @@ export function createFakeStripe(options: { declineOffSession?: boolean } = {}) 
     return { payload, header, id };
   }
 
-  return { client: fake as unknown as Stripe, calls, intents, succeed, event };
+  /** A package subscription as Stripe returns it (card on file: pm_sub_card). */
+  function addSubscription(input: {
+    id: string;
+    productId: string;
+    customerId: string;
+    periodStart: Date;
+    periodEnd: Date;
+  }) {
+    subscriptions.set(input.id, {
+      id: input.id,
+      object: "subscription",
+      status: "active",
+      default_payment_method: "pm_sub_card",
+      cancel_at_period_end: false,
+      canceled_at: null,
+      metadata: { productId: input.productId, customerId: input.customerId },
+      items: {
+        data: [
+          {
+            current_period_start: Math.floor(input.periodStart.getTime() / 1000),
+            current_period_end: Math.floor(input.periodEnd.getTime() / 1000),
+          },
+        ],
+      },
+    });
+  }
+
+  return { client: fake as unknown as Stripe, calls, intents, succeed, event, addSubscription };
 }

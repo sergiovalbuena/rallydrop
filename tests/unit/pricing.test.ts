@@ -39,16 +39,22 @@ describe("quote", () => {
     expect(q.subtotalCents).toBe(8600);
   });
 
-  it("includes the trips in package sessions and doesn't sell Care on them", () => {
+  it("charges delivery on package sessions (the session itself is included, no Care)", () => {
     const q = quote({
       ...base,
       productIncluded: true,
       care: { ...base.care, selected: true },
       delivery: { ...base.delivery, selected: true },
     });
-    expect(q.lines.find((l) => l.key === "delivery")?.cents).toBe(0);
+    expect(q.lines.find((l) => l.key === "product")?.cents).toBe(0);
+    expect(q.lines.find((l) => l.key === "delivery")?.cents).toBe(base.delivery.priceCents);
     expect(q.lines.some((l) => l.key === "care")).toBe(false);
-    expect(q.subtotalCents).toBe(0);
+    expect(q.subtotalCents).toBe(base.delivery.priceCents);
+  });
+
+  it("is free for a self-serve package session", () => {
+    const q = quote({ ...base, productIncluded: true, delivery: { ...base.delivery, selected: false } });
+    expect(q.totalCents).toBe(0);
   });
 
   it("charges no tax when taxes are off", () => {

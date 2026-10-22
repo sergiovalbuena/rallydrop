@@ -34,7 +34,7 @@ export async function SiteFooter() {
     },
   ];
   return (
-    <footer className="court-lines mt-24 bg-court text-white">
+    <footer className="court-lines mt-24 bg-court text-white print:hidden">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div className="space-y-4">
           <Logo inverted />

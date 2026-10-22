@@ -161,7 +161,9 @@
     "rentalsTitle": "Rentals",
     "rentalsBody": "The machine is yours for the whole period — play as often as you like.",
     "packagesTitle": "Monthly session packages",
-    "packagesBody": "1.5-hour sessions with drop-off and collection at your court included. Billed monthly, cancel anytime.",
+    "packagesBody": "1.5-hour sessions: pick up and return downtown, or add delivery to your court per session. Billed monthly, cancel anytime (effective at the end of the month).",
+    "noRollover": "Unused sessions don't roll over to the next month.",
+    "rollover": "Unused sessions roll over to the next month.",
     "addOnsTitle": "Add-ons",
     "depositTitle": "About the deposit",
     "depositBody": "We hold {short} on your card for rentals up to 6 days — released when the machine comes back in good shape. For week and month rentals we securely save your card for up to {long} instead. It's only charged if the machine is damaged, lost or late.",
@@ -203,7 +205,7 @@
     "depositTitle": "The deposit",
     "depositBody": "Your rental is charged when you book. The deposit is separate: a temporary hold on your card for short rentals, or a saved card for week and month rentals. It's released as soon as the machine is back in good condition.",
     "rainTitle": "Rain",
-    "rainBody": "This is Victoria — we get it. If it's pouring on your rental day, message us and we'll move your booking to the next available slot at no cost.",
+    "rainBody": "This is Victoria — we get it. If it rains on the day your rental starts, tap “Rained out?” in My bookings before your start time: reschedule for free, or take a 100% credit for your next booking.",
     "cancelTitle": "Cancellations",
     "cancelBody": "Cancel 48 hours or more before your start time for a full refund. Inside 48 hours you get 50% back. You can cancel or reschedule anytime from “My bookings”.",
     "ballsTitle": "Which balls?",
@@ -282,6 +284,7 @@
     "gst": "GST ({rate}%)",
     "pst": "PST ({rate}%)",
     "total": "Total today",
+    "creditApplied": "Your credit",
     "depositLine": "Refundable deposit",
     "depositHold": "Held on your card, not charged",
     "depositSaved": "Card saved, charged only if there's damage",
@@ -361,13 +364,42 @@
     "guide": "Quick-start guide",
     "package": "Your package",
     "sessionsLeft": "{left} of {total} sessions left this month",
+    "carried": "includes {count} carried over",
+    "cancelPackage": "Cancel package",
+    "keepPackage": "Keep my package",
+    "endsOn": "Ends {date}",
+    "cancelPackageConfirm": "Your package stays active until {date}, then stops. No more charges after that.",
     "renews": "Renews {date}",
+    "creditTitle": "Your credit",
+    "creditBody": "Comes off your next booking automatically — just book with the same email or phone.",
+    "creditRow": "{amount} · expires {date}",
+    "creditReason_RAIN": "Rain credit",
+    "creditReason_GOODWILL": "Credit",
+    "rained": "Rained out?",
+    "termsAccepted": "Terms v{version} accepted",
+    "creditUsed": "Credit used: {amount}",
     "bookSession": "Book a session",
     "manageCard": "Update card / billing",
     "asideTitleA": "Your bookings,",
     "asideTitleB": "one code away.",
     "asideBody": "See what's coming up, check your deposit, grab receipts, reschedule or cancel — no password to remember.",
     "noBooking": "Haven't booked yet? Bookings made with your email or phone show up here automatically."
+  },
+  "rain": {
+    "title": "Rained out?",
+    "intro": "Booking {code} · {when}",
+    "notEligible": "Rain options are for the start day, before your start time — or for a rain day we've declared. Need help? Reply to your confirmation email.",
+    "rescheduleTitle": "Reschedule for free",
+    "rescheduleBody": "Move your rental to another day. Same machine, no extra cost.",
+    "rescheduleCta": "Pick a new day",
+    "creditTitle": "Take a credit",
+    "creditBody": "Cancel this booking and get {amount} in credit, valid until {date}. It comes off your next booking automatically.",
+    "creditBodyPackage": "Cancel this session. It goes back to your package, and anything you paid for delivery becomes credit.",
+    "creditBodyNone": "Cancel this booking for rain. Nothing was paid online, so there's no card credit — we'll sort out anything you paid in person.",
+    "creditCta": "Get my credit",
+    "creditConfirm": "Cancel booking {code} and take the credit?",
+    "done": "Done — the credit is in your account and we've emailed you the details.",
+    "banner": "Off-season prices — if it rains on your day, reschedule free."
   },
   "status": {
     "PENDING_PAYMENT": "Awaiting payment",
@@ -408,7 +440,7 @@
     "how1": "Pick a court or your address at checkout.",
     "how2": "See your zone and exact price before you pay.",
     "how3": "We arrive at your start time and come back at the end.",
-    "packagesNote": "Monthly packages include both trips to your court."
+    "packagesNote": "Package members collect downtown for free, or pay their zone's delivery fee per session."
   },
   "waitlist": {
     "title": "Coming soon: {name}",
@@ -488,7 +520,7 @@
     },
     "rain": {
       "q": "What if it rains?",
-      "a": "Victoria, we know. If it rains on the day your rental starts, tell us before your start or drop-off time and reschedule for free — or take a credit for 100% of what you paid, valid for 6 months."
+      "a": "Victoria, we know. If it rains on the day your rental starts, open My bookings before your start time and tap “Rained out?”: reschedule for free, or take a credit for 100% of what you paid, valid {months} months and applied automatically to your next booking. On days we declare a rain day, we email you the same options."
     },
     "breaks": {
       "q": "What if something breaks or jams?",

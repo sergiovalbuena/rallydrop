@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   cancelAdminAction,
+  rainCreditAdminAction,
   captureDepositAction,
   inspectionAction,
   recordManualPaymentAction,
@@ -225,6 +226,41 @@ export function CancelBookingButton({ bookingId }: { bookingId: string }) {
             }}
           >
             Cancel booking
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Owner's call: rained out → cancel and give a 100% credit (any day). */
+export function RainCreditAdminButton({ bookingId }: { bookingId: string }) {
+  const { run, pending } = useAdminAction();
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Rain credit</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Turn this booking into a rain credit?</DialogTitle>
+          <DialogDescription>
+            Cancels it with no cash refund, frees the machine, releases the deposit and gives the customer a credit for
+            100% of what they paid (Settings → rain credit validity). The customer is emailed.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost">Keep booking</Button>
+          </DialogClose>
+          <Button
+            disabled={pending}
+            onClick={async () => {
+              if (await run(() => rainCreditAdminAction(bookingId))) setOpen(false);
+            }}
+          >
+            Give rain credit
           </Button>
         </DialogFooter>
       </DialogContent>

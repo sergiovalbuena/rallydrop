@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Lock, Phone } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { OffSeasonBanner } from "@/components/layout/off-season-banner";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { getSiteInfo } from "@/lib/services/site-info";
 
@@ -11,6 +12,7 @@ export default async function CheckoutLayout({ children }: LayoutProps<"/">) {
   const site = await getSiteInfo();
   return (
     <>
+      <OffSeasonBanner />
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:h-16 sm:px-6">
           <Link href="/" aria-label={t("backHome")} className="shrink-0">

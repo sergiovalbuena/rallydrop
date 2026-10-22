@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { siteUrl } from "@/lib/site-url";
-import { formatRange } from "@/lib/time";
+import { formatLocal, formatLocalDate, formatRange, toLocalDate } from "@/lib/time";
 import { sendEmail } from "./email";
 import { sendSms } from "./sms";
 import { legsLabel } from "@/lib/domain/delivery";
@@ -17,6 +17,8 @@ import {
   depositActionNeededEmail,
   depositChargedEmail,
   depositReleasedEmail,
+  rainCreditEmail,
+  rainDayEmail,
   reminderEmail,
   slotLostRefundEmail,
 } from "./templates";
@@ -102,6 +104,7 @@ export async function notifyBookingConfirmed(bookingId: string) {
           gstCents: b.gstCents,
           pstCents: b.pstCents,
           totalCents: b.totalCents,
+          creditCents: b.creditCents,
           depositCents: b.deposit?.amountCents ?? 0,
           depositNote: depositNote(b),
           receiptUrl: b.payments[0]?.receiptUrl,
@@ -296,4 +299,49 @@ export async function notifyAcceptanceNeeded(bookingId: string) {
       `admin_awaiting_terms:${b.id}`,
     );
   }
+}
+
+/** Owner declared a rain day: offer a free reschedule or a 100% credit. */
+export async function notifyRainDay(bookingId: string) {
+  const b = await loadBooking(bookingId);
+  if (!b) return;
+  const settings = await getSettings();
+  const url = siteUrl(`/account/rain/${b.id}`);
+  const date = formatLocalDate(toLocalDate(b.startsAt), "EEEE, MMM d");
+  await toAll(
+    b,
+    () =>
+      sendEmail({
+        to: b.customer.email!,
+        template: "rain_day",
+        dedupeKey: `rain_day:${b.id}:${toLocalDate(b.startsAt)}`,
+        content: rainDayEmail({
+          code: b.code,
+          customerName: b.customer.name,
+          date,
+          url,
+          creditMonths: settings.rainCreditMonths,
+        }),
+      }),
+    `RallyDrop: rain day on ${date}. Reschedule booking ${b.code} free or take a 100% credit: ${url}`,
+    `sms_rain_day:${b.id}:${toLocalDate(b.startsAt)}`,
+  );
+}
+
+export async function notifyRainCredit(bookingId: string, credit: { amountCents: number; expiresAt: Date } | null) {
+  const b = await loadBooking(bookingId);
+  if (!b) return;
+  await toAll(b, () =>
+    sendEmail({
+      to: b.customer.email!,
+      template: "rain_credit",
+      dedupeKey: `rain_credit:${b.id}`,
+      content: rainCreditEmail({
+        code: b.code,
+        customerName: b.customer.name,
+        amountCents: credit?.amountCents ?? 0,
+        expiresOn: credit ? formatLocal(credit.expiresAt, "MMM d, yyyy") : "",
+      }),
+    }),
+  );
 }

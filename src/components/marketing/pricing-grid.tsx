@@ -106,7 +106,9 @@ export async function PricingGrid({
         <div>
           <div className="mb-6">
             <h2 className="font-display text-3xl font-extrabold uppercase">{t("packagesTitle")}</h2>
-            <p className="text-muted-foreground">{t("packagesBody")}</p>
+            <p className="text-muted-foreground">
+              {t("packagesBody")} {t(ctx.packageRollover ? "rollover" : "noRollover")}
+            </p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {packages.map((p, i) => (

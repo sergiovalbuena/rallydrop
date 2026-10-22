@@ -66,6 +66,7 @@ const settings = z.object({
     .trim()
     .transform((v) => (v === "" ? null : Number(v)))
     .refine((v) => v === null || (Number.isInteger(v) && v >= 0), "Month cap must be a whole number."),
+  rainCreditMonths: z.coerce.number().int().min(1, "Rain credits: at least 1 month.").max(24),
   contactEmail: z.string().trim().optional(),
   contactPhone: z.string().trim().optional(),
   siteDomain: z.string().trim().optional(),
@@ -142,6 +143,8 @@ export async function saveSettingsAction(_: SettingsState, formData: FormData): 
       seasonEnd: d.seasonEnd,
       highSeasonMonthCap: d.highSeasonMonthCap,
       allowOffSeason: formData.get("allowOffSeason") === "on",
+      rainCreditMonths: d.rainCreditMonths,
+      packageRollover: formData.get("packageRollover") === "on",
       smsEnabled: formData.get("smsEnabled") === "on",
       contactEmail: d.contactEmail || null,
       contactPhone: d.contactPhone || null,

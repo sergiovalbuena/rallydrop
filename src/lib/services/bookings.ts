@@ -7,7 +7,8 @@ import type { LatLng } from "@/lib/domain/geo";
 import { legsLabel, resolveDelivery, type DeliveryResolution } from "@/lib/domain/delivery";
 import { carePrice, chargedTaxes, depositAmount } from "@/lib/domain/rental";
 import { isHighSeason, seasonalPrice } from "@/lib/domain/season";
-import { quote, type Quote } from "@/lib/domain/pricing";
+import { MIN_ONLINE_CHARGE_CENTS, quote, type Quote } from "@/lib/domain/pricing";
+import { creditToApply } from "@/lib/domain/credit";
 import { candidateStarts } from "@/lib/domain/availability";
 import { brand } from "@/config/brand";
 import { addLocalDays, localDateMinuteToUtc, toLocalDate } from "@/lib/time";
@@ -15,6 +16,7 @@ import { productDurationMinutes, rulesFor } from "./availability";
 import { upsertCustomer } from "./customers";
 import { BookingError, isOverlapError, isUniqueViolation } from "./errors";
 import { findValidPromo, promoRedemptions, toPromoInput } from "./promo";
+import { reclaimCredits, restoreCredits, spendCredits } from "./credits";
 import { getSettings } from "./settings";
 
 export type CreateBookingInput = {
@@ -248,7 +250,7 @@ export async function createBooking(input: CreateBookingInput) {
           return addOn ? [{ addOn: { connect: { id: addOn.id } }, priceCents: l.cents }] : [];
         });
 
-      return tx.booking.create({
+      const created = await tx.booking.create({
         data: {
           code: await uniqueCode(tx),
           status: needsPayment ? "PENDING_PAYMENT" : "CONFIRMED",
@@ -311,6 +313,30 @@ export async function createBooking(input: CreateBookingInput) {
         },
         include: { customer: true, machine: true, product: true, deposit: true, addOns: { include: { addOn: true } } },
       });
+
+      // Customer credit (e.g. rain credit) pays for part of an online booking.
+      // Card checkouts still charge the minimum so the card is saved for the
+      // deposit; package sessions already have a card on file.
+      if (!isOnline || q.totalCents <= 0) return created;
+      const minCharge = input.subscriptionId ? 0 : MIN_ONLINE_CHARGE_CENTS;
+      const creditCents = await spendCredits(
+        tx,
+        customer.id,
+        created.id,
+        (available) => creditToApply(q.totalCents, available, minCharge),
+        now,
+      );
+      if (creditCents === 0) return created;
+      const totalCents = q.totalCents - creditCents;
+      const paidInFull = totalCents === 0;
+      await tx.booking.update({
+        where: { id: created.id },
+        data: { creditCents, totalCents, ...(paidInFull ? { status: "CONFIRMED" } : {}) },
+      });
+      if (paidInFull) {
+        await tx.machineOccupancy.update({ where: { bookingId: created.id }, data: { holdExpiresAt: null } });
+      }
+      return { ...created, creditCents, totalCents, status: paidInFull ? ("CONFIRMED" as const) : created.status };
     });
 
   try {
@@ -419,6 +445,8 @@ async function expireStaleHolds(tx: Prisma.TransactionClient, machineId: string,
     where: { id: { in: bookingIds }, status: "PENDING_PAYMENT" },
     data: { status: "EXPIRED" },
   });
+  // Abandoned checkout: any credit it used goes back to the customer.
+  await restoreCredits(tx, bookingIds, 10_000);
 }
 
 /** Marks all expired holds as EXPIRED (cron). Returns the affected bookings. */
@@ -429,13 +457,14 @@ export async function expireAllStaleHolds(now = new Date()) {
   });
   if (stale.length === 0) return [];
   const ids = stale.map((b) => b.id);
-  await db.$transaction([
-    db.machineOccupancy.updateMany({ where: { bookingId: { in: ids } }, data: { active: false } }),
-    db.booking.updateMany({ where: { id: { in: ids }, status: "PENDING_PAYMENT" }, data: { status: "EXPIRED" } }),
-    db.bookingEvent.createMany({
+  await db.$transaction(async (tx) => {
+    await tx.machineOccupancy.updateMany({ where: { bookingId: { in: ids } }, data: { active: false } });
+    await tx.booking.updateMany({ where: { id: { in: ids }, status: "PENDING_PAYMENT" }, data: { status: "EXPIRED" } });
+    await tx.bookingEvent.createMany({
       data: ids.map((bookingId) => ({ bookingId, type: "expired", actor: "system" })),
-    }),
-  ]);
+    });
+    await restoreCredits(tx, ids, 10_000);
+  });
   return ids;
 }
 
@@ -458,6 +487,7 @@ export async function confirmBooking(bookingId: string): Promise<boolean> {
         data: { active: true, holdExpiresAt: null },
       });
       await tx.booking.update({ where: { id: bookingId }, data: { status: "CONFIRMED" } });
+      if (booking.status === "EXPIRED") await reclaimCredits(tx, bookingId);
       await tx.bookingEvent.create({ data: { bookingId, type: "confirmed", actor: "stripe" } });
       return true;
     });

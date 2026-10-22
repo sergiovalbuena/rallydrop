@@ -2,7 +2,8 @@ import { connection } from "next/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { CustomerForm } from "@/components/admin/customer-form";
+import { CustomerForm, GiveCreditForm } from "@/components/admin/customer-form";
+import { getSettings } from "@/lib/services/settings";
 import { Empty, PageHeader, Panel, StatusBadge } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
@@ -25,9 +26,11 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
       },
       subscriptions: { include: { product: true }, orderBy: { createdAt: "desc" } },
       enrollments: { include: { groupSession: true }, orderBy: { createdAt: "desc" } },
+      credits: { orderBy: { createdAt: "desc" } },
     },
   });
   if (!c) notFound();
+  const settings = await getSettings();
   const spent = c.bookings
     .filter((b) => !["CANCELLED", "PENDING_PAYMENT"].includes(b.status))
     .reduce((s, b) => s + b.totalCents, 0);
@@ -60,6 +63,20 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
         <div className="space-y-6">
           <Panel title="Internal">
             <CustomerForm id={c.id} notes={c.internalNotes ?? ""} trusted={c.trusted} blocked={c.blocked} />
+          </Panel>
+          <Panel title="Credits">
+            {c.credits.length > 0 && (
+              <ul className="mb-4 space-y-1.5 text-sm">
+                {c.credits.map((cr) => (
+                  <li key={cr.id}>
+                    {cr.reason === "RAIN" ? "Rain" : "Goodwill"} · {formatCents(cr.remainingCents)} of{" "}
+                    {formatCents(cr.amountCents)} left · expires {formatLocal(cr.expiresAt, "MMM d, yyyy")}
+                    {cr.note ? ` · ${cr.note}` : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <GiveCreditForm id={c.id} defaultMonths={settings.rainCreditMonths} />
           </Panel>
           <Panel title="Packages & groups">
             <ul className="space-y-2 text-sm">

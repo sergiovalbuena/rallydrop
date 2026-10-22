@@ -139,6 +139,8 @@ export function fallbackSettings(): AppSettings {
     seasonEnd: "09-30",
     allowOffSeason: true,
     highSeasonMonthCap: 1,
+    rainCreditMonths: 6,
+    packageRollover: false,
     smsEnabled: false,
     contactEmail: null,
     contactPhone: null,

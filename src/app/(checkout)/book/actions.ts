@@ -60,6 +60,8 @@ export type CheckoutResult =
       code: string;
       clientSecret: string;
       amountCents: number;
+      /** Customer credit (e.g. rain credit) taken off this booking. */
+      creditCents: number;
       holdExpiresAt: string;
     }
   | { ok: false; error: string; fields?: Record<string, string>; code?: string };
@@ -104,6 +106,7 @@ export async function checkoutAction(input: CheckoutInput): Promise<CheckoutResu
       code: booking.code,
       clientSecret,
       amountCents,
+      creditCents: booking.creditCents,
       holdExpiresAt: (occupancy.holdExpiresAt ?? new Date()).toISOString(),
     };
   } catch (e) {

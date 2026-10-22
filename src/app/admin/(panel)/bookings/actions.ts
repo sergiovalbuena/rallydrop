@@ -11,6 +11,7 @@ import { rescheduleBooking } from "@/lib/services/bookings";
 import { BookingError } from "@/lib/services/errors";
 import { cancelBooking, captureDeposit, refundRental, releaseDeposit, setBookingStatus } from "@/lib/services/payments";
 import { notifyAcceptanceNeeded } from "@/lib/notify/booking-notifications";
+import { takeRainCredit } from "@/lib/services/rain";
 import type { BookingStatus } from "@/generated/prisma/client";
 
 export type AdminResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -80,6 +81,13 @@ export async function cancelAdminAction(bookingId: string, refund: "policy" | "f
   return run(bookingId, async (actor) => {
     const r = await cancelBooking(bookingId, { actor, refund, reason: "admin" });
     return `Cancelled. Refunded ${(r.refundedCents / 100).toFixed(2)} CAD.`;
+  });
+}
+
+export async function rainCreditAdminAction(bookingId: string) {
+  return run(bookingId, async (actor) => {
+    const credit = await takeRainCredit(bookingId, actor, { force: true });
+    return credit ? `Credit of ${(credit.amountCents / 100).toFixed(2)} CAD issued.` : "Cancelled for rain.";
   });
 }
 
