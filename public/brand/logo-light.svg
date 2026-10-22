@@ -1,8 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" role="img" aria-label="RallyDrop">
-  <defs><clipPath id="b"><circle cx="28" cy="28" r="17"/></clipPath></defs>
-  <g stroke="#2457E6" stroke-width="3" stroke-linecap="round"><path d="M3 10l7 7M10 3l6 6M3 19l4 4"/></g>
-  <circle cx="28" cy="28" r="17" fill="#D9F23F"/>
-  <g clip-path="url(#b)" stroke="#0E2350" stroke-width="2.6" fill="none"><path d="M9 24.5h38M28 24.5V47"/></g>
-  <circle cx="28" cy="28" r="17" fill="none" stroke="#0E2350" stroke-width="2.6"/>
-  <text x="54" y="38" font-family="'Barlow Condensed','Arial Narrow',sans-serif" font-weight="800" font-size="34" letter-spacing="0.5" fill="#0E2350">RALLY<tspan fill="#2457E6">DROP</tspan></text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 48" role="img" aria-label="RallyDrop">
+  <ellipse cx="24" cy="44.5" rx="7" ry="2" fill="#D9F23F"/>
+  <path d="M24 3C34.5 3 42 10.8 42 20.6 42 32.2 24 44 24 44S6 32.2 6 20.6C6 10.8 13.5 3 24 3Z" fill="#2457E6"/>
+  <circle cx="24" cy="20.5" r="11" fill="#D9F23F"/>
+  <path d="M15.2 13.8c4.6 3.6 4.6 9.8 0 13.4M32.8 13.8c-4.6 3.6-4.6 9.8 0 13.4" stroke="#0E2350" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <text x="49" y="33" font-family="'Instrument Sans','Helvetica Neue',Arial,sans-serif" font-weight="800" font-size="30" letter-spacing="-1.2" fill="#0E2350">rally<tspan fill="#2457E6">drop</tspan></text>
 </svg>
