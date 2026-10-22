@@ -7,21 +7,28 @@ const CYCLE = 4.8;
 const MOUTH: Pt = [320, 436];
 
 /**
- * Shot pattern: landing spot on the far court, how far the bounce carries,
- * and how high the arc goes (drives are flat, lobs are high, drops are short).
+ * Shot pattern: where each ball lands on the far court, how high the arc
+ * goes (drives are flat, lobs are high) and how far the bounce carries
+ * (as a share of the flight). Like real tennis balls they kick up and keep
+ * going after the bounce — often right off the court.
  */
-const PATTERN: { id: string; land: Pt; hop: Pt; height: number; flight: number }[] = [
-  { id: "deep-cross", land: [196, 172], hop: [178, 154], height: 150, flight: 1.4 },
-  { id: "short-angle", land: [452, 242], hop: [490, 230], height: 105, flight: 1.0 },
-  { id: "lob", land: [330, 168], hop: [334, 152], height: 235, flight: 1.9 },
-  { id: "line-drive", land: [462, 184], hop: [472, 164], height: 95, flight: 0.95 },
-  { id: "drop", land: [292, 252], hop: [286, 244], height: 150, flight: 1.3 },
-  { id: "wide-left", land: [204, 224], hop: [172, 210], height: 120, flight: 1.15 },
+const PATTERN: { id: string; land: Pt; height: number; flight: number; carry: number }[] = [
+  { id: "deep-cross", land: [196, 176], height: 150, flight: 1.4, carry: 0.42 },
+  { id: "short-angle", land: [452, 244], height: 105, flight: 1.0, carry: 0.55 },
+  { id: "lob", land: [330, 170], height: 235, flight: 1.9, carry: 0.4 },
+  { id: "line-drive", land: [462, 188], height: 95, flight: 0.95, carry: 0.5 },
+  { id: "drop", land: [292, 252], height: 150, flight: 1.3, carry: 0.22 },
+  { id: "wide-left", land: [204, 226], height: 120, flight: 1.15, carry: 0.5 },
 ];
 
 function cubic(p0: Pt, p1: Pt, p2: Pt, p3: Pt, t: number): Pt {
   const u = 1 - t;
   return [0, 1].map((k) => u * u * u * p0[k] + 3 * u * u * t * p1[k] + 3 * u * t * t * p2[k] + t * t * t * p3[k]) as Pt;
+}
+
+function quad(p0: Pt, p1: Pt, p2: Pt, t: number): Pt {
+  const u = 1 - t;
+  return [0, 1].map((k) => u * u * p0[k] + 2 * u * t * p1[k] + t * t * p2[k]) as Pt;
 }
 
 function length(points: Pt[]): number {
@@ -31,25 +38,30 @@ function length(points: Pt[]): number {
   return total;
 }
 
+const round = (p: Pt): Pt => [Math.round(p[0]), Math.round(p[1])];
+
 const SHOTS = PATTERN.map((shot) => {
   const [lx, ly] = shot.land;
   // Rises while already heading to its target, peaks past the net, drops onto the spot.
   const c1: Pt = [MOUTH[0] + (lx - MOUTH[0]) * 0.35, MOUTH[1] - shot.height * 1.1];
   const c2: Pt = [MOUTH[0] + (lx - MOUTH[0]) * 0.85, ly - shot.height * 0.55];
-  // Small second hop after the bounce, a fraction of the arc's height.
-  const hopMid: Pt = [(lx + shot.hop[0]) / 2, Math.min(ly, shot.hop[1]) - shot.height * 0.12];
+  // The bounce keeps the ball's direction across the court and kicks up to
+  // roughly half the incoming height, so deep balls sail past the baseline.
+  const out = round([lx + (lx - MOUTH[0]) * shot.carry, ly + (ly - MOUTH[1]) * shot.carry]);
+  const kick = round([(lx + out[0]) / 2, Math.min(ly, out[1]) - shot.height * 0.9]);
   const arcLen = length(Array.from({ length: 33 }, (_, i) => cubic(MOUTH, c1, c2, shot.land, i / 32)));
-  const hopLen = length([shot.land, hopMid, shot.hop]);
+  const hopLen = length(Array.from({ length: 17 }, (_, i) => quad(shot.land, kick, out, i / 16)));
   const groundLen = length([MOUTH, shot.land]);
-  const groundHop = length([shot.land, shot.hop]);
+  const groundHop = length([shot.land, out]);
   return {
     ...shot,
-    arc: `M${MOUTH[0]} ${MOUTH[1]} C${c1.join(" ")} ${c2.join(" ")} ${lx} ${ly}`,
-    hop: `Q${hopMid.join(" ")} ${shot.hop.join(" ")}`,
+    arc: `M${MOUTH[0]} ${MOUTH[1]} C${round(c1).join(" ")} ${round(c2).join(" ")} ${lx} ${ly}`,
+    hop: `Q${kick.join(" ")} ${out.join(" ")}`,
     split: arcLen / (arcLen + hopLen),
-    ground: `M${MOUTH[0]} ${MOUTH[1] + 4} L${lx} ${ly + 2} L${shot.hop[0]} ${shot.hop[1] + 2}`,
+    ground: `M${MOUTH[0]} ${MOUTH[1] + 4} L${lx} ${ly + 2} L${out[0]} ${out[1] + 2}`,
     groundSplit: groundLen / (groundLen + groundHop),
-    bounce: 0.35,
+    // A bounced ball is slower: give the kick a good share of time.
+    bounce: shot.flight * (0.35 + shot.carry * 0.6),
     // Far-court balls look smaller.
     size: 4 + Math.round(((ly - 150) / 110) * 3),
   };
@@ -63,6 +75,7 @@ export function CourtIllustration({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 640 520"
+      overflow="visible"
       className={cn("h-auto w-full", className)}
       role="img"
       aria-label="A ball machine on a blue hard court feeding balls over the net"
@@ -117,7 +130,7 @@ export function CourtIllustration({ className }: { className?: string }) {
           const t = (x: number) => (x / CYCLE).toFixed(3);
           const land = t(shot.flight);
           const done = t(shot.flight + shot.bounce);
-          const fade = t(Math.min(shot.flight + shot.bounce + 0.15, CYCLE - 0.01));
+          const fade = t(Math.min(shot.flight + shot.bounce + 0.2, CYCLE - 0.01));
           return (
             <g key={shot.id}>
               {/* landing mark */}
@@ -193,7 +206,7 @@ export function CourtIllustration({ className }: { className?: string }) {
                   keyPoints={`0;${shot.split.toFixed(3)};1;1`}
                   keyTimes={`0;${land};${done};1`}
                   calcMode="spline"
-                  keySplines="0.25 0.5 0.6 1; 0.2 0.6 0.5 1; 0 0 1 1"
+                  keySplines="0.25 0.5 0.6 1; 0.15 0.45 0.55 0.95; 0 0 1 1"
                 />
                 {/* smaller as it travels away (perspective) */}
                 <animate
@@ -234,21 +247,119 @@ export function CourtIllustration({ className }: { className?: string }) {
   );
 }
 
-/** Generic ball-machine illustration used when a machine has no photo. */
-export function MachineIllustration({ className, accent = "#2457e6" }: { className?: string; accent?: string }) {
+/**
+ * Product-style render of a modern ball machine, used until a real photo is
+ * uploaded in Admin → Machines: matte body, see-through hopper, launch
+ * aperture, AI camera module and wheels.
+ */
+export function MachineIllustration({
+  className,
+  accent = "#2457e6",
+  camera = true,
+}: {
+  className?: string;
+  accent?: string;
+  camera?: boolean;
+}) {
+  const ball = (cx: number, cy: number, r = 9, rot = 0) => (
+    <g key={`${cx}-${cy}`} transform={`rotate(${rot} ${cx} ${cy})`}>
+      <circle cx={cx} cy={cy} r={r} fill="url(#mi-ball)" />
+      <path
+        d={`M${cx - r * 0.85} ${cy - r * 0.35} C ${cx - r * 0.2} ${cy + r * 0.15}, ${cx + r * 0.2} ${cy + r * 0.15}, ${cx + r * 0.85} ${cy - r * 0.35}`}
+        stroke="#f8fbe0"
+        strokeWidth="1.2"
+        fill="none"
+        opacity="0.8"
+      />
+    </g>
+  );
   return (
-    <svg viewBox="0 0 200 160" className={cn("h-auto w-full", className)} aria-hidden>
-      <ellipse cx="100" cy="146" rx="70" ry="8" fill="currentColor" opacity="0.12" />
-      <path d="M48 58 C 48 18, 152 18, 152 58 Z" fill="#132c63" />
-      <circle cx="78" cy="40" r="11" fill="#d9f23f" />
-      <circle cx="100" cy="34" r="11" fill="#d9f23f" />
-      <circle cx="122" cy="42" r="11" fill="#d9f23f" />
-      <rect x="40" y="56" width="120" height="80" rx="18" fill="#0e2350" />
-      <rect x="50" y="66" width="100" height="14" rx="7" fill={accent} />
-      <circle cx="100" cy="108" r="14" fill="#d9f23f" />
-      <circle cx="100" cy="108" r="6" fill="#0e2350" />
-      <circle cx="58" cy="138" r="9" fill="#1f2937" />
-      <circle cx="142" cy="138" r="9" fill="#1f2937" />
+    <svg viewBox="0 0 240 230" className={cn("h-auto w-full", className)} aria-hidden>
+      <defs>
+        <linearGradient id="mi-body" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#1b2233" />
+          <stop offset="0.45" stopColor="#2c3446" />
+          <stop offset="1" stopColor="#141a27" />
+        </linearGradient>
+        <linearGradient id="mi-top" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#3a4358" />
+          <stop offset="1" stopColor="#232a3a" />
+        </linearGradient>
+        <linearGradient id="mi-glass" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.28" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0.06" />
+        </linearGradient>
+        <radialGradient id="mi-ball" cx="0.35" cy="0.3" r="0.75">
+          <stop offset="0" stopColor="#f1ff8f" />
+          <stop offset="1" stopColor="#b9d61c" />
+        </radialGradient>
+        <radialGradient id="mi-mouth" cx="0.5" cy="0.45" r="0.6">
+          <stop offset="0" stopColor="#05070c" />
+          <stop offset="1" stopColor="#1d2433" />
+        </radialGradient>
+        <radialGradient id="mi-lens" cx="0.35" cy="0.35" r="0.7">
+          <stop offset="0" stopColor="#7aa2ff" />
+          <stop offset="0.5" stopColor="#1b2a5e" />
+          <stop offset="1" stopColor="#05070c" />
+        </radialGradient>
+      </defs>
+      {/* floor shadow */}
+      <ellipse cx="120" cy="214" rx="86" ry="9" fill="#000" opacity="0.28" />
+      {/* telescopic handle */}
+      <rect x="166" y="34" width="7" height="110" rx="3.5" fill="#3b4457" />
+      <rect x="152" y="28" width="35" height="10" rx="5" fill="#4a5470" />
+      {/* hopper: see-through with balls */}
+      <path d="M58 62 L182 62 L172 104 L68 104 Z" fill="#141a27" opacity="0.65" />
+      {ball(82, 92)}
+      {ball(102, 94, 9, 30)}
+      {ball(122, 92, 9, -20)}
+      {ball(142, 94, 9, 60)}
+      {ball(160, 92, 8.5, 10)}
+      {ball(92, 76, 9, -40)}
+      {ball(112, 78, 9, 15)}
+      {ball(132, 76, 9, -10)}
+      {ball(152, 78, 8.5, 40)}
+      <path
+        d="M58 62 L182 62 L172 104 L68 104 Z"
+        fill="url(#mi-glass)"
+        stroke="#9aa6c4"
+        strokeOpacity="0.5"
+        strokeWidth="1.5"
+      />
+      <path d="M62 64 L82 64 L74 100 L70 100 Z" fill="#fff" opacity="0.12" />
+      {/* body */}
+      <path
+        d="M60 104 L180 104 Q186 104 186 112 L182 186 Q181 196 170 196 L70 196 Q59 196 58 186 L54 112 Q54 104 60 104 Z"
+        fill="url(#mi-body)"
+      />
+      <path d="M60 104 L180 104 Q186 104 186 112 L185 122 L55 122 L54 112 Q54 104 60 104 Z" fill="url(#mi-top)" />
+      {/* accent band + status light */}
+      <rect x="57" y="128" width="126" height="5" rx="2.5" fill={accent} />
+      <circle cx="170" cy="144" r="2.5" fill="#d9f23f" />
+      {/* launch aperture */}
+      <ellipse cx="120" cy="160" rx="25" ry="19" fill="#0b0f18" />
+      <ellipse cx="120" cy="160" rx="19" ry="14" fill="url(#mi-mouth)" />
+      <ellipse cx="114" cy="155" rx="6" ry="3" fill="#fff" opacity="0.08" />
+      {/* side highlight */}
+      <path d="M62 112 L66 190" stroke="#fff" strokeOpacity="0.08" strokeWidth="3" strokeLinecap="round" />
+      {/* AI camera module on a short mast */}
+      {camera && (
+        <g>
+          <rect x="74" y="40" width="5" height="24" rx="2" fill="#3b4457" />
+          <rect x="60" y="22" width="34" height="22" rx="7" fill="#1b2233" stroke="#4a5470" strokeWidth="1.5" />
+          <circle cx="71" cy="33" r="6.5" fill="url(#mi-lens)" />
+          <circle cx="85" cy="33" r="4" fill="url(#mi-lens)" />
+          <circle cx="69" cy="31" r="1.6" fill="#fff" opacity="0.7" />
+          <circle cx="90" cy="26" r="1.5" fill="#d9f23f" />
+        </g>
+      )}
+      {/* wheels */}
+      <g>
+        <circle cx="74" cy="198" r="13" fill="#0b0f18" />
+        <circle cx="74" cy="198" r="5" fill="#4a5470" />
+        <circle cx="166" cy="198" r="13" fill="#0b0f18" />
+        <circle cx="166" cy="198" r="5" fill="#4a5470" />
+      </g>
     </svg>
   );
 }

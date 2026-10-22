@@ -65,7 +65,7 @@
     "step3Title": "Groove your game",
     "step3Body": "Run drills from your phone. When you're done, return it — or we collect it — and your deposit is released.",
     "machinesTitle": "The machines",
-    "machinesSubtitle": "Light enough to carry, smart enough to coach. Delivered fully charged.",
+    "machinesSubtitle": "Light enough to carry, smart enough to coach — the AI coach is included with every rental.",
     "pricingTitle": "Simple pricing",
     "pricingSubtitle": "Everything in Canadian dollars. A refundable deposit is held on your card, never charged unless there's damage.",
     "testimonialsTitle": "Players love it",
@@ -95,7 +95,7 @@
     "ticker2": "25-hour day rentals",
     "ticker3": "Tennis & pickleball",
     "ticker4": "Cancel free up to 48 h",
-    "ticker5": "Pressureless balls included on request",
+    "ticker5": "AI coach included",
     "ticker6": "Victoria, BC",
     "scoreTitle": "Game, set, booked.",
     "scoreSubtitle": "From couch to court in four points.",
@@ -117,7 +117,7 @@
   },
   "machines": {
     "title": "Our machines",
-    "subtitle": "Every rental includes delivery to your door or court, a quick on-site walkthrough and a fully charged battery.",
+    "subtitle": "AI-coached ball machines, fully charged and ready. Grab one downtown or have it dropped at your court or door.",
     "weight": "Weight",
     "maxSpeed": "Max speed",
     "capacity": "Ball capacity",
@@ -128,7 +128,7 @@
     "kg": "{value} kg",
     "kmh": "{value} km/h",
     "balls": "{value} balls",
-    "hours": "≈ {value} h",
+    "hours": "up to {value} h",
     "book": "Book the {name}",
     "empty": "No machines listed yet. Check back soon!",
     "sport_TENNIS": "Tennis",
@@ -136,7 +136,12 @@
     "level_BEGINNER": "Beginner",
     "level_INTERMEDIATE": "Intermediate",
     "level_ADVANCED": "Advanced",
-    "level_PRO": "Pro"
+    "level_PRO": "Pro",
+    "aiBadge": "AI coach included",
+    "aiTitle": "AI coach included",
+    "ai1": "Swing analysis with real-time voice tips",
+    "ai2": "Movement heatmap after every session",
+    "ai3": "Drills that adapt to your level"
   },
   "pricing": {
     "title": "Pricing",
@@ -391,5 +396,16 @@
     "how2": "See your zone and exact price before you pay.",
     "how3": "We arrive at your start time and come back at the end.",
     "packagesNote": "Monthly packages include both trips to your court."
+  },
+  "waitlist": {
+    "title": "Coming soon: {name}",
+    "body": "Want to be first to rent it? Leave your email and we'll tell you the day it lands in Victoria.",
+    "label": "Your email to hear when the {name} is available",
+    "placeholder": "you@example.com",
+    "cta": "Notify me",
+    "sending": "Saving…",
+    "consent": "We'll only email you about this machine. Unsubscribe anytime.",
+    "done": "You're on the list — we'll email you when the {name} is ready.",
+    "already": "You're already on the list for the {name}. We'll be in touch!"
   }
 }

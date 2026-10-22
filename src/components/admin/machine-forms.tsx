@@ -120,6 +120,10 @@ export function MachineForm({ machine }: { machine: PublicMachine | null }) {
         <input type="checkbox" name="bookable" defaultChecked={m?.bookable ?? true} className="size-4 accent-primary" />
         Bookable online (off = “Coming soon”)
       </label>
+      <label className="flex items-center gap-2 self-end pb-3 text-sm">
+        <input type="checkbox" name="aiCoach" defaultChecked={m?.aiCoach ?? false} className="size-4 accent-primary" />
+        Includes the AI coach (shown on the site)
+      </label>
       <Button type="submit" disabled={pending} className="sm:col-span-2">
         Save machine
       </Button>

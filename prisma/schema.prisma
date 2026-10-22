@@ -140,7 +140,9 @@ model Machine {
   levels       SkillLevel[]
   specs        Json? // free-form extra rows: [{ label, value }]
 
-  depositCents Int @default(30000)
+  depositCents Int     @default(30000)
+  /// Comes with the AI coach (camera module): highlighted on the site.
+  aiCoach      Boolean @default(false)
 
   createdAt DateTime @default(now()) @db.Timestamptz
   updatedAt DateTime @updatedAt @db.Timestamptz
@@ -150,6 +152,26 @@ model Machine {
   groupSessions GroupSession[]
   maintenance   MaintenanceLog[]
   blackouts     Blackout[]
+  waitlist      WaitlistSignup[]
+}
+
+/// "Notify me" sign-ups for machines that aren't bookable yet. Each row is
+/// an express request to be emailed about that machine (CASL), and the
+/// count per machine is the owner's demand signal.
+model WaitlistSignup {
+  id         String    @id @default(cuid())
+  machineId  String
+  machine    Machine   @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  email      String
+  /// Where the form was (e.g. "home", "machines").
+  source     String?
+  /// Exact wording the person agreed to.
+  consent    String
+  notifiedAt DateTime? @db.Timestamptz
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+
+  @@unique([machineId, email])
+  @@index([machineId, createdAt])
 }
 
 model MaintenanceLog {

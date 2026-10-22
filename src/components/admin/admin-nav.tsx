@@ -11,6 +11,7 @@ import {
   Settings,
   ShoppingBag,
   TicketPercent,
+  BellRing,
   Users,
   UsersRound,
   Wrench,
@@ -26,6 +27,7 @@ const ITEMS = [
   { href: "/admin/groups", label: "Group sessions", icon: UsersRound },
   { href: "/admin/products", label: "Prices & products", icon: ShoppingBag },
   { href: "/admin/promo-codes", label: "Promo codes", icon: TicketPercent },
+  { href: "/admin/waitlist", label: "Waitlist", icon: BellRing },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/export", label: "Export", icon: Download },
 ];

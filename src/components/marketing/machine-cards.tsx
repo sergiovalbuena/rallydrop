@@ -2,10 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { MachineIllustration } from "@/components/brand/court-illustration";
+import { Check, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WaitlistForm } from "./waitlist-form";
 import { formatCentsShort } from "@/lib/money";
+import { cn } from "@/lib/utils";
 import type { PublicMachine } from "@/lib/services/catalog";
 
 export function MachineCardsSkeleton() {
@@ -37,7 +40,7 @@ export async function MachineFeature({
   machines: PublicMachine[];
   detailed?: boolean;
 }) {
-  const th = await getTranslations("home");
+  const tw = await getTranslations("waitlist");
   const tc = await getTranslations("common");
   const bookable = machines.filter((m) => m.bookable);
   const shown = detailed ? bookable : bookable.slice(0, 1);
@@ -49,11 +52,28 @@ export async function MachineFeature({
         <FeatureCard key={featured.id} featured={featured} detailed={detailed} />
       ))}
       {upcoming.map((m) => (
-        <p key={m.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed px-5 py-3 text-sm">
-          <Badge variant="accent">{tc("comingSoon")}</Badge>
-          <span className="font-semibold">{th("comingSoonShort", { name: m.name })}</span>
-          <span className="text-muted-foreground">— {m.description}</span>
-        </p>
+        <div
+          key={m.id}
+          id={m.slug}
+          data-reveal
+          className="grid scroll-mt-24 items-center gap-5 rounded-3xl border border-dashed bg-card p-5 sm:grid-cols-[auto_1fr] sm:p-6"
+        >
+          <MachineIllustration
+            accent={m.calendarColor}
+            camera={m.aiCoach}
+            className="mx-auto w-28 opacity-90 sm:w-32"
+          />
+          <div className="space-y-3">
+            <div>
+              <Badge variant="accent">{tc("comingSoon")}</Badge>
+              <h3 className="mt-2 font-display text-2xl font-extrabold uppercase">{tw("title", { name: m.name })}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {m.description} {tw("body")}
+              </p>
+            </div>
+            <WaitlistForm machineId={m.id} machineName={m.name} source={detailed ? "machines" : "home"} />
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -73,27 +93,57 @@ async function FeatureCard({ featured, detailed }: { featured: PublicMachine; de
       data-reveal="scale"
       className="grid scroll-mt-24 overflow-hidden rounded-3xl border bg-card shadow-xs md:grid-cols-[1fr_1.1fr]"
     >
-      <div className="court-lines floodlight grain relative flex items-center justify-center bg-court p-8 sm:p-12">
+      <div
+        className={cn(
+          "relative flex min-h-72 items-center justify-center p-8 sm:p-12",
+          // Product photos usually have a white background: show them on a light stage.
+          featured.imageUrl ? "bg-gradient-to-b from-white to-slate-100" : "court-lines floodlight grain bg-court",
+        )}
+      >
         {featured.imageUrl ? (
           <Image
             src={featured.imageUrl}
             alt={featured.name}
             fill
-            className="object-cover"
+            className="object-contain p-8"
             sizes="(min-width: 768px) 45vw, 100vw"
           />
         ) : (
-          <MachineIllustration accent={featured.calendarColor} className="animate-float max-w-64 drop-shadow-2xl" />
+          <MachineIllustration
+            accent={featured.calendarColor}
+            camera={featured.aiCoach}
+            className="animate-float max-w-72 drop-shadow-2xl"
+          />
         )}
         <span className="absolute top-4 left-4 rounded-full bg-accent px-3 py-1 text-xs font-bold text-accent-foreground uppercase">
           {featured.sports.map((s) => t(`sport_${s}`)).join(" · ")}
         </span>
+        {featured.aiCoach && (
+          <span className="absolute top-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-court px-3 py-1 text-xs font-bold text-white uppercase ring-1 ring-white/20">
+            <Sparkles className="size-3.5 text-optic" aria-hidden /> {t("aiBadge")}
+          </span>
+        )}
       </div>
       <div className="flex flex-col gap-6 p-6 sm:p-8">
         <div>
           <h3 className="font-display text-4xl font-black uppercase sm:text-5xl">{featured.name}</h3>
           {featured.description && <p className="mt-3 text-muted-foreground">{featured.description}</p>}
         </div>
+        {featured.aiCoach && (
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <p className="flex items-center gap-2 font-display text-lg font-extrabold uppercase">
+              <Sparkles className="size-4 text-primary" aria-hidden /> {t("aiTitle")}
+            </p>
+            <ul className="mt-2 grid gap-1.5 text-sm sm:grid-cols-3">
+              {[t("ai1"), t("ai2"), t("ai3")].map((item) => (
+                <li key={item} className="flex gap-2">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {stats.length > 0 && (
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-y py-5 sm:grid-cols-4">
             {stats.map((s) => (

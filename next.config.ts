@@ -15,7 +15,12 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
-    remotePatterns: [{ protocol: "https", hostname: "*.public.blob.vercel-storage.com" }],
+    remotePatterns: [
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
+      // Manufacturer product photos (Pongbot's Shopify store).
+      { protocol: "https", hostname: "cdn.shopify.com" },
+      { protocol: "https", hostname: "store.pongbotsports.com" },
+    ],
   },
 };
 

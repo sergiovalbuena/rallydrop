@@ -280,3 +280,16 @@ export function adminAlertEmail(d: { subject: string; lines: string[]; url?: str
     text: [d.subject, ...d.lines, d.url ?? ""].join("\n"),
   };
 }
+
+export function waitlistEmail(d: { machineName: string }): EmailContent {
+  return {
+    subject: `You're on the list for the ${d.machineName}`,
+    html: layout(
+      "You're on the list",
+      `<p>Thanks! We'll email you as soon as the ${esc(d.machineName)} is ready to rent in Victoria — and only about that.</p>
+<p style="font-size:13px;color:#64748b">Changed your mind? Just reply "remove" and we'll take you off the list.</p>`,
+      { label: `See ${brand.name}`, url: siteUrl("/machines") },
+    ),
+    text: `Thanks! We'll email you as soon as the ${d.machineName} is ready to rent in Victoria. Reply "remove" to be taken off the list.`,
+  };
+}
