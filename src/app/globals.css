@@ -235,6 +235,25 @@
   .animate-draw {
     animation: draw-line 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
   }
+  /* Delivery cards: drop-off van drives from the hub to the court… */
+  .scene-dropoff {
+    animation: scene-dropoff 4.2s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+  }
+  /* …collection: the "return" arrow shows first, then the van heads back right → left… */
+  .scene-arrow {
+    animation: scene-arrow 4.2s ease-out infinite;
+  }
+  .scene-collection {
+    animation: scene-collection 4.2s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+  }
+  /* …round trip: one van out, one van back, on two lanes. */
+  .scene-lane-right {
+    animation: scene-lane-right 3.6s linear infinite;
+  }
+  .scene-lane-left {
+    animation: scene-lane-left 3.6s linear infinite;
+    animation-delay: -1.8s;
+  }
   .animate-spin-slow {
     animation: spin 40s linear infinite;
   }
@@ -286,6 +305,80 @@
   }
   50% {
     transform: translateY(-10px) rotate(6deg);
+  }
+}
+
+@keyframes scene-dropoff {
+  0% {
+    left: -20%;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  55%,
+  85% {
+    left: 55%;
+    opacity: 1;
+  }
+  100% {
+    left: 55%;
+    opacity: 0;
+  }
+}
+
+@keyframes scene-arrow {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.5);
+  }
+  14%,
+  70% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  85%,
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+@keyframes scene-collection {
+  0%,
+  22% {
+    left: 100%;
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  80%,
+  88% {
+    left: 22%;
+    opacity: 1;
+  }
+  100% {
+    left: 22%;
+    opacity: 0;
+  }
+}
+
+@keyframes scene-lane-right {
+  from {
+    left: -25%;
+  }
+  to {
+    left: 105%;
+  }
+}
+
+@keyframes scene-lane-left {
+  from {
+    left: 105%;
+  }
+  to {
+    left: -25%;
   }
 }
 

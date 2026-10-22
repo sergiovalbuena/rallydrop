@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { ArrowRight, Repeat, Truck, Undo2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { DeliveryZone } from "@/lib/domain/delivery";
 import { formatCentsShort } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { DeliveryScene, type SceneKind } from "./delivery-scene";
 import { revealDelay } from "./reveal-delay";
 
 /** The three paid services (drop-off, collection, round trip) with prices from zone 1. */
@@ -14,10 +15,10 @@ export async function DeliveryServiceCards({ zones }: { zones: DeliveryZone[] })
   const t = await getTranslations("delivery");
   const first = zones[0];
   if (!first) return null;
-  const cards = [
-    { icon: Truck, title: t("dropoffTitle"), body: t("dropoffBody"), cents: first.tripCents },
-    { icon: Undo2, title: t("collectionTitle"), body: t("collectionBody"), cents: first.tripCents },
-    { icon: Repeat, title: t("roundTitle"), body: t("roundBody"), cents: first.roundTripCents, best: true },
+  const cards: { scene: SceneKind; title: string; body: string; cents: number; best?: boolean }[] = [
+    { scene: "dropoff", title: t("dropoffTitle"), body: t("dropoffBody"), cents: first.tripCents },
+    { scene: "collection", title: t("collectionTitle"), body: t("collectionBody"), cents: first.tripCents },
+    { scene: "round", title: t("roundTitle"), body: t("roundBody"), cents: first.roundTripCents, best: true },
   ];
   return (
     <div className="grid gap-4 md:grid-cols-3">
@@ -36,8 +37,8 @@ export async function DeliveryServiceCards({ zones }: { zones: DeliveryZone[] })
               {t("bestValue")}
             </Badge>
           )}
-          <c.icon className={cn("size-8", c.best ? "text-optic" : "text-primary")} aria-hidden />
-          <h3 className="mt-4 font-display text-2xl font-extrabold uppercase">{c.title}</h3>
+          <DeliveryScene kind={c.scene} dark={c.best} />
+          <h3 className="mt-5 font-display text-2xl font-extrabold uppercase">{c.title}</h3>
           <p className={cn("mt-2 text-sm", c.best ? "text-white/80" : "text-muted-foreground")}>{c.body}</p>
           <p className={cn("mt-auto pt-5 font-display text-4xl font-black", c.best && "text-optic")}>
             <span className="mr-1.5 align-middle text-sm font-bold tracking-wide uppercase opacity-70">
