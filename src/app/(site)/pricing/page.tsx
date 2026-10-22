@@ -10,7 +10,11 @@ import { getSettings } from "@/lib/services/settings";
 import { pricingContext } from "@/lib/services/pricing-context";
 import { listActiveAddOns, listActiveProducts, listPublicMachines } from "@/lib/services/catalog";
 
-export const metadata: Metadata = { title: "Pricing" };
+export const metadata: Metadata = {
+  title: "Pricing — ball machine rental in Victoria, BC",
+  description:
+    "Rent an AI tennis ball machine in Victoria, BC by the day, weekend, week or month. Balls and the AI coach included; pick it up downtown or get it delivered.",
+};
 
 export default async function PricingPage() {
   const t = await getTranslations("pricing");

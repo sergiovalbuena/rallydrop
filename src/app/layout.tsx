@@ -1,7 +1,9 @@
+import { siteOrigin } from "@/lib/site-url";
 import type { Metadata, Viewport } from "next";
 import { Big_Shoulders, Instrument_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { Providers } from "@/components/layout/providers";
+import { Analytics } from "@/components/layout/analytics";
 import { brand } from "@/config/brand";
 import "./globals.css";
 
@@ -15,7 +17,7 @@ const display = Big_Shoulders({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(siteOrigin()),
   title: {
     default: `${brand.name} — AI tennis ball machine rental in ${brand.city}`,
     template: `%s · ${brand.name}`,
@@ -44,6 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-dvh flex-col">
         <NextIntlClientProvider>
           <Providers>{children}</Providers>
+          <Analytics />
         </NextIntlClientProvider>
       </body>
     </html>

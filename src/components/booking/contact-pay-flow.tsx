@@ -18,6 +18,7 @@ import {
   type ConsentValue,
 } from "@/components/legal/terms-consent";
 import { getStripe, stripeAppearance } from "./stripe-client";
+import { trackEvent } from "@/lib/analytics";
 
 /**
  * Contact details → Stripe Payment Element. Used for monthly packages
@@ -133,6 +134,11 @@ function Pay({ amountCents, successPath }: { amountCents: number; successPath: s
       setBusy(false);
       return;
     }
+    trackEvent("payment_completed", {
+      product: successPath.includes("spring-pass") ? "SPRING_PASS" : "PACKAGE",
+      amount: amountCents / 100,
+      delivery: false,
+    });
     window.location.assign(successPath);
   }
 

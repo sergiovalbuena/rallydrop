@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
@@ -39,6 +39,7 @@ import {
 import { DateTimePicker } from "./date-time-picker";
 import { OptionCard } from "./option-card";
 import { PaymentStep } from "./payment-form";
+import { trackEvent } from "@/lib/analytics";
 import { PriceSummary } from "./price-summary";
 import { Stepper } from "./stepper";
 import type { Catalog, Contact, Extras, Slot } from "./types";
@@ -141,8 +142,14 @@ export function BookingWizard({
     [catalog.depositAuthLeadHours],
   );
 
+  const started = useRef(false);
   const go = useCallback(
     async (next: Step) => {
+      // Funnel: the first step past choosing a rental.
+      if (step === 0 && next > 0 && !started.current) {
+        started.current = true;
+        trackEvent("booking_started", { product: product?.kind ?? "unknown" });
+      }
       // Leaving the payment step releases the unpaid hold so the slot isn't blocked.
       if (step === 5 && next < 5 && checkout) {
         await releaseHoldAction(checkout.bookingId);
@@ -151,7 +158,7 @@ export function BookingWizard({
       setStep(next);
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
-    [step, checkout],
+    [step, checkout, product?.kind],
   );
 
   function applyPromo() {
@@ -692,6 +699,7 @@ export function BookingWizard({
                 holdExpiresAt={checkout.holdExpiresAt}
                 finalize={finalizeAction}
                 accept={acceptTermsAction}
+                analytics={{ product: product?.kind ?? "unknown", delivery: extras.dropoff || extras.collection }}
                 consentDocs={catalog.legal}
                 depositNote={
                   longRental

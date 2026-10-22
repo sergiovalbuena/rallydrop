@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { JsonLd } from "@/components/seo/json-ld";
+import { localBusinessLd } from "@/lib/services/structured-data";
+import { getSiteInfo } from "@/lib/services/site-info";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
@@ -184,7 +187,13 @@ export default async function HomePage() {
 
 async function HomeMachines() {
   await connection();
-  return <MachineFeature machines={await listPublicMachines()} />;
+  const [machines, site] = await Promise.all([listPublicMachines(), getSiteInfo()]);
+  return (
+    <>
+      <JsonLd data={localBusinessLd(site)} />
+      <MachineFeature machines={machines} />
+    </>
+  );
 }
 
 async function Testimonials() {

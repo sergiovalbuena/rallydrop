@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/seo/json-ld";
+import { machineProductLd } from "@/lib/services/structured-data";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
@@ -6,7 +8,7 @@ import { MachineCardsSkeleton, MachineFeature } from "@/components/marketing/mac
 import { AiCameraBenefits, AiCoachLine, LevelGuide } from "@/components/marketing/machine-guides";
 import { PageHero, Section } from "@/components/marketing/section";
 import { WaitlistForm } from "@/components/marketing/waitlist-form";
-import { listPublicMachines } from "@/lib/services/catalog";
+import { listActiveProducts, listPublicMachines } from "@/lib/services/catalog";
 
 export const metadata: Metadata = {
   title: "PONGBOT Aura S — AI tennis ball machine",
@@ -45,7 +47,15 @@ export default async function MachinesPage() {
 
 async function Machines() {
   await connection();
-  return <MachineFeature machines={await listPublicMachines()} detailed />;
+  const [machines, products] = await Promise.all([listPublicMachines(), listActiveProducts()]);
+  return (
+    <>
+      {machines.map((m) => (
+        <JsonLd key={m.id} data={machineProductLd(m, products)} />
+      ))}
+      <MachineFeature machines={machines} detailed />
+    </>
+  );
 }
 
 async function NewMachinesSignup() {

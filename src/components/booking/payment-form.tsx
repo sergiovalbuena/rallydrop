@@ -16,6 +16,7 @@ import {
   type ConsentValue,
 } from "@/components/legal/terms-consent";
 import { getStripe, stripeAppearance } from "./stripe-client";
+import { trackEvent } from "@/lib/analytics";
 
 type Finalize = (
   id: string,
@@ -48,6 +49,8 @@ export function PaymentStep(props: {
   depositNote: string;
   onExpired: () => void;
   confirmationPath: string;
+  /** Funnel analytics (no personal data). */
+  analytics?: { product: string; delivery: boolean };
 }) {
   const stripePromise = getStripe();
   if (!stripePromise) {
@@ -98,6 +101,7 @@ function PayForm({
   depositNote,
   onExpired,
   confirmationPath,
+  analytics,
 }: Parameters<typeof PaymentStep>[0]) {
   const t = useTranslations("book");
   const tc = useTranslations("consent");
@@ -127,6 +131,7 @@ function PayForm({
       setBusy(false);
       return;
     }
+    trackEvent("terms_accepted", { product: analytics?.product ?? "unknown" });
     const returnUrl = `${window.location.origin}${confirmationPath}`;
     const { error: confirmError } = await stripe.confirmPayment({
       elements,
@@ -148,6 +153,11 @@ function PayForm({
       setBusy(false);
       return;
     }
+    trackEvent("payment_completed", {
+      product: analytics?.product ?? "unknown",
+      amount: amountCents / 100,
+      delivery: analytics?.delivery ?? false,
+    });
     router.push(confirmationPath);
   }
 

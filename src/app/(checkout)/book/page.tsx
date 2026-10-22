@@ -13,7 +13,11 @@ import { toLocalDate } from "@/lib/time";
 import { BookingUnavailable } from "@/components/booking/booking-unavailable";
 import { databaseConfigured } from "@/lib/services/fallback";
 
-export const metadata: Metadata = { title: "Book a machine" };
+export const metadata: Metadata = {
+  title: "Book a ball machine",
+  description:
+    "Book the PONGBOT Aura S AI tennis ball machine in Victoria, BC: pick your dates, add delivery and pay securely.",
+};
 
 const RENTAL_KINDS = ["DAY", "WEEKEND", "WEEK", "MONTH"];
 

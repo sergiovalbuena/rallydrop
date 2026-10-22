@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/seo/json-ld";
+import { faqPageLd } from "@/lib/services/structured-data";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
@@ -14,7 +16,11 @@ import { revealDelay } from "@/components/marketing/reveal-delay";
 import { faqItems } from "@/lib/services/faq";
 import { formatCentsShort } from "@/lib/money";
 
-export const metadata: Metadata = { title: "How it works & FAQ" };
+export const metadata: Metadata = {
+  title: "How it works & FAQ",
+  description:
+    "How renting an AI tennis ball machine in Victoria works: booking, delivery to your door or next to your court, the refundable deposit, rain policy and more.",
+};
 
 export default async function HowItWorksPage() {
   const t = await getTranslations("how");
@@ -50,7 +56,13 @@ export default async function HowItWorksPage() {
 
 async function Faq() {
   await connection();
-  return <FaqList items={await faqItems()} />;
+  const items = await faqItems();
+  return (
+    <>
+      <JsonLd data={faqPageLd(items)} />
+      <FaqList items={items} />
+    </>
+  );
 }
 
 function TopicsSkeleton() {
