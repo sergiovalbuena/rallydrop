@@ -158,6 +158,8 @@ Eventos de webhook necesarios:
    - `SITE_URL`: por ejemplo `https://rallydrop.ca`.
    - `CRON_SECRET`: el mismo valor que en Vercel.
 
+   Mientras falten los secretos, el workflow termina con un aviso (no falla); mientras no haya base de datos, el endpoint responde "skipped".
+
    Para probarlo: pestaña *Actions → Scheduled jobs → Run workflow*.
 
 ## Pendiente de configurar antes de lanzar

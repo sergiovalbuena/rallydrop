@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { runDeposits, runExpireHolds, runReminders } from "@/lib/services/cron";
 import { toLocalMinute } from "@/lib/time";
+import { databaseConfigured } from "@/lib/services/fallback";
 
 /** Reminders only go out in the daytime (7 AM–9 PM Victoria), even though the job runs hourly. */
 function daytime(now = new Date()) {
@@ -32,6 +33,8 @@ export async function GET(request: NextRequest, { params }: RouteContext<"/api/c
   const { job } = await params;
   const run = JOBS[job as keyof typeof JOBS];
   if (!run) return NextResponse.json({ error: "Unknown job" }, { status: 404 });
+  // No database yet (site in preview mode): nothing to do, and not an error.
+  if (!databaseConfigured()) return NextResponse.json({ job, skipped: "no database configured" });
   const result = await run();
   return NextResponse.json({ job, ...result });
 }
