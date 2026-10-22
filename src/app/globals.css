@@ -416,3 +416,16 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Auto-hiding notice (off-season banner): slides down from the top. */
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [role="status"][style*="notice-in"] {
+    animation: none !important;
+  }
+}

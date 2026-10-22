@@ -5,6 +5,7 @@ import { isHighSeason } from "@/lib/domain/season";
 import { SITE_INFO_TAG } from "@/lib/services/site-info";
 import { getSettings } from "@/lib/services/settings";
 import { toLocalDate } from "@/lib/time";
+import { AutoHideNotice } from "./auto-hide-notice";
 
 /** Re-checked hourly; saving Settings refreshes it too. */
 async function offSeasonToday(): Promise<boolean> {
@@ -15,14 +16,14 @@ async function offSeasonToday(): Promise<boolean> {
   return !isHighSeason(toLocalDate(new Date()), { start: s.seasonStart, end: s.seasonEnd });
 }
 
-/** "Off-season prices — if it rains on your day, reschedule free." */
+/** "Off-season prices — if it rains on your day, reschedule free." — floats in for ~5 s, once per visit. */
 export async function OffSeasonBanner() {
   if (!(await offSeasonToday())) return null;
   const t = await getTranslations("rain");
   return (
-    <p className="flex items-center justify-center gap-2 bg-court px-4 py-2 text-center text-sm font-medium text-white print:hidden">
+    <AutoHideNotice id="off-season">
       <CloudRain className="size-4 shrink-0 text-optic" aria-hidden />
       {t("banner")}
-    </p>
+    </AutoHideNotice>
   );
 }
