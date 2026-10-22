@@ -5,7 +5,8 @@ import { databaseConfigured } from "@/lib/services/fallback";
 import { joinWaitlist } from "@/lib/services/waitlist";
 
 const schema = z.object({
-  machineId: z.string().min(1),
+  /** Empty = "tell me about new machines". */
+  machineId: z.string().optional(),
   email: z.email("Enter a valid email."),
   source: z.string().max(40).optional(),
   /** Honeypot: real people never see or fill this field. */

@@ -11,12 +11,12 @@ export const instant = false;
 
 export default async function WaitlistPage() {
   await connection();
-  const { machines, total, lastWeek } = await waitlistSummary();
+  const { machines, general, total, lastWeek } = await waitlistSummary();
   return (
     <>
       <PageHeader
         title="Waitlist"
-        description="People who asked to hear when a “Coming soon” machine is ready — your demand signal before buying."
+        description="People who asked to hear about new machines (from /machines) or about a specific “Coming soon” machine — your demand signal before buying."
         actions={
           <Button asChild variant="outline">
             <a href="/api/admin/export/waitlist">
@@ -29,12 +29,25 @@ export default async function WaitlistPage() {
         <StatCard label="Total sign-ups" value={total} />
         <StatCard label="Last 7 days" value={lastWeek} />
       </div>
-      {machines.length === 0 ? (
-        <Empty>
-          No sign-ups yet. They appear here as soon as someone leaves their email on a “Coming soon” machine.
-        </Empty>
+      {machines.length === 0 && general.length === 0 ? (
+        <Empty>No sign-ups yet. They appear here as soon as someone leaves their email on /machines.</Empty>
       ) : (
         <div className="space-y-6">
+          {general.length > 0 && (
+            <Panel title="New machines" actions={<Badge variant="accent">{general.length} interested</Badge>}>
+              <ul className="divide-y text-sm">
+                {general.map((w) => (
+                  <li key={w.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                    <span className="font-medium">{w.email}</span>
+                    <span className="text-muted-foreground">
+                      {formatLocal(w.createdAt, "MMM d, yyyy")}
+                      {w.source && ` · from ${w.source}`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          )}
           {machines.map((m) => (
             <Panel
               key={m.id}

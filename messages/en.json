@@ -31,13 +31,12 @@
   "nav": {
     "machines": "Machines",
     "pricing": "Pricing",
-    "groups": "Group sessions",
     "howItWorks": "How it works",
     "contact": "Contact",
     "myBookings": "My bookings"
   },
   "footer": {
-    "blurb": "Tennis and pickleball ball machine rentals in Victoria, BC. Grab it downtown or have it dropped at your court or door.",
+    "blurb": "Tennis and pickleball ball machine rentals in Victoria, BC. Grab it downtown or have it dropped at your door or next to your court.",
     "explore": "Explore",
     "help": "Help",
     "legal": "Legal",
@@ -48,13 +47,14 @@
     "madeIn": "Made on the courts of Victoria, BC.",
     "waiver": "Release of liability",
     "insured": "RallyDrop carries commercial general liability insurance.",
-    "licence": "{municipality} Business Licence #{number}"
+    "licence": "{municipality} Business Licence #{number}",
+    "blurbTennis": "AI tennis ball machine rentals in Victoria, BC. Grab it downtown or have it dropped at your door or next to your court."
   },
   "home": {
     "eyebrow": "Ball machine rentals · Victoria, BC",
     "heroTitleA": "Your hitting partner,",
     "heroTitleB": "delivered.",
-    "heroBody": "A smart ball machine for your court — by the day, weekend, week or month. Grab it downtown, or let us drop it off, set it up and collect it when you're done.",
+    "heroBody": "A smart, AI-coached ball machine — by the day, weekend, week or month. Grab it downtown, or let us drop it off at your door or next to your court and collect it when you're done.",
     "heroStatA": "25 h",
     "heroStatALabel": "day rentals",
     "heroStatC": "1,000+",
@@ -64,7 +64,7 @@
     "step1Title": "Pick your slot",
     "step1Body": "Choose a rental length and a machine, then see real-time availability. No account needed.",
     "step2Title": "We drop it off",
-    "step2Body": "Grab it downtown, or we bring it to your court or door — fully charged, with balls if you want them.",
+    "step2Body": "Grab it downtown, or we bring it to your door or next to your court — fully charged, with a bucket of balls.",
     "step3Title": "Groove your game",
     "step3Body": "Run drills from your phone. When you're done, return it — or we collect it — and your deposit is released.",
     "machinesTitle": "The machines",
@@ -106,11 +106,12 @@
     "zoneSub": "per trip",
     "deliveryEyebrow": "Drop-off & collection",
     "deliveryTitle": "We bring it. We take it back.",
-    "deliverySubtitle": "Hauling a ball machine is the annoying part, so let us do it. Book one trip or both — priced by distance from downtown, shown before you pay."
+    "deliverySubtitle": "Hauling a ball machine is the annoying part, so let us do it. Book one trip or both — priced by distance from downtown, shown before you pay.",
+    "ticker3Voice": "Voice control"
   },
   "machines": {
     "title": "Our machines",
-    "subtitle": "AI-coached ball machines, fully charged and ready. Grab one downtown or have it dropped at your court or door.",
+    "subtitle": "An AI-coached ball machine, fully charged and ready. Grab it downtown or have it dropped at your door or next to your court.",
     "weight": "Weight",
     "maxSpeed": "Max speed",
     "capacity": "Ball capacity",
@@ -161,7 +162,7 @@
     "rentalsTitle": "Rentals",
     "rentalsBody": "The machine is yours for the whole period — play as often as you like.",
     "packagesTitle": "Monthly session packages",
-    "packagesBody": "1.5-hour sessions: pick up and return downtown, or add delivery to your court per session. Billed monthly, cancel anytime (effective at the end of the month).",
+    "packagesBody": "1.5-hour sessions: pick up and return downtown, or add delivery to your door or next to your court per session. Billed monthly, cancel anytime (effective at the end of the month).",
     "noRollover": "Unused sessions don't roll over to the next month.",
     "rollover": "Unused sessions roll over to the next month.",
     "addOnsTitle": "Add-ons",
@@ -180,20 +181,6 @@
     "careWeek": "Week",
     "careMonth": "Month",
     "ballsIncluded": "A full bucket of balls comes with every rental."
-  },
-  "groups": {
-    "title": "Group sessions",
-    "subtitle": "Coached machine drills for up to six players. Meet new hitting partners and get hundreds of reps in an hour.",
-    "whatTitle": "What to expect",
-    "what1": "Warm-up and drill demo",
-    "what2": "Rotations on the machine: groundstrokes, volleys, overheads",
-    "what3": "Live tips from the coach",
-    "upcoming": "Upcoming sessions",
-    "spotsLeft": "{count, plural, =0 {Full} one {# spot left} other {# spots left}}",
-    "join": "Join · {price}",
-    "full": "Full",
-    "empty": "No sessions scheduled right now. Follow us or check back soon.",
-    "allLevels": "All levels"
   },
   "how": {
     "title": "How it works",
@@ -218,7 +205,7 @@
   },
   "contact": {
     "title": "Contact",
-    "subtitle": "Questions, large group events or a custom rental? We usually reply within a few hours.",
+    "subtitle": "Questions or a custom rental? We usually reply within a few hours.",
     "email": "Email",
     "phone": "Phone / text",
     "instagram": "Instagram",
@@ -354,7 +341,7 @@
     "depositStatus_RELEASED": "Released",
     "depositStatus_CAPTURED": "Charged",
     "depositStatus_PARTIALLY_CAPTURED": "Partially charged",
-    "depositStatus_FAILED": "Action needed",
+    "depositStatus_FAILED": "Pending — update your card",
     "depositStatus_WAIVED": "Waived",
     "cancel": "Cancel booking",
     "cancelConfirm": "Cancel this booking?",
@@ -383,7 +370,8 @@
     "asideTitleA": "Your bookings,",
     "asideTitleB": "one code away.",
     "asideBody": "See what's coming up, check your deposit, grab receipts, reschedule or cancel — no password to remember.",
-    "noBooking": "Haven't booked yet? Bookings made with your email or phone show up here automatically."
+    "noBooking": "Haven't booked yet? Bookings made with your email or phone show up here automatically.",
+    "updateCard": "Update card for the deposit"
   },
   "rain": {
     "title": "Rained out?",
@@ -419,7 +407,7 @@
   },
   "delivery": {
     "dropoffTitle": "Drop-off",
-    "dropoffBody": "We bring it fully charged and set it up with you at your court or door.",
+    "dropoffBody": "We bring it fully charged to your door or next to your court (never onto the court) and show you how it works.",
     "collectionTitle": "Collection",
     "collectionBody": "Done hitting? We come back and pick it up. No loading, no driving.",
     "roundTitle": "Round trip",
@@ -434,7 +422,7 @@
     "selfServe": "Self-serve is always free: collect and return it at our downtown Victoria spot.",
     "beyond": "Further out? Call us — we'll quote it.",
     "cta": "Book with drop-off",
-    "tableCaption": "Drop-off and collection prices by zone, CAD before tax",
+    "tableCaption": "Drop-off and collection prices by zone, CAD",
     "from": "from",
     "howTitle": "How it works",
     "how1": "Pick a court or your address at checkout.",
@@ -451,7 +439,13 @@
     "sending": "Saving…",
     "consent": "We'll only email you about this machine. Unsubscribe anytime.",
     "done": "You're on the list — we'll email you when the {name} is ready.",
-    "already": "You're already on the list for the {name}. We'll be in touch!"
+    "already": "You're already on the list for the {name}. We'll be in touch!",
+    "newTitle": "Get notified about new machines",
+    "newBody": "We're starting with the Aura S. Want to hear when we add another machine? Leave your email.",
+    "newLabel": "Your email to hear about new machines",
+    "newConsent": "We'll only email you when we add a new machine. Unsubscribe anytime.",
+    "newDone": "Thanks — we'll email you when we add a new machine.",
+    "newAlready": "You're already on the list. We'll be in touch!"
   },
   "consent": {
     "summaryTitle": "Key terms",
@@ -496,11 +490,20 @@
     },
     "easy": {
       "q": "Is the machine hard to use?",
-      "a": "Not at all. We show you everything in five minutes at hand-off. You control it from the PONGBOT app or just by talking to it (“more topspin”, “wider angle”), and you get a quick-start card and video."
+      "a": "Not at all. We show you everything in five minutes at hand-off. You control it from the PONGBOT app or just by talking to it — voice commands like “more topspin” or “wider angle” — and you get the quick-start guide and a video."
     },
     "ai": {
       "q": "What does the AI camera do?",
       "a": "The Spotter camera films you at 120 frames per second, tracks you and the ball, analyses your swing and movement and gives you voice tips while you play — plus a movement heatmap afterwards. You can also put it next to the net so it acts as an umpire and keeps score in matches with friends."
+    },
+    "coach": {
+      "q": "Does it include a coach?",
+      "a": "It includes the Aura S's AI coach: the Spotter camera analyses your swing and movement and gives you voice tips while you play. It's a practice assistant, not a replacement for a professional coach — RallyDrop rents the machine and doesn't give lessons."
+    },
+    "court": {
+      "q": "Do I need to book a court?",
+      "a": "Not necessarily — use it at home, at your club or at a free public court. In Victoria you can also reserve some public courts online (about $10/h for adults, up to 3 weeks ahead). Note those court bookings aren't refunded for rain.",
+      "link": "Book a City court"
     },
     "speed": {
       "q": "How fast does it go? Is it good for my level?",
@@ -528,7 +531,7 @@
     },
     "friends": {
       "q": "Can friends share one rental?",
-      "a": "Absolutely. Each friend can connect their phone to the machine with the PONGBOT app and take turns. The person who rented is responsible for everyone who uses it."
+      "a": "Yes. Each friend connects their phone to the machine with the PONGBOT app and you take turns. Whoever rents it is responsible for everyone who uses it."
     },
     "cancel": {
       "q": "Can I cancel or reschedule?",
@@ -538,5 +541,36 @@
       "q": "Is RallyDrop insured?",
       "a": "Yes. RallyDrop carries commercial general liability insurance."
     }
+  },
+  "aiCoach": {
+    "eyebrow": "Spotter AI vision",
+    "title": "Your AI coach, included",
+    "subtitle": "Practice smarter, not just more.",
+    "swingTitle": "Swing analysis",
+    "swingBody": "Dual 120 fps cameras follow you and the ball and break down every stroke.",
+    "voiceTitle": "Voice tips",
+    "voiceBody": "Real-time spoken cues on your swing and footwork while you play — and you can talk back: “more topspin”.",
+    "moveTitle": "Movement tracking",
+    "moveBody": "A heatmap of where you hit from and how you move, after every session.",
+    "refTitle": "AI referee",
+    "refBody": "Unclip the Spotter, set it by the net and it calls lines and keeps score in matches with friends.",
+    "disclaimer": "The AI coach is a practice assistant built into the PONGBOT Aura S. It doesn't replace a professional coach — and RallyDrop doesn't give lessons.",
+    "line": "Every rental includes the AI coach"
+  },
+  "springPass": {
+    "title": "Spring Pass",
+    "body": "{weekends} weekends with the machine, to use between {window}. Book each weekend from My bookings; balls and the AI coach included.",
+    "left": "{left} of {limit} passes left",
+    "plusTax": "Taxes added at checkout",
+    "cad": "Prices in CAD",
+    "cta": "Buy the pass · {price}",
+    "soldOut": "All Spring Passes are sold. Weekends are still bookable one by one.",
+    "doneTitle": "Your Spring Pass is ready",
+    "doneBody": "We've emailed you the details. Book your weekends from My bookings.",
+    "cardTitle": "Spring Pass",
+    "cardBody": "{weekends} weekends between {window} for {price}.",
+    "portalTitle": "Spring Pass",
+    "portalLeft": "{left} of {total} weekends left · {from} – {to}",
+    "bookWeekend": "Book a weekend"
   }
 }

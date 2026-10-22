@@ -148,7 +148,7 @@ export async function createBlackoutAction(input: z.input<typeof blackout>): Pro
     revalidatePath("/admin/calendar");
     return { ok: true, message: "Days blocked." };
   } catch (e) {
-    if (isOverlapError(e)) return { ok: false, error: "Those days overlap an existing booking or group session." };
+    if (isOverlapError(e)) return { ok: false, error: "Those days overlap an existing booking." };
     return fail(e);
   }
 }

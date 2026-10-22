@@ -8,7 +8,14 @@ import { notifyBookingConfirmed, notifyRescheduled } from "@/lib/notify/booking-
 import { createBooking } from "@/lib/services/bookings";
 import { rescheduleBooking } from "@/lib/services/bookings";
 import { BookingError } from "@/lib/services/errors";
-import { attachSubscriptionCardToDeposit, cancelBooking, chargeSessionOnFile } from "@/lib/services/payments";
+import { attachCardToDeposit, cancelBooking, chargeSessionOnFile, subscriptionCard } from "@/lib/services/payments";
+import { customerSpringPass } from "@/lib/services/spring-pass";
+import { inPassWindow } from "@/lib/domain/spring-pass";
+import { resolveDelivery } from "@/lib/domain/delivery";
+import { geocodeAddress } from "@/lib/services/geocode";
+import { getSettings } from "@/lib/services/settings";
+import { brand } from "@/config/brand";
+import { toLocalDate } from "@/lib/time";
 import { takeRainCredit } from "@/lib/services/rain";
 import { customerPackage } from "@/lib/services/portal";
 import { getPortalCustomer, requestLoginCode, signOutPortal, verifyLoginCode } from "@/lib/services/portal-auth";
@@ -16,7 +23,6 @@ import { billingPortalUrl, setCancelAtPeriodEnd } from "@/lib/services/subscript
 import { headers } from "next/headers";
 import { consentComplete } from "@/lib/domain/legal";
 import { carryOverAcceptance, customerAcceptedLive, recordAcceptance } from "@/lib/services/legal";
-import { consentSchema } from "@/lib/validation/booking";
 import { clientIp } from "@/lib/request";
 import { siteUrl } from "@/lib/site-url";
 
@@ -87,32 +93,97 @@ export async function billingPortalAction(): Promise<void> {
   redirect(await billingPortalUrl(customer.id, siteUrl("/account")));
 }
 
-export async function bookSessionAction(input: {
-  startsAt: string;
-  /** Self-serve downtown (free) or delivery to a court (paid per session). */
-  delivery: boolean;
-  courtId?: string | null;
+const sessionInput = z.object({
+  /** Package session or Spring Pass weekend. */
+  source: z.enum(["package", "pass"]),
+  startsAt: z.iso.datetime(),
+  /** Self-serve downtown (free), or we deliver to a court or an address (zone fee). */
+  delivery: z.enum(["none", "court", "address"]),
+  courtId: z.string().nullish(),
+  address: z.string().trim().max(200).nullish(),
   /** Required only when the customer hasn't accepted the live Terms & Waiver. */
-  consent?: { termsId: string; waiverId: string; boxes: string[] } | null;
-}): Promise<ActionResult & { needsConsent?: boolean }> {
+  consent: z.object({ termsId: z.string(), waiverId: z.string(), boxes: z.array(z.string()) }).nullish(),
+});
+
+/** Round-trip fee for an address, before booking a session or pass weekend. */
+export async function sessionDeliveryQuoteAction(
+  address: string,
+): Promise<{ ok: true; feeCents: number; zone: number } | { ok: false; error: string }> {
+  const customer = await getPortalCustomer();
+  if (!customer) return { ok: false, error: "Please sign in again." };
+  const settings = await getSettings();
+  const point = address.trim().length > 5 ? await geocodeAddress(address) : null;
+  const d = resolveDelivery({
+    legs: { dropoff: true, collection: true },
+    point,
+    address,
+    hub: { lat: settings.deliveryHubLat, lng: settings.deliveryHubLng },
+    zones: settings.deliveryZones,
+    zone1Fsas: brand.zone1Fsas,
+  });
+  if (d.status === "ok") return { ok: true, feeCents: d.feeCents, zone: d.zone };
+  if (d.status === "out_of_area") {
+    return { ok: false, error: `That's ${d.distanceKm} km from downtown — outside our delivery area.` };
+  }
+  return { ok: false, error: "We couldn't find that address. Add the postal code, or pick a court." };
+}
+
+export async function bookSessionAction(
+  raw: z.input<typeof sessionInput>,
+): Promise<ActionResult & { needsConsent?: boolean }> {
   try {
     const customer = await getPortalCustomer();
     if (!customer) return { ok: false, error: "Please sign in again." };
-    const pkg = await customerPackage(customer.id);
-    if (!pkg || pkg.subscription.status !== "ACTIVE") return { ok: false, error: "You don't have an active package." };
-    if (pkg.usage.left <= 0) return { ok: false, error: "You've used all your sessions this month." };
-    const startsAt = new Date(z.iso.datetime().parse(input.startsAt));
-    if (startsAt >= pkg.subscription.currentPeriodEnd) {
-      return { ok: false, error: "Pick a date before your package renews." };
+    const parsed = sessionInput.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: "Please check the form." };
+    const input = parsed.data;
+    const startsAt = new Date(input.startsAt);
+
+    // Where the slot comes from, and the card on file for deposit and delivery.
+    let target: {
+      productId: string;
+      subscriptionId?: string;
+      springPassId?: string;
+      card: () => Promise<string | null>;
+    };
+    if (input.source === "package") {
+      const pkg = await customerPackage(customer.id);
+      if (!pkg || pkg.subscription.status !== "ACTIVE")
+        return { ok: false, error: "You don't have an active package." };
+      if (pkg.usage.left <= 0) return { ok: false, error: "You've used all your sessions this month." };
+      if (startsAt >= pkg.subscription.currentPeriodEnd) {
+        return { ok: false, error: "Pick a date before your package renews." };
+      }
+      target = {
+        productId: pkg.subscription.productId,
+        subscriptionId: pkg.subscription.id,
+        card: () => subscriptionCard(pkg.subscription.stripeSubscriptionId),
+      };
+    } else {
+      const pass = await customerSpringPass(customer.id);
+      if (!pass) return { ok: false, error: "You don't have an active Spring Pass." };
+      if (pass.left <= 0) return { ok: false, error: "You've used all the weekends on your pass." };
+      if (!inPassWindow(toLocalDate(startsAt), pass)) {
+        return { ok: false, error: `Pass weekends must start between ${pass.validFrom} and ${pass.validTo}.` };
+      }
+      const weekend = await db.product.findFirst({
+        where: { kind: "WEEKEND", active: true },
+        orderBy: { sortOrder: "asc" },
+      });
+      if (!weekend) return { ok: false, error: "Weekend rentals aren't available right now." };
+      target = { productId: weekend.id, springPassId: pass.pass.id, card: async () => pass.pass.stripePaymentMethodId };
     }
-    if (input.delivery && !input.courtId) return { ok: false, error: "Choose the court we should bring it to." };
+
+    if (input.delivery === "court" && !input.courtId)
+      return { ok: false, error: "Choose the court we should bring it to." };
+    if (input.delivery === "address" && !input.address)
+      return { ok: false, error: "Enter the address for the delivery." };
+    const point = input.delivery === "address" ? await geocodeAddress(input.address!) : null;
+
     // Members accept once; a new version of the terms must be accepted again.
     const alreadyAccepted = await customerAcceptedLive(customer.id);
-    if (!alreadyAccepted) {
-      const consent = consentSchema.safeParse(input.consent);
-      if (!consent.success || !consentComplete(consent.data.boxes)) {
-        return { ok: false, needsConsent: true, error: "Please accept the updated terms (tick both boxes)." };
-      }
+    if (!alreadyAccepted && (!input.consent || !consentComplete(input.consent.boxes))) {
+      return { ok: false, needsConsent: true, error: "Please accept the updated terms (tick both boxes)." };
     }
     const machineIds = await db.machine.findMany({
       where: { bookable: true, isPublic: true, status: { in: ["AVAILABLE", "RENTED"] } },
@@ -122,16 +193,25 @@ export async function bookSessionAction(input: {
     for (const m of machineIds) {
       try {
         const booking = await createBooking({
-          productId: pkg.subscription.productId,
+          productId: target.productId,
           machineId: m.id,
           startsAt,
           customer: { name: customer.name, email: customer.email, phone: customer.phone },
-          // Sessions are self-serve downtown; delivery is the zone's round trip.
-          ...(input.delivery
+          // Self-serve downtown by default; delivery is the zone's round trip.
+          ...(input.delivery === "court"
             ? { fulfillment: "DELIVERY_COURT" as const, dropoff: true, collection: true, courtId: input.courtId }
-            : { fulfillment: "PICKUP" as const }),
+            : input.delivery === "address"
+              ? {
+                  fulfillment: "DELIVERY_ADDRESS" as const,
+                  dropoff: true,
+                  collection: true,
+                  deliveryAddress: input.address,
+                  deliveryPoint: point,
+                }
+              : { fulfillment: "PICKUP" as const }),
           channel: "ONLINE",
-          subscriptionId: pkg.subscription.id,
+          subscriptionId: target.subscriptionId ?? null,
+          springPassId: target.springPassId ?? null,
         });
         if (alreadyAccepted) {
           await carryOverAcceptance(customer.id, booking.id);
@@ -150,14 +230,13 @@ export async function bookSessionAction(input: {
             userAgent: h.get("user-agent"),
           });
         }
+        const card = await target.card();
         if (booking.status === "PENDING_PAYMENT") {
-          // Delivery fee → charged to the package card, which also confirms it.
-          const charged = await chargeSessionOnFile(booking.id, pkg.subscription.stripeSubscriptionId);
+          // Delivery fee → charged to the card on file, which also confirms it.
+          const charged = await chargeSessionOnFile(booking.id, card);
           if (!charged.ok) return { ok: false, error: charged.error };
         } else {
-          await attachSubscriptionCardToDeposit(booking.id, pkg.subscription.stripeSubscriptionId).catch((e) =>
-            console.error("deposit for session", e),
-          );
+          await attachCardToDeposit(booking.id, card).catch((e: unknown) => console.error("deposit for session", e));
           await notifyBookingConfirmed(booking.id);
         }
         revalidatePath("/account");

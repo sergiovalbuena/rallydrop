@@ -21,6 +21,7 @@ import { logistics } from "@/lib/domain/logistics";
 import { getSettings } from "@/lib/services/settings";
 import { acceptanceToken } from "@/lib/services/legal";
 import { siteUrl } from "@/lib/site-url";
+import { holdLapsesBeforeReturn } from "@/lib/domain/deposit";
 import { formatLocal, formatRange } from "@/lib/time";
 
 /** Internal admin: always rendered per request, no instant-navigation shell. */
@@ -282,7 +283,19 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
                   <Row label="Hold placed" value={formatLocal(b.deposit.authScheduledFor, "MMM d, h:mm a")} />
                 )}
                 {b.deposit.authExpiresAt && b.deposit.status === "HELD" && (
-                  <Row label="Hold expires" value={formatLocal(b.deposit.authExpiresAt, "MMM d, h:mm a")} />
+                  <Row
+                    label="Hold expires"
+                    value={`${formatLocal(b.deposit.authExpiresAt, "MMM d, h:mm a")}${
+                      holdLapsesBeforeReturn(b.deposit.authExpiresAt, b.endsAt) ? " — before the return!" : ""
+                    }`}
+                  />
+                )}
+                {b.deposit.status === "FAILED" && (
+                  <p className="rounded-lg bg-destructive/10 p-2 text-destructive">
+                    Deposit pending: the card hold failed. The customer was emailed a link to update their card and we
+                    retry as soon as they do. The machine can&apos;t be checked out until then (or release the deposit
+                    to waive it).
+                  </p>
                 )}
                 {b.deposit.capturedCents > 0 && <Row label="Charged" value={formatCents(b.deposit.capturedCents)} />}
                 {b.deposit.captureNote && <Row label="Note" value={b.deposit.captureNote} />}

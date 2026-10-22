@@ -6,7 +6,7 @@ import { pricingContext } from "./pricing-context";
 import { getSettings } from "./settings";
 import { getSiteInfo } from "./site-info";
 
-export type FaqItem = { id: string; q: string; a: string };
+export type FaqItem = { id: string; q: string; a: string; link?: { href: string; label: string } };
 
 /**
  * The FAQ with live numbers (deposits, Care, delivery prices). Questions
@@ -18,7 +18,7 @@ export async function faqItems(): Promise<FaqItem[]> {
   const [machines, settings, site] = await Promise.all([listPublicMachines(), getSettings(), getSiteInfo()]);
   const ctx = await pricingContext(machines);
   const zone1 = settings.deliveryZones[0];
-  const pickleball = machines.some((m) => m.bookable && m.sports.includes("PICKLEBALL"));
+  const pickleball = settings.pickleballEnabled && machines.some((m) => m.bookable && m.sports.includes("PICKLEBALL"));
   const money = formatCentsShort;
   const items: (FaqItem | false)[] = [
     { id: "account", q: t("account.q"), a: t("account.a") },
@@ -31,6 +31,13 @@ export async function faqItems(): Promise<FaqItem[]> {
     { id: "balls", q: t("balls.q"), a: t("balls.a") },
     { id: "easy", q: t("easy.q"), a: t("easy.a") },
     { id: "ai", q: t("ai.q"), a: t("ai.a") },
+    { id: "coach", q: t("coach.q"), a: t("coach.a") },
+    {
+      id: "court",
+      q: t("court.q"),
+      a: t("court.a"),
+      ...(site.courtBookingUrl ? { link: { href: site.courtBookingUrl, label: t("court.link") } } : {}),
+    },
     { id: "speed", q: t("speed.q"), a: t("speed.a") },
     pickleball && { id: "pickleball", q: t("pickleball.q"), a: t("pickleball.a") },
     {

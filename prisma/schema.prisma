@@ -109,6 +109,23 @@ model Settings {
   /// when this is on (off by default).
   packageRollover Boolean @default(false)
 
+  /// The standard Aura S plays one sport; pickleball is unlocked separately.
+  /// Off = the word "pickleball" disappears from the whole site.
+  pickleballEnabled Boolean @default(true)
+
+  /// City of Victoria public court booking page (FAQ link; blank = no link).
+  courtBookingUrl String?
+
+  // Spring Pass: N weekends for a fixed price, used in a date window, limited
+  // number of passes. Off by default.
+  springPassEnabled    Boolean @default(false)
+  springPassPriceCents Int     @default(19900)
+  springPassWeekends   Int     @default(3)
+  springPassLimit      Int     @default(20)
+  /// Window the weekends must start in ("MM-DD", inclusive).
+  springPassStart      String  @default("04-01")
+  springPassEnd        String  @default("06-30")
+
   // Notifications
   smsEnabled Boolean @default(false) // also requires Twilio env vars
 
@@ -200,12 +217,11 @@ model Machine {
   createdAt DateTime @default(now()) @db.Timestamptz
   updatedAt DateTime @updatedAt @db.Timestamptz
 
-  bookings      Booking[]
-  occupancies   MachineOccupancy[]
-  groupSessions GroupSession[]
-  maintenance   MaintenanceLog[]
-  blackouts     Blackout[]
-  waitlist      WaitlistSignup[]
+  bookings    Booking[]
+  occupancies MachineOccupancy[]
+  maintenance MaintenanceLog[]
+  blackouts   Blackout[]
+  waitlist    WaitlistSignup[]
 }
 
 /// "Notify me" sign-ups for machines that aren't bookable yet. Each row is
@@ -213,8 +229,9 @@ model Machine {
 /// count per machine is the owner's demand signal.
 model WaitlistSignup {
   id         String    @id @default(cuid())
-  machineId  String
-  machine    Machine   @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  /// null = "tell me about new machines" (no specific machine).
+  machineId  String?
+  machine    Machine?  @relation(fields: [machineId], references: [id], onDelete: Cascade)
   email      String
   /// Where the form was (e.g. "home", "machines").
   source     String?
@@ -246,7 +263,6 @@ enum ProductKind {
   WEEK
   MONTH
   PACKAGE // monthly subscription of N sessions
-  GROUP_SESSION
 }
 
 model Product {
@@ -271,8 +287,6 @@ model Product {
   /// PACKAGE: sessions included per billing month and length of each.
   sessionsPerMonth Int?
   sessionMinutes   Int?
-  /// GROUP_SESSION defaults (each session can override).
-  groupCapacity    Int?
 
   /// Stripe Product/Price (recurring for PACKAGE). Re-created when price changes.
   stripeProductId String?
@@ -311,8 +325,7 @@ model Court {
   active    Boolean @default(true)
   sortOrder Int     @default(0)
 
-  bookings      Booking[]
-  groupSessions GroupSession[]
+  bookings Booking[]
 }
 
 // -----------------------------------------------------------------------------
@@ -346,7 +359,6 @@ model Blackout {
 
 enum OccupancySource {
   BOOKING
-  GROUP_SESSION
   BLACKOUT
 }
 
@@ -369,12 +381,10 @@ model MachineOccupancy {
   /// holds inside the same transaction before inserting a new row.
   holdExpiresAt DateTime?       @db.Timestamptz
 
-  bookingId      String?       @unique
-  booking        Booking?      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  groupSessionId String?       @unique
-  groupSession   GroupSession? @relation(fields: [groupSessionId], references: [id], onDelete: Cascade)
-  blackoutId     String?
-  blackout       Blackout?     @relation(fields: [blackoutId], references: [id], onDelete: Cascade)
+  bookingId  String?   @unique
+  booking    Booking?  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  blackoutId String?
+  blackout   Blackout? @relation(fields: [blackoutId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @db.Timestamptz
 
@@ -406,9 +416,9 @@ model Customer {
 
   bookings      Booking[]
   subscriptions Subscription[]
-  enrollments   GroupEnrollment[]
   acceptances   WaiverAcceptance[]
   credits       CustomerCredit[]
+  springPasses  SpringPass[]
   otpCodes      CustomerOtp[]
   sessions      CustomerSession[]
 }
@@ -488,6 +498,9 @@ model Booking {
   /// Set when the booking is a session consumed from a monthly package.
   subscriptionId String?
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  /// Set when the booking is a weekend taken from a Spring Pass.
+  springPassId   String?
+  springPass     SpringPass?   @relation(fields: [springPassId], references: [id])
 
   /// The real rental slot (what the customer sees). Buffer lives on the occupancy.
   startsAt DateTime @db.Timestamptz
@@ -673,7 +686,7 @@ enum PaymentKind {
   RENTAL
   DEPOSIT_CAPTURE
   SUBSCRIPTION_INVOICE
-  GROUP_SESSION
+  SPRING_PASS
   MANUAL // cash/e-transfer recorded by admin
 }
 
@@ -697,11 +710,11 @@ model Payment {
   currency      String @default("cad")
 
   bookingId      String?
-  booking        Booking?         @relation(fields: [bookingId], references: [id])
+  booking        Booking?      @relation(fields: [bookingId], references: [id])
   subscriptionId String?
-  subscription   Subscription?    @relation(fields: [subscriptionId], references: [id])
-  enrollmentId   String?
-  enrollment     GroupEnrollment? @relation(fields: [enrollmentId], references: [id])
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  springPassId   String?
+  springPass     SpringPass?   @relation(fields: [springPassId], references: [id])
 
   stripePaymentIntentId String? @unique
   stripeInvoiceId       String? @unique
@@ -768,66 +781,6 @@ model Subscription {
 
   bookings Booking[]
   payments Payment[]
-}
-
-// -----------------------------------------------------------------------------
-// Coached group sessions
-// -----------------------------------------------------------------------------
-
-enum GroupSessionStatus {
-  SCHEDULED
-  CANCELLED
-  COMPLETED
-}
-
-model GroupSession {
-  id          String             @id @default(cuid())
-  title       String
-  description String?
-  status      GroupSessionStatus @default(SCHEDULED)
-  startsAt    DateTime           @db.Timestamptz
-  endsAt      DateTime           @db.Timestamptz
-  capacity    Int                @default(6)
-  priceCents  Int                @default(2000)
-  level       SkillLevel?
-
-  courtId   String
-  court     Court   @relation(fields: [courtId], references: [id])
-  /// The machine used — blocks it via MachineOccupancy.
-  machineId String
-  machine   Machine @relation(fields: [machineId], references: [id])
-
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
-
-  occupancy   MachineOccupancy?
-  enrollments GroupEnrollment[]
-
-  @@index([startsAt])
-}
-
-enum EnrollmentStatus {
-  PENDING_PAYMENT
-  CONFIRMED
-  CANCELLED
-  ATTENDED
-  NO_SHOW
-}
-
-model GroupEnrollment {
-  id             String           @id @default(cuid())
-  groupSessionId String
-  groupSession   GroupSession     @relation(fields: [groupSessionId], references: [id], onDelete: Cascade)
-  customerId     String
-  customer       Customer         @relation(fields: [customerId], references: [id])
-  status         EnrollmentStatus @default(PENDING_PAYMENT)
-  /// Seat holds expire like booking holds; capacity checked under row lock.
-  holdExpiresAt  DateTime?        @db.Timestamptz
-  createdAt      DateTime         @default(now()) @db.Timestamptz
-
-  payments Payment[]
-
-  @@unique([groupSessionId, customerId])
 }
 
 // -----------------------------------------------------------------------------
@@ -1079,4 +1032,36 @@ model RainDay {
   notifiedCount Int      @default(0)
   createdBy     String?
   createdAt     DateTime @default(now()) @db.Timestamptz
+}
+
+// -----------------------------------------------------------------------------
+// Spring Pass (off by default)
+// -----------------------------------------------------------------------------
+
+enum SpringPassStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  CANCELLED
+}
+
+/// N weekends bought up front, booked one by one from the portal inside
+/// the pass window. The card used to buy it pays deposits and deliveries.
+model SpringPass {
+  id                    String           @id @default(cuid())
+  customerId            String
+  customer              Customer         @relation(fields: [customerId], references: [id])
+  status                SpringPassStatus @default(PENDING_PAYMENT)
+  weekends              Int
+  priceCents            Int
+  /// First and last local dates a weekend may start on.
+  validFrom             DateTime         @db.Date
+  validTo               DateTime         @db.Date
+  stripePaymentIntentId String?          @unique
+  stripePaymentMethodId String?
+  createdAt             DateTime         @default(now()) @db.Timestamptz
+
+  bookings Booking[]
+  payments Payment[]
+
+  @@index([status, createdAt])
 }

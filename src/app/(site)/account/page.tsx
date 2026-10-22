@@ -24,7 +24,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatCents } from "@/lib/money";
 import { customerBookings, customerCredits, customerPackage } from "@/lib/services/portal";
 import { getPortalCustomer } from "@/lib/services/portal-auth";
-import { formatLocal, formatRange } from "@/lib/time";
+import { customerSpringPass } from "@/lib/services/spring-pass";
+import { DEPOSIT_CARD, signedId } from "@/lib/services/links";
+import { formatLocal, formatLocalDate, formatRange } from "@/lib/time";
 import { logistics } from "@/lib/domain/logistics";
 import { billingPortalAction, signOutAction } from "./actions";
 
@@ -61,10 +63,12 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
   const t = await getTranslations("portal");
   const ts = await getTranslations("status");
   const now = new Date();
-  const [bookings, pkg, credit] = await Promise.all([
+  const [bookings, pkg, credit, pass, tp] = await Promise.all([
     customerBookings(customer.id, now),
     customerPackage(customer.id),
     customerCredits(customer.id, now),
+    customerSpringPass(customer.id),
+    getTranslations("springPass"),
   ]);
   const upcoming = bookings.filter((b) => b.upcoming).reverse();
   const past = bookings.filter((b) => !b.upcoming);
@@ -128,6 +132,29 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
               />
             )}
           </div>
+        </div>
+      )}
+
+      {pass && (
+        <div className="court-lines flex flex-col gap-4 rounded-2xl bg-court p-6 text-white sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold tracking-wide text-optic uppercase">{tp("portalTitle")}</p>
+            <p className="mt-1 text-white/85">
+              {tp("portalLeft", {
+                left: pass.left,
+                total: pass.pass.weekends,
+                from: formatLocalDate(pass.validFrom, "MMM d"),
+                to: formatLocalDate(pass.validTo, "MMM d, yyyy"),
+              })}
+            </p>
+          </div>
+          {pass.left > 0 && (
+            <Button asChild variant="accent">
+              <Link href="/account/session?source=pass">
+                <CalendarClock /> {tp("bookWeekend")}
+              </Link>
+            </Button>
+          )}
         </div>
       )}
 
@@ -224,6 +251,13 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
                         </a>
                       </Button>
                     ))}
+                    {b.deposit?.status === "FAILED" && b.upcoming && (
+                      <Button asChild variant="destructive" size="sm">
+                        <Link href={`/deposit/${signedId(DEPOSIT_CARD, b.id)}`}>
+                          <CreditCard /> {t("updateCard")}
+                        </Link>
+                      </Button>
+                    )}
                     {b.rainEligible && (
                       <Button asChild variant="accent" size="sm">
                         <Link href={`/account/rain/${b.id}`}>

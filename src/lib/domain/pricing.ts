@@ -119,7 +119,7 @@ export function quote(input: QuoteInput): Quote {
   };
 }
 
-/** Taxes on a single amount (group sessions, subscriptions). */
+/** Taxes on a single amount (Spring Pass, subscriptions). */
 export function withTaxes(subtotalCents: number, taxes: { gstBps: number; pstBps: number }) {
   const gstCents = applyBps(subtotalCents, taxes.gstBps);
   const pstCents = applyBps(subtotalCents, taxes.pstBps);

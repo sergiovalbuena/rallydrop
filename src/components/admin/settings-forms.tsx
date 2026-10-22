@@ -68,6 +68,14 @@ type S = {
   highSeasonMonthCap: string;
   rainCreditMonths: number;
   packageRollover: boolean;
+  pickleballEnabled: boolean;
+  courtBookingUrl: string;
+  springPassEnabled: boolean;
+  springPassPrice: string;
+  springPassWeekends: number;
+  springPassLimit: number;
+  springPassStart: string;
+  springPassEnd: string;
   smsEnabled: boolean;
   contactEmail: string;
   contactPhone: string;
@@ -246,9 +254,48 @@ export function SettingsForm({ s }: { s: S }) {
           Packages: unused sessions roll over one month
         </label>
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            name="pickleballEnabled"
+            defaultChecked={s.pickleballEnabled}
+            className="size-4 accent-primary"
+          />
+          Pickleball unlocked on the machine (off = “pickleball” is removed from the whole site)
+        </label>
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
           <input type="checkbox" name="smsEnabled" defaultChecked={s.smsEnabled} className="size-4 accent-primary" />
           Send SMS (requires Twilio keys)
         </label>
+        <F label="City court booking page" hint="Linked from the FAQ “Do I need to book a court?”">
+          <Input name="courtBookingUrl" type="url" defaultValue={s.courtBookingUrl} placeholder="https://…" />
+        </F>
+      </fieldset>
+      <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <legend className="mb-1 font-semibold">Spring Pass</legend>
+        <label className="flex items-center gap-2 text-sm sm:col-span-2 lg:col-span-4">
+          <input
+            type="checkbox"
+            name="springPassEnabled"
+            defaultChecked={s.springPassEnabled}
+            className="size-4 accent-primary"
+          />
+          On sale (off = hidden everywhere on the site)
+        </label>
+        <F label="Price (CAD)">
+          <Input name="springPassPrice" inputMode="decimal" defaultValue={s.springPassPrice} />
+        </F>
+        <F label="Weekends per pass">
+          <Input name="springPassWeekends" type="number" min={1} max={12} defaultValue={s.springPassWeekends} />
+        </F>
+        <F label="Passes for sale">
+          <Input name="springPassLimit" type="number" min={0} defaultValue={s.springPassLimit} />
+        </F>
+        <F label="Weekends start between (MM-DD)" hint="e.g. 04-01 and 06-30">
+          <div className="flex gap-2">
+            <Input name="springPassStart" defaultValue={s.springPassStart} pattern="\d{2}-\d{2}" aria-label="From" />
+            <Input name="springPassEnd" defaultValue={s.springPassEnd} pattern="\d{2}-\d{2}" aria-label="To" />
+          </div>
+        </F>
       </fieldset>
       <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <legend className="mb-1 font-semibold">Business details (shown on the site)</legend>

@@ -19,7 +19,7 @@ export default async function ExportPage() {
           {
             title: "Payments",
             action: "/api/admin/export/payments",
-            hint: "Rentals, deposits charged, packages, group sessions and refunds — for your bookkeeping.",
+            hint: "Rentals, deposits charged, packages, Spring Passes and refunds — for your bookkeeping.",
           },
         ].map((e) => (
           <Panel key={e.title} title={e.title}>

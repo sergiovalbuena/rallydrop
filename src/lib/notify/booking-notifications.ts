@@ -7,6 +7,7 @@ import { sendSms } from "./sms";
 import { legsLabel } from "@/lib/domain/delivery";
 import { logistics } from "@/lib/domain/logistics";
 import { acceptanceToken } from "@/lib/services/legal";
+import { DEPOSIT_CARD, signedId } from "@/lib/services/links";
 import { getSettings } from "@/lib/services/settings";
 import {
   acceptanceRequestEmail,
@@ -16,6 +17,7 @@ import {
   bookingRescheduledEmail,
   depositActionNeededEmail,
   depositChargedEmail,
+  depositHeldEmail,
   depositReleasedEmail,
   rainCreditEmail,
   rainDayEmail,
@@ -51,7 +53,9 @@ export function bookingWhere(
 function depositNote(b: LoadedBooking): string {
   if (!b.deposit) return "none";
   if (b.deposit.strategy === "SAVED_CARD") return "card saved, charged only if there's damage";
-  if (b.deposit.authScheduledFor) return "held on your card the day before drop-off";
+  if (b.deposit.authScheduledFor) {
+    return `hold placed ${formatLocal(b.deposit.authScheduledFor, "EEE, MMM d")}, the day before your rental`;
+  }
   return "held on your card, not charged";
 }
 
@@ -107,6 +111,7 @@ export async function notifyBookingConfirmed(bookingId: string) {
           creditCents: b.creditCents,
           depositCents: b.deposit?.amountCents ?? 0,
           depositNote: depositNote(b),
+          depositScheduledFor: b.deposit?.strategy === "AUTH_HOLD" ? b.deposit.authScheduledFor : null,
           receiptUrl: b.payments[0]?.receiptUrl,
           acceptance: b.acceptances[0]
             ? {
@@ -188,6 +193,7 @@ export async function notifyDepositCharged(bookingId: string, amountCents: numbe
 export async function notifyDepositFailed(bookingId: string) {
   const b = await loadBooking(bookingId);
   if (!b) return;
+  const url = siteUrl(`/deposit/${signedId(DEPOSIT_CARD, b.id)}`);
   await toAll(
     b,
     () =>
@@ -195,14 +201,17 @@ export async function notifyDepositFailed(bookingId: string) {
         to: b.customer.email!,
         template: "deposit_failed",
         dedupeKey: `deposit_failed:${b.id}`,
-        content: depositActionNeededEmail({ code: b.code, customerName: b.customer.name }),
+        content: depositActionNeededEmail({ code: b.code, customerName: b.customer.name, url }),
       }),
-    `RallyDrop: we couldn't place the deposit for booking ${b.code}. Please contact us.`,
+    `RallyDrop: we couldn't place the deposit hold for booking ${b.code}. Update your card here: ${url}`,
     `sms_deposit_failed:${b.id}`,
   );
   await alertAdmin(
-    `Deposit failed for ${b.code}`,
-    [`${b.customer.name}`, formatRange(b.startsAt, b.endsAt)],
+    `Deposit pending for ${b.code}`,
+    [
+      `${b.customer.name} · ${formatRange(b.startsAt, b.endsAt)}`,
+      "The card hold failed. The customer was sent a link to update their card; we retry as soon as they do. Don't hand the machine over until it's in place (or release the deposit to waive it).",
+    ],
     `/admin/bookings/${b.id}`,
     `admin_deposit_failed:${b.id}`,
   );
@@ -341,6 +350,25 @@ export async function notifyRainCredit(bookingId: string, credit: { amountCents:
         customerName: b.customer.name,
         amountCents: credit?.amountCents ?? 0,
         expiresOn: credit ? formatLocal(credit.expiresAt, "MMM d, yyyy") : "",
+      }),
+    }),
+  );
+}
+
+/** The deposit hold went on the card ahead of the rental (scheduled job). */
+export async function notifyDepositHeld(bookingId: string) {
+  const b = await loadBooking(bookingId);
+  if (!b?.deposit) return;
+  await toAll(b, () =>
+    sendEmail({
+      to: b.customer.email!,
+      template: "deposit_held",
+      dedupeKey: `deposit_held:${b.id}`,
+      content: depositHeldEmail({
+        code: b.code,
+        customerName: b.customer.name,
+        amountCents: b.deposit!.amountCents,
+        startsAt: b.startsAt,
       }),
     }),
   );

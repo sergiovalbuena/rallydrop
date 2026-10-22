@@ -25,7 +25,6 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
         include: { machine: true, product: true },
       },
       subscriptions: { include: { product: true }, orderBy: { createdAt: "desc" } },
-      enrollments: { include: { groupSession: true }, orderBy: { createdAt: "desc" } },
       credits: { orderBy: { createdAt: "desc" } },
     },
   });
@@ -78,20 +77,14 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
             )}
             <GiveCreditForm id={c.id} defaultMonths={settings.rainCreditMonths} />
           </Panel>
-          <Panel title="Packages & groups">
+          <Panel title="Packages">
             <ul className="space-y-2 text-sm">
               {c.subscriptions.map((s) => (
                 <li key={s.id}>
                   {s.product.name} · {s.status.toLowerCase()} · until {formatLocal(s.currentPeriodEnd, "MMM d")}
                 </li>
               ))}
-              {c.enrollments.map((e) => (
-                <li key={e.id}>
-                  Group: {e.groupSession.title} · {formatLocal(e.groupSession.startsAt, "MMM d")} ·{" "}
-                  {e.status.toLowerCase()}
-                </li>
-              ))}
-              {c.subscriptions.length + c.enrollments.length === 0 && <li className="text-muted-foreground">None.</li>}
+              {c.subscriptions.length === 0 && <li className="text-muted-foreground">None.</li>}
             </ul>
           </Panel>
         </div>

@@ -4,6 +4,7 @@ import type { BookingStatus, Prisma } from "@/generated/prisma/client";
 import { getSettings } from "@/lib/services/settings";
 import { addLocalDays, localDateMinuteToUtc, toLocalDate } from "@/lib/time";
 import { occupancy as occupancyOf } from "@/lib/domain/occupancy";
+import { holdLapsesBeforeReturn } from "@/lib/domain/deposit";
 
 export const ACTIVE_STATUSES: BookingStatus[] = [
   "CONFIRMED",
@@ -79,8 +80,8 @@ export async function dashboardStats(now: Date) {
     const label =
       p.kind === "DEPOSIT_CAPTURE"
         ? "Damage & late charges"
-        : p.kind === "GROUP_SESSION"
-          ? "Group sessions"
+        : p.kind === "SPRING_PASS"
+          ? "Spring Pass"
           : (p.booking?.product.name ?? p.subscription?.product.name ?? "Other");
     byProduct.set(label, (byProduct.get(label) ?? 0) + p.amountCents - p.refundedCents);
   }
@@ -136,7 +137,7 @@ export function bookingWhere(f: BookingFilters): Prisma.BookingWhereInput {
 /** Things the owner should act on, shown at the top of the dashboard. */
 export async function dashboardAlerts(now: Date) {
   const soon = new Date(now.getTime() + 24 * 3_600_000);
-  const [settings, termsMissing, holdsExpiring] = await Promise.all([
+  const [settings, termsMissing, held, depositPending] = await Promise.all([
     getSettings(),
     db.booking.findMany({
       where: {
@@ -151,20 +152,27 @@ export async function dashboardAlerts(now: Date) {
       orderBy: { startsAt: "asc" },
       take: 20,
     }),
-    // Card holds last ~7 days: warn a day ahead when the machine isn't back yet.
+    // Card holds lapse (as early as 4 days 18 h): warn when one lapses before
+    // the machine is back and inspected.
     db.deposit.findMany({
-      where: {
-        status: "HELD",
-        authExpiresAt: { lte: soon },
-        booking: { status: { in: ["CONFIRMED", "CHECKED_OUT"] } },
+      where: { status: "HELD", booking: { status: { in: ["CONFIRMED", "CHECKED_OUT"] } } },
+      select: { bookingId: true, authExpiresAt: true, booking: { select: { code: true, endsAt: true } } },
+    }),
+    db.deposit.findMany({
+      where: { status: "FAILED", booking: { status: { in: ["CONFIRMED", "CHECKED_OUT"] } } },
+      select: {
+        bookingId: true,
+        booking: { select: { code: true, startsAt: true, customer: { select: { name: true } } } },
       },
-      select: { bookingId: true, authExpiresAt: true, booking: { select: { code: true } } },
     }),
   ]);
   return {
     insuranceMissing: !settings.insuranceProvider,
     termsMissing,
-    holdsExpiring,
+    holdsExpiring: held.filter(
+      (d) => holdLapsesBeforeReturn(d.authExpiresAt, d.booking.endsAt) || (d.authExpiresAt && d.authExpiresAt <= soon),
+    ),
+    depositPending,
   };
 }
 

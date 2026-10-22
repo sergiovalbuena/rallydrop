@@ -3,7 +3,7 @@
  * RallyDrop Care price, deposit size and which taxes are charged.
  */
 
-type Kind = "DAY" | "WEEKEND" | "WEEK" | "MONTH" | "PACKAGE" | "GROUP_SESSION";
+type Kind = "DAY" | "WEEKEND" | "WEEK" | "MONTH" | "PACKAGE";
 
 export type CareSettings = {
   careEnabled: boolean;

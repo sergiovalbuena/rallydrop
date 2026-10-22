@@ -16,7 +16,7 @@ export async function GET() {
     ["email", "machine", "signed_up", "source", "consent", "notified"],
     rows.map((r) => [
       r.email,
-      r.machine.name,
+      r.machine?.name ?? "New machines",
       formatLocal(r.createdAt, "yyyy-MM-dd HH:mm"),
       r.source,
       r.consent,

@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { Activity, Eye, Megaphone, Trophy } from "lucide-react";
+import { Activity, Eye, Megaphone, ScanEye, Trophy } from "lucide-react";
 import { revealDelay } from "./reveal-delay";
 import { SectionHeading } from "./section";
 
@@ -59,5 +59,48 @@ export async function LevelGuide() {
         ))}
       </div>
     </div>
+  );
+}
+
+/** Home: "Your AI coach, included" — the Spotter as a practice assistant. */
+export async function AiCoachIncluded() {
+  const t = await getTranslations("aiCoach");
+  const items = [
+    { icon: ScanEye, title: t("swingTitle"), body: t("swingBody") },
+    { icon: Megaphone, title: t("voiceTitle"), body: t("voiceBody") },
+    { icon: Activity, title: t("moveTitle"), body: t("moveBody") },
+    { icon: Trophy, title: t("refTitle"), body: t("refBody") },
+  ];
+  return (
+    <div>
+      <SectionHeading eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {items.map((it, i) => (
+          <div
+            key={it.title}
+            data-reveal
+            style={revealDelay(i)}
+            className="court-lines rounded-2xl bg-court p-6 text-white"
+          >
+            <span className="flex size-11 items-center justify-center rounded-xl bg-optic text-court">
+              <it.icon className="size-5" aria-hidden />
+            </span>
+            <h3 className="mt-4 font-display text-xl font-extrabold uppercase">{it.title}</h3>
+            <p className="mt-2 text-sm text-white/80">{it.body}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-5 text-sm text-muted-foreground">{t("disclaimer")}</p>
+    </div>
+  );
+}
+
+/** One line for /machines and pricing. */
+export async function AiCoachLine() {
+  const t = await getTranslations("aiCoach");
+  return (
+    <p className="inline-flex items-center gap-2 rounded-full bg-optic px-4 py-1.5 text-sm font-semibold text-court">
+      <ScanEye className="size-4" aria-hidden /> {t("line")}
+    </p>
   );
 }

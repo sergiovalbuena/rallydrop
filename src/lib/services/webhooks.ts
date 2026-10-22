@@ -1,7 +1,7 @@
 import "server-only";
+import { handleSpringPassSucceeded } from "./spring-pass";
 import { db } from "@/lib/db";
 import { stripe, type Stripe } from "@/lib/stripe";
-import { handleGroupPaymentSucceeded } from "./groups";
 import { handleRentalSucceeded, markDepositHeld } from "./payments";
 import { recordInvoicePaid, syncSubscription } from "./subscriptions";
 
@@ -30,7 +30,7 @@ async function dispatch(event: Stripe.Event): Promise<boolean> {
     case "payment_intent.succeeded": {
       const pi = event.data.object;
       if (pi.metadata.kind === "rental") await handleRentalSucceeded(pi, { offSession: true });
-      else if (pi.metadata.kind === "group") await handleGroupPaymentSucceeded(pi);
+      else if (pi.metadata.kind === "spring_pass") await handleSpringPassSucceeded(pi);
       else if (pi.metadata.kind === "deposit") {
         // A captured deposit authorization — capture bookkeeping happens in captureDeposit().
         await db.payment.updateMany({ where: { stripePaymentIntentId: pi.id }, data: { status: "SUCCEEDED" } });

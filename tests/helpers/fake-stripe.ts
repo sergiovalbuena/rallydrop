@@ -33,6 +33,7 @@ export function createFakeStripe(options: { declineOffSession?: boolean } = {}) 
   const next = (prefix: string) => `${prefix}_${++n}`;
   const record = (method: string, ...args: unknown[]) => calls.push({ method, args });
   const subscriptions = new Map<string, Record<string, unknown>>();
+  const setupIntents = new Map<string, Record<string, unknown>>();
 
   const fake = {
     webhooks: real.webhooks,
@@ -103,6 +104,27 @@ export function createFakeStripe(options: { declineOffSession?: boolean } = {}) 
         pi.status = "succeeded";
         pi.amount_received = params.amount_to_capture ?? pi.amount;
         return pi;
+      },
+    },
+    setupIntents: {
+      create: async (params: Stripe.SetupIntentCreateParams) => {
+        record("setupIntents.create", params);
+        const si = {
+          id: next("seti"),
+          object: "setup_intent",
+          client_secret: `seti_secret_${n}`,
+          // The customer completes the card form in the browser.
+          status: "succeeded",
+          payment_method: "pm_new_card",
+          metadata: params.metadata ?? {},
+        };
+        setupIntents.set(si.id, si);
+        return si;
+      },
+      retrieve: async (id: string) => {
+        const si = setupIntents.get(id);
+        if (!si) throw new Error(`No such setup_intent: ${id}`);
+        return si;
       },
     },
     subscriptions: {

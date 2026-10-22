@@ -189,7 +189,7 @@ describe.skipIf(!hasTestDb)("rain policy & customer credits", () => {
       );
       expect(delivered).toMatchObject({ status: "PENDING_PAYMENT", totalCents: 2500 });
       await acceptTerms(delivered.id);
-      expect(await chargeSessionOnFile(delivered.id, "sub_1")).toEqual({ ok: true });
+      expect(await chargeSessionOnFile(delivered.id, "pm_sub_card")).toEqual({ ok: true });
       const after = await db.booking.findUniqueOrThrow({ where: { id: delivered.id }, include: { payments: true } });
       expect(after.status).toBe("CONFIRMED");
       expect(after.payments[0]).toMatchObject({ status: "SUCCEEDED", amountCents: 2500 });
@@ -212,7 +212,7 @@ describe.skipIf(!hasTestDb)("rain policy & customer credits", () => {
         }),
       );
       await acceptTerms(booking.id);
-      const r = await chargeSessionOnFile(booking.id, "sub_1");
+      const r = await chargeSessionOnFile(booking.id, "pm_sub_card");
       expect(r.ok).toBe(false);
       expect((await db.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe("CANCELLED");
     });

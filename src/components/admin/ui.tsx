@@ -114,6 +114,8 @@ const DEPOSIT_VARIANT: Record<
   WAIVED: "outline",
 };
 
+/** FAILED reads as "Deposit pending": the hold didn't go through, the machine waits. */
 export function DepositBadge({ status }: { status: DepositStatus }) {
-  return <Badge variant={DEPOSIT_VARIANT[status]}>{status.replace("_", " ").toLowerCase()}</Badge>;
+  const label = status === "FAILED" ? "deposit pending" : status.replace("_", " ").toLowerCase();
+  return <Badge variant={DEPOSIT_VARIANT[status]}>{label}</Badge>;
 }

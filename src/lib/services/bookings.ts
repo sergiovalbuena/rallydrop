@@ -38,8 +38,10 @@ export type CreateBookingInput = {
   deliveryPoint?: LatLng | null;
   customerNotes?: string | null;
   channel: BookingChannel;
-  /** Package session: product price (and court delivery) covered by the subscription. */
+  /** Package session: the product price is covered by the subscription. */
   subscriptionId?: string | null;
+  /** Spring Pass weekend: the product price is covered by the pass. */
+  springPassId?: string | null;
   now?: Date;
   /** Admin bookings may skip the public slot rules (still no double booking). */
   skipSlotRules?: boolean;
@@ -199,7 +201,7 @@ export async function createBooking(input: CreateBookingInput) {
     courtId: input.courtId,
     deliveryAddress: input.deliveryAddress,
     deliveryPoint: input.deliveryPoint,
-    productIncluded: !!input.subscriptionId,
+    productIncluded: !!input.subscriptionId || !!input.springPassId,
     promoCode: input.promoCode,
     now,
   });
@@ -259,6 +261,7 @@ export async function createBooking(input: CreateBookingInput) {
           machine: { connect: { id: machine.id } },
           product: { connect: { id: product.id } },
           ...(input.subscriptionId ? { subscription: { connect: { id: input.subscriptionId } } } : {}),
+          ...(input.springPassId ? { springPass: { connect: { id: input.springPassId } } } : {}),
           startsAt,
           endsAt,
           fulfillment: trips ? input.fulfillment : "PICKUP",
@@ -318,7 +321,7 @@ export async function createBooking(input: CreateBookingInput) {
       // Card checkouts still charge the minimum so the card is saved for the
       // deposit; package sessions already have a card on file.
       if (!isOnline || q.totalCents <= 0) return created;
-      const minCharge = input.subscriptionId ? 0 : MIN_ONLINE_CHARGE_CENTS;
+      const minCharge = input.subscriptionId || input.springPassId ? 0 : MIN_ONLINE_CHARGE_CENTS;
       const creditCents = await spendCredits(
         tx,
         customer.id,
@@ -354,7 +357,7 @@ export async function createBooking(input: CreateBookingInput) {
         "SLOT_TAKEN",
         isOnline
           ? "Someone just booked that slot. Please choose another time."
-          : "That machine is busy then (another booking, group session, blocked day or the buffer between rentals).",
+          : "That machine is busy then (another booking, a blocked day or the buffer between rentals).",
       );
     }
     throw error;

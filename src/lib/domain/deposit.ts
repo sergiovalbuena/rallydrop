@@ -33,6 +33,18 @@ export function planDeposit(input: {
   return { strategy: "AUTH_HOLD", placeNow: false, authScheduledFor: placeAt };
 }
 
+/**
+ * Hours we allow after the planned return to inspect the machine and decide
+ * on a damage charge before the card hold lapses.
+ */
+export const RETURN_INSPECTION_HOURS = 12;
+
+/** True when a card hold will lapse before we can inspect the returned machine. */
+export function holdLapsesBeforeReturn(authExpiresAt: Date | null, endsAt: Date): boolean {
+  if (!authExpiresAt) return false;
+  return authExpiresAt.getTime() < endsAt.getTime() + RETURN_INSPECTION_HOURS * 3_600_000;
+}
+
 /** Validates an admin capture: amount within the deposit and a note present. */
 export function validateCapture(input: {
   amountCents: number;

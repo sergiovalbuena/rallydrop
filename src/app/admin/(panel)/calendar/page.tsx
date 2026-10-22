@@ -40,7 +40,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/admin/c
   const from = localDateMinuteToUtc(start, 0);
   const to = localDateMinuteToUtc(addLocalDays(start, days), 0);
 
-  const [machines, bookings, groups, blackouts, products, courts] = await Promise.all([
+  const [machines, bookings, blackouts, products, courts] = await Promise.all([
     db.machine.findMany({ where: { status: { not: "RETIRED" } }, orderBy: { sortOrder: "asc" } }),
     db.booking.findMany({
       where: { status: { in: [...ACTIVE_STATUSES, "PENDING_PAYMENT"] }, startsAt: { lt: to }, endsAt: { gt: from } },
@@ -49,10 +49,6 @@ export default async function CalendarPage({ searchParams }: PageProps<"/admin/c
         product: { select: { name: true } },
         court: { select: { name: true } },
       },
-    }),
-    db.groupSession.findMany({
-      where: { status: "SCHEDULED", startsAt: { lt: to }, endsAt: { gt: from } },
-      include: { _count: { select: { enrollments: true } } },
     }),
     db.blackout.findMany({ where: { startsAt: { lt: to }, endsAt: { gt: from } }, include: { machine: true } }),
     db.product.findMany({
@@ -88,21 +84,6 @@ export default async function CalendarPage({ searchParams }: PageProps<"/admin/c
       pending: b.status === "PENDING_PAYMENT",
       draggable: b.status === "CONFIRMED" || b.status === "PENDING_PAYMENT",
       ...dayMinutes(b.startsAt, b.endsAt),
-    })),
-    ...groups.map((g) => ({
-      id: g.id,
-      kind: "group" as const,
-      title: `Group: ${g.title}`,
-      subtitle: `${g._count.enrollments}/${g.capacity} players`,
-      machineId: g.machineId,
-      color: color(g.machineId),
-      href: `/admin/groups`,
-      label: `${formatLocal(g.startsAt, "h:mma")}–${formatLocal(g.endsAt, "h:mma")}`,
-      startDate: toLocalDate(g.startsAt),
-      days: coveredDays(g.startsAt, g.endsAt, start, days),
-      pending: false,
-      draggable: false,
-      ...dayMinutes(g.startsAt, g.endsAt),
     })),
     ...blackouts.map((x) => ({
       id: x.id,

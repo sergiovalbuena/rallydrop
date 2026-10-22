@@ -50,19 +50,25 @@ describe.skipIf(!hasTestDb)("cron jobs", () => {
     expect(await db.notificationLog.count({ where: { template: "reminder_24h" } })).toBe(1);
   });
 
-  it("places deferred deposit holds on the daily run before the rental", async () => {
-    const startsAt = localDateMinuteToUtc("2027-05-20", 600);
+  it("places the deposit hold 24 h before the start (hourly job) and emails the customer", async () => {
+    const startsAt = localDateMinuteToUtc("2027-05-20", 600); // Thu 10:00
     const b = await createBooking({ ...base(), startsAt, channel: "ONLINE" });
     await startRentalPayment(b.id);
     await acceptTerms(b.id);
     const payment = await db.payment.findFirstOrThrow({ where: { bookingId: b.id } });
     const pi = fake.succeed(payment.stripePaymentIntentId!);
     await handleRentalSucceeded(pi as unknown as Parameters<typeof handleRentalSucceeded>[0], { offSession: true });
-    expect((await db.deposit.findUniqueOrThrow({ where: { bookingId: b.id } })).status).toBe("PENDING");
+    const pending = await db.deposit.findUniqueOrThrow({ where: { bookingId: b.id } });
+    expect(pending.status).toBe("PENDING");
+    expect(pending.authScheduledFor?.toISOString()).toBe(localDateMinuteToUtc("2027-05-19", 600).toISOString());
 
-    // Daily run two mornings before: not yet. The morning before (Wed 07:00 for Thu 10:00): placed.
-    expect((await runDeposits(localDateMinuteToUtc("2027-05-18", 420))).placed).toBe(0);
-    expect((await runDeposits(localDateMinuteToUtc("2027-05-19", 420))).placed).toBe(1);
-    expect((await db.deposit.findUniqueOrThrow({ where: { bookingId: b.id } })).status).toBe("HELD");
+    // Hourly runs: nothing the morning before, the hold goes on at Wed ~10:00.
+    expect((await runDeposits(localDateMinuteToUtc("2027-05-19", 420))).placed).toBe(0);
+    expect((await runDeposits(localDateMinuteToUtc("2027-05-19", 545))).placed).toBe(1);
+    const held = await db.deposit.findUniqueOrThrow({ where: { bookingId: b.id } });
+    expect(held.status).toBe("HELD");
+    // No capture_before from Stripe here → the shortest card window (4 d 18 h).
+    expect(held.authExpiresAt!.getTime() - held.heldAt!.getTime()).toBeGreaterThan(4 * 86_400_000);
+    expect(await db.notificationLog.count({ where: { template: "deposit_held" } })).toBe(1);
   });
 });

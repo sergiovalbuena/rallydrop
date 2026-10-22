@@ -21,7 +21,7 @@ import { getStripe, stripeAppearance } from "./stripe-client";
 
 /**
  * Contact details → Stripe Payment Element. Used for monthly packages
- * (subscription invoice) and group session seats.
+ * (subscription invoice) and the Spring Pass (one-time payment).
  */
 export function ContactPayFlow({
   targetId,

@@ -91,7 +91,7 @@ export type AcceptanceInput = {
   termsId: string;
   waiverId: string;
   boxes: readonly string[];
-  method: "checkout" | "accept_link" | "package" | "carried_over";
+  method: "checkout" | "accept_link" | "package" | "spring_pass" | "carried_over";
   ip?: string | null;
   userAgent?: string | null;
   now?: Date;

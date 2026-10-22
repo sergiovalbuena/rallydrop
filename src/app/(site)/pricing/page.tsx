@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { PricingGrid, PricingGridSkeleton } from "@/components/marketing/pricing-grid";
 import { DeliveryService, DeliveryServiceSkeleton } from "@/components/marketing/delivery-service";
+import { AiCoachLine } from "@/components/marketing/machine-guides";
 import { PageHero, Section, SectionHeading } from "@/components/marketing/section";
 import { getSettings } from "@/lib/services/settings";
 import { pricingContext } from "@/lib/services/pricing-context";
@@ -16,7 +17,11 @@ export default async function PricingPage() {
   const th = await getTranslations("home");
   return (
     <>
-      <PageHero title={t("title")} subtitle={t("subtitle")} />
+      <PageHero title={t("title")} subtitle={t("subtitle")}>
+        <div className="mt-5">
+          <AiCoachLine />
+        </div>
+      </PageHero>
       <Section>
         <Suspense fallback={<PricingGridSkeleton />}>
           <Pricing />

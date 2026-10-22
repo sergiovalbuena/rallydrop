@@ -16,7 +16,6 @@ import {
   Star,
   TicketPercent,
   Users,
-  UsersRound,
   Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,7 +26,6 @@ const ITEMS = [
   { href: "/admin/bookings", label: "Bookings", icon: ClipboardList },
   { href: "/admin/machines", label: "Machines", icon: Wrench },
   { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/groups", label: "Group sessions", icon: UsersRound },
   { href: "/admin/products", label: "Prices & products", icon: ShoppingBag },
   { href: "/admin/promo-codes", label: "Promo codes", icon: TicketPercent },
   { href: "/admin/waitlist", label: "Waitlist", icon: BellRing },

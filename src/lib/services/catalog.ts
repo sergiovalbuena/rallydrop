@@ -1,6 +1,8 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { Machine } from "@/generated/prisma/client";
+import { forSports } from "@/lib/domain/sports";
+import { getSettings } from "./settings";
 import { fallbackAddOns, fallbackCourts, fallbackMachines, fallbackProducts, readOr } from "./fallback";
 
 /** Machine with Decimal specs converted for client components. */
@@ -27,6 +29,11 @@ export function toPublicMachine(m: Machine): PublicMachine {
 }
 
 export async function listPublicMachines(): Promise<PublicMachine[]> {
+  const [machines, settings] = await Promise.all([queryPublicMachines(), getSettings()]);
+  return machines.map((m) => forSports(m, settings.pickleballEnabled));
+}
+
+async function queryPublicMachines(): Promise<PublicMachine[]> {
   return readOr(
     "machines",
     async () => {
@@ -77,44 +84,4 @@ export async function listCourtsWithLocation() {
     },
     fallbackCourts,
   );
-}
-
-export async function upcomingGroupSessions(now: Date) {
-  return readOr(
-    "group sessions",
-    () => queryGroupSessions(now),
-    () => [],
-  );
-}
-
-async function queryGroupSessions(now: Date) {
-  const sessions = await db.groupSession.findMany({
-    where: { status: "SCHEDULED", startsAt: { gt: now } },
-    orderBy: { startsAt: "asc" },
-    take: 12,
-    include: {
-      court: { select: { name: true, address: true } },
-      _count: {
-        select: {
-          enrollments: {
-            where: {
-              OR: [{ status: "CONFIRMED" }, { status: "PENDING_PAYMENT", holdExpiresAt: { gt: now } }],
-            },
-          },
-        },
-      },
-    },
-  });
-  return sessions.map((s) => ({
-    id: s.id,
-    title: s.title,
-    description: s.description,
-    startsAt: s.startsAt,
-    endsAt: s.endsAt,
-    level: s.level,
-    priceCents: s.priceCents,
-    capacity: s.capacity,
-    spotsLeft: Math.max(0, s.capacity - s._count.enrollments),
-    court: s.court,
-  }));
 }

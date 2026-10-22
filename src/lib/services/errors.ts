@@ -5,7 +5,6 @@ export type BookingErrorCode =
   | "CUSTOMER_BLOCKED"
   | "INVALID_STATE"
   | "NO_SESSIONS_LEFT"
-  | "GROUP_FULL"
   | "PAYMENT_FAILED"
   | "INVALID_PROMO"
   | "DELIVERY_UNAVAILABLE"

@@ -4,7 +4,11 @@ import { ChevronDown } from "lucide-react";
  * FAQ as native <details>: answers are in the HTML (search engines, no-JS,
  * find-in-page) and it still opens and closes like an accordion.
  */
-export function FaqList({ items }: { items: { id?: string; q: string; a: string }[] }) {
+export function FaqList({
+  items,
+}: {
+  items: { id?: string; q: string; a: string; link?: { href: string; label: string } }[];
+}) {
   return (
     <div className="divide-y rounded-2xl border bg-card px-6">
       {items.map((item) => (
@@ -16,7 +20,22 @@ export function FaqList({ items }: { items: { id?: string; q: string; a: string 
               aria-hidden
             />
           </summary>
-          <p className="pb-4 text-muted-foreground">{item.a}</p>
+          <p className="pb-4 text-muted-foreground">
+            {item.a}
+            {item.link && (
+              <>
+                {" "}
+                <a
+                  href={item.link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-primary underline underline-offset-2"
+                >
+                  {item.link.label}
+                </a>
+              </>
+            )}
+          </p>
         </details>
       ))}
     </div>

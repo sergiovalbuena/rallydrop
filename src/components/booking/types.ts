@@ -4,7 +4,7 @@ import type { DeliveryZone } from "@/lib/domain/delivery";
 export type CatalogProduct = {
   id: string;
   slug: string;
-  kind: "DAY" | "WEEKEND" | "WEEK" | "MONTH" | "PACKAGE" | "GROUP_SESSION";
+  kind: "DAY" | "WEEKEND" | "WEEK" | "MONTH" | "PACKAGE";
   name: string;
   description: string | null;
   /** High-season price. */

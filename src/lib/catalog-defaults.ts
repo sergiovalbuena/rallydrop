@@ -58,7 +58,7 @@ export const DEFAULT_PRODUCTS = [
     sessionsPerMonth: 4,
     sessionMinutes: 90,
     description:
-      "4 sessions of 1.5 h per month. Pick up and return downtown, or add delivery to your court per session.",
+      "4 sessions of 1.5 h per month. Pick up and return downtown, or add delivery to your door or next to your court per session.",
   },
   {
     slug: "package-frequent",
@@ -69,16 +69,7 @@ export const DEFAULT_PRODUCTS = [
     sessionsPerMonth: 8,
     sessionMinutes: 90,
     description:
-      "8 sessions of 1.5 h per month. Pick up and return downtown, or add delivery to your court per session.",
-  },
-  {
-    slug: "group-session",
-    kind: "GROUP_SESSION",
-    name: "Group session",
-    priceCents: 2000,
-    sortOrder: 7,
-    groupCapacity: 6,
-    description: "1 h coached machine drills, up to 6 players. Price per person.",
+      "8 sessions of 1.5 h per month. Pick up and return downtown, or add delivery to your door or next to your court per session.",
   },
 ] as const;
 

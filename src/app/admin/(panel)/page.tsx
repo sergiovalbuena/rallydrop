@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { dashboardAlerts, dashboardStats } from "@/lib/admin/queries";
 import { formatCents } from "@/lib/money";
 import { logistics } from "@/lib/domain/logistics";
+import { holdLapsesBeforeReturn } from "@/lib/domain/deposit";
 import { formatLocal } from "@/lib/time";
 
 /** Internal admin: always rendered per request, no instant-navigation shell. */
@@ -15,7 +16,11 @@ export default async function AdminDashboard() {
   await connection();
   const now = new Date();
   const [s, alerts] = await Promise.all([dashboardStats(now), dashboardAlerts(now)]);
-  const alertCount = Number(alerts.insuranceMissing) + alerts.termsMissing.length + alerts.holdsExpiring.length;
+  const alertCount =
+    Number(alerts.insuranceMissing) +
+    alerts.termsMissing.length +
+    alerts.holdsExpiring.length +
+    alerts.depositPending.length;
   const held = s.deposits.filter((d) => d.status === "HELD").reduce((sum, d) => sum + d.amountCents, 0);
 
   return (
@@ -64,8 +69,20 @@ export default async function AdminDashboard() {
                 <Link href={`/admin/bookings/${d.bookingId}`} className="font-semibold text-primary underline">
                   {d.booking.code}
                 </Link>{" "}
-                · deposit hold expires {d.authExpiresAt ? formatLocal(d.authExpiresAt, "EEE h:mm a") : "soon"} and the
-                machine isn&apos;t back.
+                · deposit hold expires {d.authExpiresAt ? formatLocal(d.authExpiresAt, "EEE MMM d, h:mm a") : "soon"},
+                before the machine is back ({formatLocal(d.booking.endsAt, "EEE MMM d, h:mm a")}).
+              </span>
+            </p>
+          ))}
+          {alerts.depositPending.map((d) => (
+            <p key={d.bookingId} className="flex items-center gap-2">
+              <TriangleAlert className="size-4 shrink-0" aria-hidden />
+              <span>
+                <Link href={`/admin/bookings/${d.bookingId}`} className="font-semibold text-primary underline">
+                  {d.booking.code}
+                </Link>{" "}
+                · Deposit pending: {d.booking.customer.name}&apos;s card hold failed (starts{" "}
+                {formatLocal(d.booking.startsAt, "MMM d")}). Don&apos;t hand it over until it&apos;s in place.
               </span>
             </p>
           ))}
@@ -145,6 +162,17 @@ export default async function AdminDashboard() {
                     <span className="font-semibold">{d.booking.code}</span> · {d.booking.customer.name}
                   </Link>
                   <span className="flex items-center gap-2">
+                    {d.status === "HELD" && d.authExpiresAt && (
+                      <span
+                        className={
+                          holdLapsesBeforeReturn(d.authExpiresAt, d.booking.endsAt)
+                            ? "text-xs font-semibold text-destructive"
+                            : "text-xs text-muted-foreground"
+                        }
+                      >
+                        expires {formatLocal(d.authExpiresAt, "MMM d, h:mm a")}
+                      </span>
+                    )}
                     {formatCents(d.amountCents)} <DepositBadge status={d.status} />
                   </span>
                 </li>

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     include: {
       booking: { include: { customer: true } },
       subscription: { include: { customer: true, product: true } },
-      enrollment: { include: { customer: true, groupSession: true } },
+      springPass: { include: { customer: true } },
       refunds: true,
     },
     orderBy: { createdAt: "asc" },
@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
       "stripe_invoice",
     ],
     payments.map((p) => {
-      const customer = p.booking?.customer ?? p.subscription?.customer ?? p.enrollment?.customer;
-      const description = p.subscription?.product.name ?? p.enrollment?.groupSession.title ?? "";
+      const customer = p.booking?.customer ?? p.subscription?.customer ?? p.springPass?.customer;
+      const description = p.subscription?.product.name ?? (p.springPass ? "Spring Pass" : "");
       return [
         formatLocal(p.createdAt, "yyyy-MM-dd HH:mm"),
         p.kind,

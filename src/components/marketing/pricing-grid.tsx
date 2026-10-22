@@ -28,6 +28,7 @@ export async function PricingGrid({
   compact?: boolean;
 }) {
   const t = await getTranslations("pricing");
+  const ts = await getTranslations("springPass");
   const th = await getTranslations("home");
   const tc = await getTranslations("common");
   const rentals = products.filter((p) => RENTAL_KINDS.includes(p.kind));
@@ -140,6 +141,31 @@ export async function PricingGrid({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {!compact && ctx.springPass && (
+        <div className="court-lines flex flex-col gap-4 rounded-2xl bg-court p-6 text-white sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-display text-3xl font-extrabold uppercase">{ts("cardTitle")}</h2>
+            <p className="mt-1 text-white/85">
+              {ts("cardBody", {
+                weekends: ctx.springPass.weekends,
+                window: ctx.springPass.windowLabel,
+                price: formatCentsShort(ctx.springPass.priceCents),
+              })}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-optic">
+              {ts("left", { left: ctx.springPass.left, limit: ctx.springPass.limit })}
+            </p>
+          </div>
+          {ctx.springPass.left > 0 && (
+            <Button asChild variant="accent">
+              <Link href="/book/spring-pass">
+                {ts("cta", { price: formatCentsShort(ctx.springPass.priceCents) })} <ArrowRight />
+              </Link>
+            </Button>
+          )}
         </div>
       )}
 

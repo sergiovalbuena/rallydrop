@@ -46,7 +46,7 @@ const STEPS = [
     icon: BatteryCharging,
     title: "3. Load the balls",
     body: [
-      "Up to 120 tennis balls (or 100 pickleballs). Don't fill above the rim of the hopper.",
+      "Up to 120 tennis balls. Don't fill above the rim of the hopper.",
       "Only clean, dry balls. Wet, flat or fuzzy-bald balls jam and fly unpredictably.",
     ],
   },

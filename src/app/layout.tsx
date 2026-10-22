@@ -17,11 +17,17 @@ const display = Big_Shoulders({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: {
-    default: `${brand.name} — Ball machine rentals in ${brand.city}`,
+    default: `${brand.name} — AI tennis ball machine rental in ${brand.city}`,
     template: `%s · ${brand.name}`,
   },
   description:
-    "Rent a smart tennis & pickleball ball machine in Victoria, BC. Delivered to your court or door. Day, weekend, week and month rentals.",
+    "Rent an AI tennis ball machine in Victoria, BC: the PONGBOT Aura S with a built-in AI coach. Delivered to your door or next to your court. Day, weekend, week and month rentals.",
+  keywords: [
+    "AI tennis ball machine",
+    "ball machine rental Victoria BC",
+    "tennis ball machine rental",
+    "PONGBOT Aura S",
+  ],
   openGraph: { siteName: brand.name, locale: "en_CA", type: "website" },
 };
 

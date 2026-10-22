@@ -14,6 +14,7 @@ import {
   notifyDepositReleased,
   notifySlotLost,
   notifyAcceptanceNeeded,
+  notifyDepositHeld,
 } from "@/lib/notify/booking-notifications";
 import { bookingAcceptance } from "./legal";
 import { confirmBooking, releaseOccupancy } from "./bookings";
@@ -36,9 +37,10 @@ import { getSettings } from "./settings";
  *    the same idempotent handlers so the customer sees the result instantly.
  */
 
-const DEPOSIT_AUTH_VALID_DAYS = 7;
+/** Shortest card-hold window (Visa, card not present): 4 days 18 hours. */
+const SAVED_CARD_HOLD_HOURS = 4 * 24 + 18;
 
-type PiKind = "rental" | "deposit" | "deposit_charge" | "group";
+type PiKind = "rental" | "deposit" | "deposit_charge";
 
 function metadata(kind: PiKind, extra: Record<string, string>): Stripe.MetadataParam {
   return { kind, ...extra };
@@ -292,11 +294,14 @@ export async function placeDepositHold(bookingId: string, opts: { offSession: bo
         description: `${brand.name} refundable deposit · ${booking.code}`,
         metadata: metadata("deposit", { bookingId: booking.id, code: booking.code }),
       },
-      { idempotencyKey: `deposit:${deposit.id}:${deposit.authScheduledFor?.toISOString() ?? "now"}` },
+      // A new card (after a failed hold) is a new attempt, not a replay.
+      { idempotencyKey: `deposit:${deposit.id}:${deposit.stripePaymentMethodId}` },
     );
     await db.deposit.update({ where: { id: deposit.id }, data: { stripePaymentIntentId: pi.id } });
     if (pi.status === "requires_capture") {
       await markDepositHeld(pi);
+      // Placed ahead of the rental by the scheduled job: tell the customer.
+      if (deposit.authScheduledFor) await notifyDepositHeld(bookingId);
       return { status: "held" };
     }
     if (pi.status === "requires_action" && pi.client_secret) {
@@ -313,15 +318,29 @@ export async function placeDepositHold(bookingId: string, opts: { offSession: bo
 }
 
 export async function markDepositHeld(pi: Stripe.PaymentIntent) {
-  const created = new Date(pi.created * 1000);
   await db.deposit.updateMany({
     where: { stripePaymentIntentId: pi.id, status: { in: ["PENDING", "FAILED"] } },
-    data: {
-      status: "HELD",
-      heldAt: new Date(),
-      authExpiresAt: new Date(created.getTime() + DEPOSIT_AUTH_VALID_DAYS * 24 * 3_600_000),
-    },
+    data: { status: "HELD", heldAt: new Date(), authExpiresAt: await holdExpiry(pi) },
   });
+}
+
+/**
+ * When the card hold lapses: Stripe's `capture_before` on the charge when it
+ * tells us, otherwise the shortest window that can apply (a hold placed with
+ * a saved card on Visa lasts 4 days 18 h; other holds ~7 days).
+ */
+async function holdExpiry(pi: Stripe.PaymentIntent): Promise<Date> {
+  const charge =
+    pi.latest_charge && typeof pi.latest_charge === "object"
+      ? pi.latest_charge
+      : pi.latest_charge
+        ? await stripe()
+            .charges.retrieve(pi.latest_charge)
+            .catch(() => null)
+        : null;
+  const captureBefore = charge?.payment_method_details?.card?.capture_before;
+  if (captureBefore) return new Date(captureBefore * 1000);
+  return new Date(pi.created * 1000 + SAVED_CARD_HOLD_HOURS * 3_600_000);
 }
 
 /** Releases the deposit: cancels the authorization (nothing is charged). */
@@ -588,6 +607,25 @@ export async function cancelBooking(
 const RETURN_STATUSES: BookingStatus[] = ["RETURNED_OK", "RETURNED_DAMAGED", "COMPLETED", "NO_SHOW"];
 
 /**
+ * "Deposit pending": an online rental isn't handed over until its deposit is
+ * in place (hold placed, or card saved for long rentals). Phone bookings
+ * settle the deposit in person; the owner can also release it to waive it.
+ */
+export function assertDepositReady(booking: {
+  channel: string;
+  deposit: { strategy: string; status: string; amountCents: number } | null;
+}) {
+  const d = booking.deposit;
+  if (booking.channel !== "ONLINE" || !d || d.amountCents === 0) return;
+  const ready = d.strategy === "SAVED_CARD" ? ["CARD_SAVED"] : ["HELD"];
+  if ([...ready, "WAIVED", "RELEASED"].includes(d.status)) return;
+  throw new BookingError(
+    "INVALID_STATE",
+    "Deposit pending: the card hold isn't in place, so the machine can't go out yet. The customer has a link to update their card; or release the deposit to waive it.",
+  );
+}
+
+/**
  * Admin status selector. "Returned – OK" releases the deposit automatically;
  * "Returned – damage" leaves it for the admin to capture with a note.
  */
@@ -595,8 +633,9 @@ export async function setBookingStatus(bookingId: string, status: BookingStatus,
   if (status === "CANCELLED") {
     return cancelBooking(bookingId, { actor, refund: "policy", reason: "admin" });
   }
-  const booking = await db.booking.findUniqueOrThrow({ where: { id: bookingId } });
+  const booking = await db.booking.findUniqueOrThrow({ where: { id: bookingId }, include: { deposit: true } });
   if (booking.status === status) return;
+  if (status === "CHECKED_OUT") assertDepositReady(booking);
   const settings = await getSettings();
 
   await db.$transaction(async (tx) => {
@@ -634,8 +673,7 @@ export async function setBookingStatus(bookingId: string, status: BookingStatus,
  * Package sessions: use the subscription's card for the deposit, then place
  * the hold now or leave it to the daily cron (the day before).
  */
-export async function attachSubscriptionCardToDeposit(bookingId: string, stripeSubscriptionId: string) {
-  const pm = await subscriptionCard(stripeSubscriptionId);
+export async function attachCardToDeposit(bookingId: string, pm: string | null) {
   const deposit = await db.deposit.findUnique({ where: { bookingId } });
   if (!deposit || !pm) return;
   await db.deposit.update({
@@ -647,7 +685,7 @@ export async function attachSubscriptionCardToDeposit(bookingId: string, stripeS
 }
 
 /** The card a package member pays their subscription with. */
-async function subscriptionCard(stripeSubscriptionId: string): Promise<string | null> {
+export async function subscriptionCard(stripeSubscriptionId: string): Promise<string | null> {
   const sub = await stripe().subscriptions.retrieve(stripeSubscriptionId);
   return typeof sub.default_payment_method === "string"
     ? sub.default_payment_method
@@ -655,13 +693,14 @@ async function subscriptionCard(stripeSubscriptionId: string): Promise<string | 
 }
 
 /**
- * Package session with paid delivery: charge the trip fee to the member's
- * package card right away (off-session) and confirm the booking. If the card
- * can't be charged without the member present, the session is released.
+ * Package session or Spring Pass weekend with paid delivery: charge the trip
+ * fee to the card on file right away (off-session) and confirm the booking.
+ * If the card can't be charged without the customer present, the slot is
+ * released.
  */
 export async function chargeSessionOnFile(
   bookingId: string,
-  stripeSubscriptionId: string,
+  paymentMethod: string | null,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const booking = await db.booking.findUniqueOrThrow({
     where: { id: bookingId },
@@ -671,8 +710,7 @@ export async function chargeSessionOnFile(
     await cancelBooking(bookingId, { actor: "system", refund: "none", reason: "payment_init_failed" }).catch(() => {});
     return { ok: false as const, error };
   };
-  const paymentMethod = await subscriptionCard(stripeSubscriptionId);
-  if (!paymentMethod) return failed("We couldn't find a card on your package. Update it from My bookings.");
+  if (!paymentMethod) return failed("We couldn't find a card on file. Update it from My bookings.");
 
   const customer = await ensureStripeCustomer(booking.customerId);
   const pi = await stripe().paymentIntents.create(

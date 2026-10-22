@@ -66,6 +66,8 @@ export type BookingEmailData = {
   creditCents?: number;
   depositCents: number;
   depositNote: string;
+  /** Short rentals booked ahead: when the hold goes on the card. */
+  depositScheduledFor?: Date | null;
   receiptUrl?: string | null;
   /** "You accepted the Rental Terms & Waiver (version X) on …" */
   acceptance?: {
@@ -103,6 +105,7 @@ ${summary}
 <h2 style="font-size:16px;margin:24px 0 8px;text-transform:uppercase;color:${NAVY}">Receipt</h2>
 ${receipt}
 ${d.taxNumbers ? `<p style="font-size:12px;color:#5b6784">${esc(d.taxNumbers)}</p>` : ""}
+${d.depositScheduledFor ? `<p style="font-size:14px">Your ${formatCents(d.depositCents)} deposit hold will be placed on ${esc(formatSlot(d.depositScheduledFor).split(" · ")[0])}, the day before your rental. We'll email you when it's done.</p>` : ""}
 ${d.receiptUrl ? `<p style="font-size:13px"><a href="${d.receiptUrl}" style="color:${BLUE}">View your Stripe receipt</a></p>` : ""}
 ${d.acceptance ? `<p style="font-size:13px">You accepted the <a href="${d.acceptance.termsUrl}" style="color:${BLUE}">Rental Terms (version ${esc(d.acceptance.termsVersion)})</a> &amp; <a href="${d.acceptance.waiverUrl}" style="color:${BLUE}">Waiver (version ${esc(d.acceptance.waiverVersion)})</a> on ${esc(d.acceptance.acceptedAtLocal)}.</p>` : ""}
 <p style="font-size:14px">Cancel 48 h or more before the start for a full refund (50% inside 48 h). Rain on your start day? Before your start time, open My bookings to reschedule free or take a 100% credit.</p>`,
@@ -169,15 +172,34 @@ export function depositChargedEmail(d: {
   };
 }
 
-export function depositActionNeededEmail(d: { code: string; customerName: string }): EmailContent {
+export function depositActionNeededEmail(d: { code: string; customerName: string; url: string }): EmailContent {
   return {
     subject: `Action needed: card for booking ${d.code}`,
     html: layout(
       "We couldn't place your deposit",
-      `<p>Hi ${esc(d.customerName)}, we tried to place the refundable deposit hold for booking ${esc(d.code)} but your card was declined or needs verification. Please contact us before your rental so we can sort it out.</p>`,
-      { label: "Contact us", url: siteUrl("/contact") },
+      `<p>Hi ${esc(d.customerName)}, we tried to place the refundable deposit hold for booking <strong>${esc(d.code)}</strong>, but your card was declined, has expired or needs verification.</p>
+<p>Please update your card — it takes a minute and we'll place the hold again right away. We can't hand over the machine until the deposit is in place.</p>`,
+      { label: "Update my card", url: d.url },
     ),
-    text: `We couldn't place the deposit hold for booking ${d.code}. Please contact us before your rental.`,
+    text: `We couldn't place the deposit hold for booking ${d.code}. Update your card so we can place it again: ${d.url}`,
+  };
+}
+
+export function depositHeldEmail(d: {
+  code: string;
+  customerName: string;
+  amountCents: number;
+  startsAt: Date;
+}): EmailContent {
+  return {
+    subject: `Deposit hold placed (${d.code})`,
+    html: layout(
+      "Your deposit hold is in place",
+      `<p>Hi ${esc(d.customerName)}, as planned we've placed the refundable ${formatCents(d.amountCents)} deposit hold on your card for booking <strong>${esc(d.code)}</strong>, which starts ${esc(formatSlot(d.startsAt))}.</p>
+<p>It's a hold, not a charge: it's released as soon as the machine is back in good condition.</p>`,
+      { label: "Manage my booking", url: siteUrl("/account") },
+    ),
+    text: `We've placed the refundable ${formatCents(d.amountCents)} deposit hold for booking ${d.code}. It's released when the machine is back in good condition.`,
   };
 }
 
@@ -243,28 +265,6 @@ export function otpEmail(d: { code: string; magicLink: string }): EmailContent {
       { label: "Open my bookings", url: d.magicLink },
     ),
     text: `Your ${brand.name} code is ${d.code} (expires in 10 minutes). Or open: ${d.magicLink}`,
-  };
-}
-
-export function groupEnrollmentEmail(d: {
-  customerName: string;
-  title: string;
-  startsAt: Date;
-  court: string;
-  totalCents: number;
-}): EmailContent {
-  return {
-    subject: `You're in: ${d.title}`,
-    html: layout(
-      "You're in!",
-      `<p>Hi ${esc(d.customerName)}, see you on court.</p>${rows([
-        ["Session", d.title],
-        ["When", formatSlot(d.startsAt)],
-        ["Where", d.court],
-        ["Paid", formatCents(d.totalCents)],
-      ])}<p style="font-size:14px">Bring your racket, water and court shoes. Balls are provided.</p>`,
-    ),
-    text: `You're in: ${d.title}, ${formatSlot(d.startsAt)} at ${d.court}.`,
   };
 }
 
@@ -361,5 +361,18 @@ export function rainCreditEmail(d: {
       d.amountCents > 0
         ? `Booking ${d.code} cancelled for rain. Credit of ${formatCents(d.amountCents)} valid until ${d.expiresOn}, applied automatically to your next booking.`
         : `Booking ${d.code} cancelled for rain. Any credit or package session it used is back in your account.`,
+  };
+}
+
+export function springPassEmail(d: { customerName: string; weekends: number; window: string }): EmailContent {
+  return {
+    subject: "Your Spring Pass is ready",
+    html: layout(
+      "Your Spring Pass is ready",
+      `<p>Hi ${esc(d.customerName)}, thanks! Your pass includes <strong>${d.weekends} weekends</strong> with the machine, to use between ${esc(d.window)}.</p>
+<p>Book each weekend from My bookings whenever you like. Deposits work as usual (a hold the day before) and pick-up downtown is free; delivery is optional for your zone's fee.</p>`,
+      { label: "Book a weekend", url: siteUrl("/account") },
+    ),
+    text: `Your Spring Pass includes ${d.weekends} weekends between ${d.window}. Book them from My bookings: ${siteUrl("/account")}`,
   };
 }

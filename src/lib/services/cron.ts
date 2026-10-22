@@ -5,8 +5,9 @@ import { alertAdmin, notifyReminder } from "@/lib/notify/booking-notifications";
 import { addLocalDays, formatLocal, localDateMinuteToUtc, toLocalDate } from "@/lib/time";
 import { expireAllStaleHolds } from "./bookings";
 import { placeDueDepositHolds } from "./payments";
+import { holdLapsesBeforeReturn } from "@/lib/domain/deposit";
 
-/** Expires unpaid holds (bookings and group seats) and cancels their PaymentIntents. */
+/** Expires unpaid booking holds and cancels their PaymentIntents. */
 export async function runExpireHolds(now = new Date()) {
   const expired = await expireAllStaleHolds(now);
   const open = await db.payment.findMany({
@@ -20,11 +21,7 @@ export async function runExpireHolds(now = new Date()) {
       // Already paid → the webhook confirms or refunds it.
     }
   }
-  const seats = await db.groupEnrollment.updateMany({
-    where: { status: "PENDING_PAYMENT", holdExpiresAt: { lte: now } },
-    data: { status: "CANCELLED" },
-  });
-  return { bookings: expired.length, seats: seats.count };
+  return { bookings: expired.length };
 }
 
 /**
@@ -46,26 +43,30 @@ export async function runReminders(now = new Date()) {
 }
 
 /**
- * Places deferred deposit holds and warns the owner about expiring ones.
- * Runs daily, so it places every hold due within the next 24 h (i.e. the
- * morning before the rental starts).
+ * Places deposit holds that are due (24 h before the start — the job runs
+ * hourly) and warns the owner about holds that lapse before the machine is
+ * back and inspected, or within the next day.
  */
 export async function runDeposits(now = new Date()) {
-  const placed = await placeDueDepositHolds(now, 24);
-  const expiring = await db.deposit.findMany({
+  const placed = await placeDueDepositHolds(now, 1);
+  const held = await db.deposit.findMany({
     where: {
       status: "HELD",
-      authExpiresAt: { lte: new Date(now.getTime() + 24 * 3_600_000) },
-      booking: { status: { in: ["CHECKED_OUT", "RETURNED_DAMAGED"] } },
+      booking: { status: { in: ["CONFIRMED", "CHECKED_OUT", "RETURNED_DAMAGED"] } },
     },
     include: { booking: true },
   });
-  for (const d of expiring) {
+  const atRisk = held.filter(
+    (d) =>
+      holdLapsesBeforeReturn(d.authExpiresAt, d.booking.endsAt) ||
+      (d.authExpiresAt !== null && d.authExpiresAt.getTime() <= now.getTime() + 24 * 3_600_000),
+  );
+  for (const d of atRisk) {
     await alertAdmin(
-      `Deposit hold for ${d.booking.code} expires soon`,
+      `Deposit hold for ${d.booking.code} expires before it's back`,
       [
-        `The card authorization expires ${d.authExpiresAt ? formatLocal(d.authExpiresAt, "EEE MMM d, h:mm a") : "soon"}.`,
-        "Capture or release it before then.",
+        `The card authorization expires ${d.authExpiresAt ? formatLocal(d.authExpiresAt, "EEE MMM d, h:mm a") : "soon"}; the rental ends ${formatLocal(d.booking.endsAt, "EEE MMM d, h:mm a")}.`,
+        "Inspect and capture or release it before then (or ask the customer for a new hold).",
       ],
       `/admin/bookings/${d.bookingId}`,
       `deposit_expiring:${d.id}`,
@@ -74,6 +75,6 @@ export async function runDeposits(now = new Date()) {
   return {
     placed: placed.length,
     failed: placed.filter((p) => p.status === "failed").length,
-    expiringWarned: expiring.length,
+    expiringWarned: atRisk.length,
   };
 }

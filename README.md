@@ -50,8 +50,11 @@ tests/             unit/ e integration/ (doble reserva concurrente, webhooks Str
 
   | Alquiler | Qué se hace con la tarjeta |
   |---|---|
-  | Hasta 6 días | Retención de **$400** con `capture_method: manual`. Si empieza en más de 24 h, la tarjeta se guarda al pagar y el job diario coloca la retención la mañana anterior. |
-  | Semana o mes | Tarjeta guardada (`setup_future_usage: off_session`) para cobrar hasta **$600**. |
+  | Día y fin de semana | Al reservar se cobra el alquiler y se guarda la tarjeta. La retención de **$400** (`capture_method: manual`) la coloca el job horario **24 h antes del inicio** (o en el mismo checkout si faltan menos de 24 h), porque una retención con la tarjeta guardada dura solo 4 días y 18 h en Visa. El email de confirmación dice la fecha y se manda otro cuando se coloca. |
+  | Semana o mes | Nunca se retiene: tarjeta guardada (`setup_future_usage: off_session`) para cobrar hasta **$600** si hay daños. |
+
+  - **Si la retención falla** (tarjeta rechazada o vencida), el depósito queda en **"Deposit pending"**: el cliente recibe un enlace `/deposit/…` para poner otra tarjeta (se reintenta en el momento), el admin recibe un aviso y el check-out queda bloqueado hasta resolverlo (o hasta liberar el depósito para eximirlo).
+  - El vencimiento real de cada retención sale de Stripe (`capture_before`). El dashboard lo muestra y avisa si vence antes de la devolución.
 
   - Marcar **"Returned – OK"** libera el depósito automáticamente.
   - Con daños, el admin cobra el depósito total o parcialmente, con una nota obligatoria que se envía por email al cliente. Si el cliente compró **RallyDrop Care**, el cobro máximo es $100 salvo que se marque una exclusión (robo, pérdida, lluvia, negligencia grave).
@@ -63,8 +66,11 @@ tests/             unit/ e integration/ (doble reserva concurrente, webhooks Str
 - **Precios.** Se calculan siempre en el servidor, en centavos, y se guarda una copia en cada reserva.
 - **Códigos promocionales.** Se crean en Admin → Promo codes (% o monto fijo, fechas, usos máximos, tipos de alquiler). El cliente lo escribe justo antes de pagar; el descuento se aplica antes de impuestos, nunca baja el cobro de $1 (el pago con tarjeta es lo que guarda la tarjeta para el depósito) y no afecta el depósito. El seed crea `FIRSTSERVE` (10%) para probar.
 - **Entrega y recogida (pagadas).** Recoger y devolver en el punto del centro es gratis. Si el cliente prefiere, compramos los trayectos: *drop-off* (la llevamos), *collection* (la recogemos) o ambos (ida y vuelta, más barato que dos viajes). Precio fijo por trayecto según la distancia en línea recta desde el centro: zona 1 hasta 5 km ($15 / $25 ida y vuelta), zona 2 hasta 12 km ($25 / $40), zona 3 hasta 20 km ($35 / $60); más lejos solo autoservicio online. Todo editable en Admin → Settings.
-- **Paquetes mensuales.** Basic $49 (4 sesiones de 90 min) y Frequent $89 (8 sesiones). Las sesiones son de autoservicio en el centro; si el socio quiere entrega a una cancha, paga la ida y vuelta de su zona en cada sesión, cobrada al momento a la tarjeta del paquete (si la tarjeta no pasa, la sesión se libera). Las sesiones no usadas no pasan al mes siguiente (se puede activar en Settings). El socio cancela desde *My bookings* y el paquete sigue activo hasta el fin del mes pagado.
+- **Paquetes mensuales.** Basic $49 (4 sesiones de 90 min) y Frequent $89 (8 sesiones). Las sesiones son de autoservicio en el centro; si el socio quiere entrega (a su puerta o junto a una cancha, nunca dentro), paga la ida y vuelta de su zona en cada sesión, cobrada al momento a la tarjeta del paquete (si la tarjeta no pasa, la sesión se libera). Las sesiones no usadas no pasan al mes siguiente (se puede activar en Settings). El socio cancela desde *My bookings* y el paquete sigue activo hasta el fin del mes pagado.
 - **Lluvia y créditos.** Si llueve el día de inicio, el cliente entra en *My bookings* antes de su hora y pulsa **Rained out?**: reprograma gratis o recibe un crédito del 100% de lo pagado, válido 6 meses (configurable). En Admin → **Rain day** declaras un día de lluvia y se avisa por email/SMS a todos los que empiezan ese día (pueden elegir aunque ya pasó la hora). El crédito se descuenta solo en la siguiente reserva con el mismo email o teléfono (dejando el cobro mínimo de $1 para guardar la tarjeta). Si esa reserva se abandona o se cancela, el crédito vuelve según la misma regla del reembolso. Desde la ficha de un cliente puedes dar un crédito manual; la reserva también tiene un botón **Rain credit** para hacerlo tú. En temporada baja se muestra el aviso "Off-season prices — if it rains on your day, reschedule free".
+- **Spring Pass** (desactivado por defecto, Admin → Settings): 3 fines de semana por $199 para usar entre abril y junio, máximo 20 pases. Se paga una vez (la tarjeta queda guardada para los depósitos) y el cliente reserva cada fin de semana desde *My bookings*. Con el interruptor apagado no aparece en ninguna parte.
+- **Solo alquiler.** RallyDrop solo alquila la máquina: no hay clases, sesiones de grupo ni coach humano. El coach es el de IA de la Aura S (sección "Your AI coach, included").
+- **Pickleball.** `Settings → Pickleball unlocked` (activado). Si lo apagas, la palabra "pickleball" desaparece del sitio (fichas, footer, FAQ). Los textos legales ya aceptados no cambian; publica una versión nueva si quieres quitarlo también de ahí.
 - **Métricas.** El dashboard muestra la ocupación por máquina (días alquilados ÷ días disponibles del mes, sin contar días bloqueados) y los ingresos del mes por producto. En la ficha de cada máquina, con el costo de compra, ves cuánto has recuperado (**Payback**).
 - **Guía rápida.** `/account/guide` (también en PDF: `public/guides/rallydrop-aura-s-quick-start.pdf`). Si cambias el texto de la guía, vuelve a exportar el PDF imprimiendo esa página (Guardar como PDF).
 - **Hora de BC.** Todo el sitio funciona en hora de Victoria: horarios, calendario, emails y admin se calculan en el servidor.
@@ -143,19 +149,21 @@ Eventos de webhook necesarios:
 4. Ejecuta una vez `npm run db:seed` contra la base de producción, con `SEED_ADMIN_*` propios.
 5. En Stripe (modo live, cuando toque), crea el endpoint `https://TU-DOMINIO/api/stripe/webhook` con los eventos de arriba.
 6. Añade un **Blob store** en Vercel para las fotos de check-in/out. Crea `BLOB_READ_WRITE_TOKEN`.
-7. **Cron** (GitHub Actions, gratis): [`.github/workflows/daily-jobs.yml`](.github/workflows/daily-jobs.yml) llama `GET /api/cron/all` todos los días a las **7:00 AM de Victoria** (`0 14 * * *` UTC; BC es UTC-7 fijo). Hace tres cosas:
-   - **Depósitos**: coloca la retención de los alquileres reservados con antelación (la mañana anterior).
-   - **Recordatorios**: envía el aviso de las reservas de mañana.
+7. **Cron** (GitHub Actions, gratis): [`.github/workflows/daily-jobs.yml`](.github/workflows/daily-jobs.yml) llama `GET /api/cron/all` **cada hora** (a los :07). Hace tres cosas:
+   - **Depósitos**: coloca cada retención 24 h antes del inicio y avisa de las que vencen antes de la devolución.
+   - **Recordatorios**: envía el aviso de las reservas de mañana (solo de 7 AM a 9 PM).
    - **Limpieza**: libera las reservas temporales sin pagar.
 
    Configúralo en GitHub → *Settings → Secrets and variables → Actions* con dos secretos:
    - `SITE_URL`: por ejemplo `https://rallydrop.ca`.
    - `CRON_SECRET`: el mismo valor que en Vercel.
 
-   Para probarlo: pestaña *Actions → Daily jobs → Run workflow*.
+   Para probarlo: pestaña *Actions → Scheduled jobs → Run workflow*.
 
 ## Pendiente de configurar antes de lanzar
 
+- [ ] **Enlace de reservas de canchas de la Ciudad** (Settings → City court booking page) para la pregunta "Do I need to book a court?".
+- [ ] **Cron horario**: el workflow ahora corre cada hora; revisa que los secretos `SITE_URL` y `CRON_SECRET` estén en GitHub.
 - [ ] **Datos reales de contacto** (Admin → Settings → Business details): teléfono, email, dominio, dirección del punto de recogida e Instagram. Mientras estén vacíos, el sitio simplemente no los muestra.
 - [ ] **Revisión legal**: los términos y el waiver son borradores (Admin → Terms & waiver, marcados DRAFT solo en el admin). Un abogado de BC debe revisarlos; publica la versión revisada y pulsa *Mark lawyer-reviewed*.
 - [ ] **Seguro de responsabilidad civil**: mientras no esté en Settings, el dashboard muestra "No liability insurance on file".

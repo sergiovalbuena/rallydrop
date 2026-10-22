@@ -1,16 +1,18 @@
-# Daily jobs for RallyDrop: deferred deposit holds, reminders for tomorrow's
-# bookings and cleanup of unpaid holds. Calls the app's /api/cron/all endpoint.
+# Hourly jobs for RallyDrop: deposit holds placed 24 h before each rental,
+# reminders for tomorrow's bookings (daytime only) and cleanup of unpaid
+# holds. Calls the app's /api/cron/all endpoint.
 #
 # Repo secrets needed (Settings → Secrets and variables → Actions):
 #   SITE_URL     e.g. https://rallydrop.ca  (no trailing slash)
 #   CRON_SECRET  same value as the CRON_SECRET env var in Vercel
-name: Daily jobs
+name: Scheduled jobs
 
 on:
   schedule:
-    # 14:00 UTC = 7:00 AM in Victoria (BC is UTC-7 all year).
-    # GitHub may start scheduled runs a few minutes late; the jobs allow for it.
-    - cron: "0 14 * * *"
+    # Every hour at :07. Card holds are placed ~24 h before each rental starts,
+    # so they last through the rental (a saved-card hold is valid ~4.75 days on
+    # Visa). GitHub may start scheduled runs a few minutes late; the jobs allow for it.
+    - cron: "7 * * * *"
   workflow_dispatch: # "Run workflow" button for manual runs
 
 jobs:

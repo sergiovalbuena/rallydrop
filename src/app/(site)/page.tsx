@@ -13,6 +13,7 @@ import { ScoreSteps } from "@/components/marketing/score-steps";
 import { Section, SectionHeading } from "@/components/marketing/section";
 import { StickyBookBar } from "@/components/marketing/sticky-book-bar";
 import { revealDelay } from "@/components/marketing/reveal-delay";
+import { AiCoachIncluded } from "@/components/marketing/machine-guides";
 import { Ticker } from "@/components/marketing/ticker";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -96,21 +97,28 @@ export default async function HomePage() {
         </Section>
       </div>
 
-      {/* Pricing */}
-      <Section id="pricing">
-        <SectionHeading title={t("pricingTitle")} subtitle={t("pricingSubtitle")} />
-        <Suspense fallback={<PricingGridSkeleton />}>
-          <HomePricing />
-        </Suspense>
-        <Button asChild variant="link" className="mt-6 px-0">
-          <Link href="/pricing">
-            {tc("seePricing")} <ArrowRight />
-          </Link>
-        </Button>
+      {/* The Spotter: an AI practice assistant in every rental */}
+      <Section id="ai-coach">
+        <AiCoachIncluded />
       </Section>
 
-      {/* Paid drop-off & collection */}
+      {/* Pricing */}
       <div className="bg-muted/40">
+        <Section id="pricing">
+          <SectionHeading title={t("pricingTitle")} subtitle={t("pricingSubtitle")} />
+          <Suspense fallback={<PricingGridSkeleton />}>
+            <HomePricing />
+          </Suspense>
+          <Button asChild variant="link" className="mt-6 px-0">
+            <Link href="/pricing">
+              {tc("seePricing")} <ArrowRight />
+            </Link>
+          </Button>
+        </Section>
+      </div>
+
+      {/* Paid drop-off & collection */}
+      <div>
         <Section id="delivery">
           <SectionHeading eyebrow={t("deliveryEyebrow")} title={t("deliveryTitle")} subtitle={t("deliverySubtitle")} />
           <Suspense fallback={<DeliveryServiceSkeleton />}>

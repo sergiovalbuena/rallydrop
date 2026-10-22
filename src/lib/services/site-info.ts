@@ -16,6 +16,10 @@ export type SiteInfo = {
   /** True when the owner filled in a liability insurance provider. */
   insured: boolean;
   licence: { number: string; municipality: string | null } | null;
+  /** Pickleball unlocked on the machine (Settings.pickleballEnabled). */
+  pickleball: boolean;
+  /** City public court booking page, for the FAQ. */
+  courtBookingUrl: string | null;
 };
 
 /**
@@ -45,5 +49,7 @@ export async function getSiteInfo(): Promise<SiteInfo> {
     licence: clean(s?.businessLicenceNumber)
       ? { number: clean(s?.businessLicenceNumber)!, municipality: clean(s?.businessLicenceMunicipality) }
       : null,
+    pickleball: s?.pickleballEnabled ?? true,
+    courtBookingUrl: clean(s?.courtBookingUrl),
   };
 }

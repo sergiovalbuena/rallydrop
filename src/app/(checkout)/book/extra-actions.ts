@@ -8,6 +8,7 @@ import { clientIp } from "@/lib/request";
 import { consentSchema, contactSchema, fieldErrors } from "@/lib/validation/booking";
 import { BookingError } from "@/lib/services/errors";
 import { startSubscription } from "@/lib/services/subscriptions";
+import { startSpringPassPurchase } from "@/lib/services/spring-pass";
 
 const input = z.object({
   targetId: z.string().min(1),
@@ -50,6 +51,26 @@ export async function startPackageAction(raw: unknown): Promise<StartPaymentResu
       waiverId: d.consent.waiverId,
       boxes: d.consent.boxes,
       method: "package",
+      ip: clientIp(h),
+      userAgent: h.get("user-agent"),
+    });
+    return { clientSecret: r.clientSecret, amountCents: r.amountCents };
+  });
+}
+
+/** Spring Pass (one-time payment; the card is saved for the weekends' deposits). */
+export async function startSpringPassAction(raw: unknown): Promise<StartPaymentResult> {
+  return run(raw, async (d) => {
+    const r = await startSpringPassPurchase({ customer: d.contact });
+    const h = await headers();
+    await recordAcceptance({
+      customerId: r.customerId,
+      name: r.customerName,
+      contact: d.contact.email ?? d.contact.phone ?? "",
+      termsId: d.consent.termsId,
+      waiverId: d.consent.waiverId,
+      boxes: d.consent.boxes,
+      method: "spring_pass",
       ip: clientIp(h),
       userAgent: h.get("user-agent"),
     });
