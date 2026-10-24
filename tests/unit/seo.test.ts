@@ -22,7 +22,7 @@ describe("structured data", () => {
     expect(ld).toMatchObject({ "@type": "LocalBusiness", name: "RallyDrop", address: { addressLocality: "Victoria" } });
     expect(ld).not.toHaveProperty("telephone");
     expect(ld).not.toHaveProperty("email");
-    expect(localBusinessLd({ ...site, phone: "+1 250 555 0100" })).toHaveProperty("telephone", "+1 250 555 0100");
+    expect(localBusinessLd({ ...site, phone: "+1 250 123 4567" })).toHaveProperty("telephone", "+1 250 123 4567");
   });
 
   it("gives the machine a CAD price range from the rental products", () => {

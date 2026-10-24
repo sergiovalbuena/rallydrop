@@ -20,6 +20,7 @@ export async function SiteFooter() {
       links: [
         { href: "/how-it-works", label: t("nav.howItWorks") },
         { href: "/how-it-works#faq", label: t("footer.faq") },
+        { href: "/guide", label: t("footer.guide") },
         { href: "/contact", label: t("nav.contact") },
         { href: "/account", label: t("nav.myBookings") },
       ],

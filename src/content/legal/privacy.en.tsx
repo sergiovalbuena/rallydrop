@@ -3,7 +3,7 @@
  * Must be reviewed for compliance with BC PIPA and federal PIPEDA before launch.
  */
 
-export const privacyUpdated = "October 2026";
+export const privacyUpdated = "October 24, 2026";
 
 export function PrivacyEn() {
   return (
@@ -17,6 +17,35 @@ export function PrivacyEn() {
           brand and last four digits.
         </li>
         <li>Photos of the equipment taken at drop-off and return.</li>
+        <li>
+          For week and month rentals, that we checked your photo ID and the last four digits of your driver&apos;s
+          licence (we don&apos;t copy or store the ID itself).
+        </li>
+        <li>
+          When you accept our Rental Terms and Waiver: the version accepted, the date and time, your IP address and
+          browser — our record that you agreed.
+        </li>
+        <li>Basic, anonymous website analytics (pages visited, no personal data).</li>
+      </ul>
+
+      <h2>The Spotter AI camera</h2>
+      <ul>
+        <li>
+          The Aura S&apos;s Spotter camera records <strong>video and movement data</strong> (your swings, your position
+          on court and the ball) to coach you and build heatmaps.
+        </li>
+        <li>
+          Those recordings are stored and processed on <strong>your own phone or tablet, in the PONGBOT app</strong>,
+          under your account. <strong>RallyDrop does not access, receive or store them.</strong>
+        </li>
+        <li>
+          <strong>PONGBOT&apos;s privacy policy applies to the app</strong> and to anything it collects. Read it before
+          you use the camera, and get permission before filming other people.
+        </li>
+        <li>
+          We reset the machine between rentals; if the app lets you, sign out or remove the machine from your account
+          when you give it back.
+        </li>
       </ul>
 
       <h2>Why we use it</h2>

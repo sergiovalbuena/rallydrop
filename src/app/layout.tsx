@@ -31,6 +31,8 @@ export const metadata: Metadata = {
     "PONGBOT Aura S",
   ],
   openGraph: { siteName: brand.name, locale: "en_CA", type: "website" },
+  // Every page's canonical is its own path on the public domain (NEXT_PUBLIC_SITE_URL, e.g. https://rallydrop.ca).
+  alternates: { canonical: "./" },
 };
 
 export const viewport: Viewport = {

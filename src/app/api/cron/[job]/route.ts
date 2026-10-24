@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { runDeposits, runExpireHolds, runReminders } from "@/lib/services/cron";
 import { toLocalMinute } from "@/lib/time";
 import { databaseConfigured } from "@/lib/services/fallback";
+import { runReviewRequests } from "@/lib/services/review-requests";
 
 /** Reminders only go out in the daytime (7 AM–9 PM Victoria), even though the job runs hourly. */
 function daytime(now = new Date()) {
@@ -13,11 +14,13 @@ const JOBS = {
   "expire-holds": runExpireHolds,
   reminders: runReminders,
   deposits: runDeposits,
-  /** The hourly job (GitHub Actions): deposit holds 24 h before each start, cleanup, daytime reminders. */
+  reviews: runReviewRequests,
+  /** The hourly job (GitHub Actions): deposit holds 24 h before each start, cleanup, daytime reminders and review requests. */
   all: async () => ({
     ...(await runExpireHolds()),
     ...(await runDeposits()),
     ...(daytime() ? await runReminders() : { reminders: "skipped (night)" }),
+    ...(daytime() ? await runReviewRequests() : { reviewRequests: "skipped (night)" }),
   }),
 } as const;
 

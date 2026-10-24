@@ -96,6 +96,22 @@ export function BookingWizard({
   const [promoError, setPromoError] = useState<string | null>(null);
   const [applyingPromo, startApplyingPromo] = useTransition();
 
+  // The page is prerendered (step 1 is in the HTML without JavaScript), so a
+  // ?product= / ?machine= link is applied here, in the browser.
+  useEffect(() => {
+    if (initialProduct) return;
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = catalog.products.find((p) => p.slug === params.get("product") || p.id === params.get("product"));
+    if (!fromUrl) return;
+    const m = params.get("machine");
+    const fromUrlMachine = catalog.machines.find((x) => x.slug === m || x.id === m) ?? startMachine;
+    queueMicrotask(() => {
+      setProductId(fromUrl.id);
+      if (fromUrlMachine) setMachineId(fromUrlMachine.id);
+      setStep(fromUrlMachine ? 2 : 1);
+    });
+  }, [catalog, initialProduct, startMachine]);
+
   const product = catalog.products.find((p) => p.id === productId) ?? null;
   const machine = catalog.machines.find((m) => m.id === machineId) ?? null;
   const steps = [t("stepProduct"), t("stepMachine"), t("stepWhen"), t("stepExtras"), t("stepDetails"), t("stepPay")];
@@ -602,7 +618,7 @@ export function BookingWizard({
                     type="tel"
                     inputMode="tel"
                     autoComplete="tel"
-                    placeholder="250 555 0142"
+                    placeholder="Mobile number"
                     value={contact.phone}
                     aria-invalid={!!errors.phone}
                     onChange={(e) => setContact((c) => ({ ...c, phone: e.target.value }))}

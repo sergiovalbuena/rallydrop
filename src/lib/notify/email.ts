@@ -15,6 +15,8 @@ export async function sendEmail(input: {
   content: EmailContent;
   template: string;
   dedupeKey?: string;
+  /** Where replies go (e.g. the visitor who used the contact form). */
+  replyTo?: string;
 }): Promise<void> {
   if (input.dedupeKey) {
     const already = await db.notificationLog.findUnique({ where: { dedupeKey: input.dedupeKey } });
@@ -32,6 +34,7 @@ export async function sendEmail(input: {
     const result = await resend.emails.send({
       from: process.env.EMAIL_FROM ?? "RallyDrop <onboarding@resend.dev>",
       to: input.to,
+      ...(input.replyTo ? { replyTo: input.replyTo } : {}),
       subject: input.content.subject,
       html: input.content.html,
       text: input.content.text,

@@ -1,9 +1,7 @@
 import "server-only";
 import { getTranslations } from "next-intl/server";
 import { formatCentsShort } from "@/lib/money";
-import { listPublicMachines } from "./catalog";
-import { pricingContext } from "./pricing-context";
-import { getSettings } from "./settings";
+import { publicCatalog, publicPolicies, publicPricing } from "./public-data";
 import { getSiteInfo } from "./site-info";
 
 export type FaqItem = { id: string; q: string; a: string };
@@ -15,10 +13,16 @@ export type FaqItem = { id: string; q: string; a: string };
  */
 export async function faqItems(): Promise<FaqItem[]> {
   const t = await getTranslations("faq");
-  const [machines, settings, site] = await Promise.all([listPublicMachines(), getSettings(), getSiteInfo()]);
-  const ctx = await pricingContext(machines);
-  const zone1 = settings.deliveryZones[0];
-  const pickleball = settings.pickleballEnabled && machines.some((m) => m.bookable && m.sports.includes("PICKLEBALL"));
+  // Cached reads: the answers are part of the server HTML (no JS needed).
+  const [catalog, ctx, policies, site] = await Promise.all([
+    publicCatalog(),
+    publicPricing(),
+    publicPolicies(),
+    getSiteInfo(),
+  ]);
+  const zone1 = catalog.deliveryZones[0];
+  const pickleball =
+    policies.pickleballEnabled && catalog.machines.some((m) => m.bookable && m.sports.includes("PICKLEBALL"));
   const money = formatCentsShort;
   const items: (FaqItem | false)[] = [
     { id: "account", q: t("account.q"), a: t("account.a") },
@@ -45,10 +49,23 @@ export async function faqItems(): Promise<FaqItem[]> {
       q: t("care.q"),
       a: t("care.a", { price: money(ctx.care.short), cap: money(ctx.care.cap) }),
     },
-    { id: "rain", q: t("rain.q"), a: t("rain.a", { months: settings.rainCreditMonths }) },
+    { id: "rain", q: t("rain.q"), a: t("rain.a", { months: policies.rainCreditMonths }) },
+    {
+      id: "late",
+      q: t("late.q"),
+      a: t("late.a", {
+        grace: policies.lateGraceMinutes,
+        hourly: money(policies.lateHourlyCents),
+        hours: policies.lateUnreturnedHours,
+      }),
+    },
     { id: "breaks", q: t("breaks.q"), a: t("breaks.a") },
     { id: "friends", q: t("friends.q"), a: t("friends.a") },
-    { id: "cancel", q: t("cancel.q"), a: t("cancel.a") },
+    {
+      id: "cancel",
+      q: t("cancel.q"),
+      a: t("cancel.a", { hours: policies.cancelFullRefundHours, percent: policies.cancelLatePercent }),
+    },
     site.insured && { id: "insured", q: t("insured.q"), a: t("insured.a") },
   ];
   return items.filter((i): i is FaqItem => !!i);

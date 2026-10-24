@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WaitlistForm } from "./waitlist-form";
+import { PhotoSlot } from "./photo-slot";
+import { PHOTOS } from "@/config/photos";
 import { formatCentsShort } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { PublicMachine } from "@/lib/services/catalog";
@@ -182,6 +184,14 @@ async function FeatureCard({ featured, detailed }: { featured: PublicMachine; de
             </div>
           </dl>
         )}
+        {/* Set PHOTOS.machineOnCourt to show the machine in action. */}
+        <PhotoSlot
+          media={PHOTOS.machineOnCourt}
+          label={`${featured.name} set up on a court`}
+          sizes="(min-width: 768px) 40vw, 100vw"
+          className="aspect-[16/10]"
+          fallback={null}
+        />
         <div className="mt-auto flex flex-wrap items-center gap-3">
           <Button asChild size="lg">
             <Link href={`/book?machine=${featured.slug}`}>{t("book", { name: featured.name })}</Link>

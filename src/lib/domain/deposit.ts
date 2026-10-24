@@ -61,3 +61,23 @@ export function validateCapture(input: {
   }
   return { ok: true };
 }
+
+/**
+ * Late return fee: nothing inside the grace period, then a fee per started
+ * hour, capped at one day's rental price. Past `unreturnedHours` the machine
+ * counts as not returned (the deposit may be charged instead).
+ */
+export function lateFee(input: {
+  endsAt: Date;
+  returnedAt: Date;
+  graceMinutes: number;
+  hourlyCents: number;
+  dayCents: number;
+  unreturnedHours: number;
+}): { cents: number; hoursLate: number; unreturned: boolean } {
+  const lateMs = input.returnedAt.getTime() - input.endsAt.getTime();
+  const unreturned = lateMs >= input.unreturnedHours * 3_600_000;
+  if (lateMs <= input.graceMinutes * 60_000) return { cents: 0, hoursLate: 0, unreturned: false };
+  const hoursLate = Math.ceil(lateMs / 3_600_000);
+  return { cents: Math.min(hoursLate * input.hourlyCents, input.dayCents), hoursLate, unreturned };
+}

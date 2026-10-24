@@ -9,8 +9,12 @@ import { formatLocal } from "@/lib/time";
 import { BookingError } from "./errors";
 import { databaseConfigured, readOr } from "./fallback";
 
-/** Version stamped on the starting texts in src/content/legal. */
-export const DEFAULT_LEGAL_VERSION = "2026-10-23";
+/**
+ * Version of the texts in src/content/legal. Bumping one publishes that text
+ * once (on first read after the deploy); versions the owner publishes later
+ * in the admin take over as usual.
+ */
+export const DEFAULT_LEGAL_VERSIONS: Record<LegalKind, string> = { TERMS: "2026-10-24", WAIVER: "2026-10-23" };
 
 export type PublicLegalDoc = Pick<
   LegalDocument,
@@ -28,7 +32,7 @@ function fallbackDoc(kind: LegalKind): PublicLegalDoc {
   return {
     id: `fallback-${kind.toLowerCase()}`,
     kind,
-    version: DEFAULT_LEGAL_VERSION,
+    version: DEFAULT_LEGAL_VERSIONS[kind],
     title: d.title,
     body: d.body,
     sha256: sha256(d.body),
@@ -49,18 +53,20 @@ export async function currentLegal(): Promise<CurrentLegal> {
 }
 
 async function current(kind: LegalKind): Promise<PublicLegalDoc> {
-  const found = await db.legalDocument.findFirst({
-    where: { kind, publishedAt: { not: null } },
-    orderBy: { publishedAt: "desc" },
-  });
-  if (found) return found;
+  const version = DEFAULT_LEGAL_VERSIONS[kind];
+  const [found, codeVersion] = await Promise.all([
+    db.legalDocument.findFirst({ where: { kind, publishedAt: { not: null } }, orderBy: { publishedAt: "desc" } }),
+    db.legalDocument.findUnique({ where: { kind_version: { kind, version } }, select: { id: true } }),
+  ]);
+  // The live text, unless a newer code version hasn't been published yet.
+  if (found && codeVersion) return found;
   const d = DEFAULTS[kind];
   return db.legalDocument.upsert({
-    where: { kind_version: { kind, version: DEFAULT_LEGAL_VERSION } },
+    where: { kind_version: { kind, version } },
     update: { publishedAt: new Date() },
     create: {
       kind,
-      version: DEFAULT_LEGAL_VERSION,
+      version,
       title: d.title,
       body: d.body,
       sha256: sha256(d.body),
@@ -72,7 +78,7 @@ async function current(kind: LegalKind): Promise<PublicLegalDoc> {
 
 /** A specific published version (links in confirmation emails). */
 export async function legalVersion(kind: LegalKind, version: string): Promise<PublicLegalDoc | null> {
-  if (!databaseConfigured()) return version === DEFAULT_LEGAL_VERSION ? fallbackDoc(kind) : null;
+  if (!databaseConfigured()) return version === DEFAULT_LEGAL_VERSIONS[kind] ? fallbackDoc(kind) : null;
   return db.legalDocument.findFirst({ where: { kind, version, publishedAt: { not: null } } });
 }
 

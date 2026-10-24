@@ -1,17 +1,15 @@
 import Link from "next/link";
 import { JsonLd } from "@/components/seo/json-ld";
-import { localBusinessLd } from "@/lib/services/structured-data";
+import { faqPageLd, localBusinessLd } from "@/lib/services/structured-data";
 import { getSiteInfo } from "@/lib/services/site-info";
-import { Suspense } from "react";
-import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { ArrowRight, Check } from "lucide-react";
 import { CourtIllustration } from "@/components/brand/court-illustration";
-import { DeliveryService, DeliveryServiceSkeleton } from "@/components/marketing/delivery-service";
+import { DeliveryService } from "@/components/marketing/delivery-service";
 import { FaqList } from "@/components/marketing/faq-list";
 import { MachineFeature } from "@/components/marketing/machine-cards";
-import { PricingGrid, PricingGridSkeleton } from "@/components/marketing/pricing-grid";
-import { Scorebug, ScorebugSkeleton } from "@/components/marketing/scorebug";
+import { PricingGrid } from "@/components/marketing/pricing-grid";
+import { Scorebug } from "@/components/marketing/scorebug";
 import { ScoreSteps } from "@/components/marketing/score-steps";
 import { Section, SectionHeading } from "@/components/marketing/section";
 import { StickyBookBar } from "@/components/marketing/sticky-book-bar";
@@ -19,14 +17,13 @@ import { revealDelay } from "@/components/marketing/reveal-delay";
 import { AiCoachIncluded } from "@/components/marketing/machine-guides";
 import { Ticker } from "@/components/marketing/ticker";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PhotoSlot } from "@/components/marketing/photo-slot";
+import { PHOTOS } from "@/config/photos";
 import { formatCentsShort } from "@/lib/money";
-import { listActiveAddOns, listActiveProducts, listPublicMachines } from "@/lib/services/catalog";
-import { pricingContext } from "@/lib/services/pricing-context";
 import { faqItems } from "@/lib/services/faq";
+import { heroStats, publicCatalog, publicPricing } from "@/lib/services/public-data";
 import { publicReviews } from "@/lib/services/reviews";
 import { formatLocal } from "@/lib/time";
-import { getSettings } from "@/lib/services/settings";
 
 export default async function HomePage() {
   const t = await getTranslations("home");
@@ -75,10 +72,17 @@ export default async function HomePage() {
             </ul>
           </div>
           <div className="space-y-4">
-            <CourtIllustration className="mx-auto max-w-[34rem] animate-in drop-shadow-2xl duration-1000 zoom-in-95 fade-in" />
-            <Suspense fallback={<ScorebugSkeleton />}>
-              <Scorebug />
-            </Suspense>
+            <PhotoSlot
+              media={PHOTOS.hero}
+              label="Player rallying against the Aura S"
+              sizes="(min-width: 1024px) 34rem, 100vw"
+              priority
+              className="mx-auto aspect-[4/3] max-w-[34rem] shadow-2xl"
+              fallback={
+                <CourtIllustration className="mx-auto max-w-[34rem] animate-in drop-shadow-2xl duration-1000 zoom-in-95 fade-in" />
+              }
+            />
+            <Scorebug />
           </div>
         </div>
       </div>
@@ -94,9 +98,7 @@ export default async function HomePage() {
       <div className="bg-muted/40">
         <Section id="machines">
           <SectionHeading title={t("machinesTitle")} subtitle={t("machinesSubtitle")} />
-          <Suspense fallback={<Skeleton className="h-[28rem] rounded-3xl" />}>
-            <HomeMachines />
-          </Suspense>
+          <HomeMachines />
         </Section>
       </div>
 
@@ -109,9 +111,7 @@ export default async function HomePage() {
       <div className="bg-muted/40">
         <Section id="pricing">
           <SectionHeading title={t("pricingTitle")} subtitle={t("pricingSubtitle")} />
-          <Suspense fallback={<PricingGridSkeleton />}>
-            <HomePricing />
-          </Suspense>
+          <HomePricing />
           <Button asChild variant="link" className="mt-6 px-0">
             <Link href="/pricing">
               {tc("seePricing")} <ArrowRight />
@@ -124,24 +124,18 @@ export default async function HomePage() {
       <div>
         <Section id="delivery">
           <SectionHeading eyebrow={t("deliveryEyebrow")} title={t("deliveryTitle")} subtitle={t("deliverySubtitle")} />
-          <Suspense fallback={<DeliveryServiceSkeleton />}>
-            <HomeDelivery />
-          </Suspense>
+          <HomeDelivery />
         </Section>
       </div>
 
       {/* Real reviews only — the section appears once 2+ are published in the admin. */}
-      <Suspense>
-        <Testimonials />
-      </Suspense>
+      <Testimonials />
 
       {/* FAQ */}
       <Section id="faq" className="max-w-3xl">
         <SectionHeading title={t("faqTitle")} align="center" />
         <div data-reveal>
-          <Suspense fallback={<Skeleton className="h-72 rounded-2xl" />}>
-            <HomeFaq />
-          </Suspense>
+          <HomeFaq />
         </div>
         <div className="mt-6 text-center">
           <Button asChild variant="link">
@@ -178,16 +172,19 @@ export default async function HomePage() {
         </div>
       </Section>
 
-      <Suspense>
-        <StickyBar />
-      </Suspense>
+      <StickyBar />
     </>
   );
 }
 
+/*
+ * Every section below reads cached data (lib/services/public-data), so it is
+ * rendered into the HTML on the server — visible without JavaScript and to
+ * search engines — instead of streaming in after load.
+ */
+
 async function HomeMachines() {
-  await connection();
-  const [machines, site] = await Promise.all([listPublicMachines(), getSiteInfo()]);
+  const [{ machines }, site] = await Promise.all([publicCatalog(), getSiteInfo()]);
   return (
     <>
       <JsonLd data={localBusinessLd(site)} />
@@ -197,7 +194,6 @@ async function HomeMachines() {
 }
 
 async function Testimonials() {
-  await connection();
   const reviews = await publicReviews();
   if (reviews.length === 0) return null;
   const t = await getTranslations("home");
@@ -236,36 +232,35 @@ async function Testimonials() {
 }
 
 async function HomeFaq() {
-  await connection();
-  const ids = ["where", "delivery", "deposit", "rain", "easy"];
+  const ids = ["where", "delivery", "deposit", "rain", "late"];
   const items = (await faqItems()).filter((i) => ids.includes(i.id));
-  return <FaqList items={items} />;
+  return (
+    <>
+      <JsonLd data={faqPageLd(items)} />
+      <FaqList items={items} />
+    </>
+  );
 }
 
 async function HomeDelivery() {
-  await connection();
-  const settings = await getSettings();
-  return <DeliveryService zones={settings.deliveryZones} />;
+  const { deliveryZones } = await publicCatalog();
+  return <DeliveryService zones={deliveryZones} />;
 }
 
 async function HomePricing() {
-  await connection();
-  const [products, addOns, machines] = await Promise.all([
-    listActiveProducts(),
-    listActiveAddOns(),
-    listPublicMachines(),
-  ]);
-  const ctx = await pricingContext(machines);
+  const [{ products, addOns }, ctx] = await Promise.all([publicCatalog(), publicPricing()]);
   return <PricingGrid products={products} addOns={addOns} ctx={ctx} compact />;
 }
 
 async function StickyBar() {
-  await connection();
   const t = await getTranslations("home");
   const tc = await getTranslations("common");
-  const products = await listActiveProducts();
-  const from = Math.min(...products.filter((p) => p.kind === "DAY").map((p) => p.priceCents), 4500);
+  const { dayCents } = await heroStats();
   return (
-    <StickyBookBar watchId="hero-cta" label={t("stickyFrom", { price: formatCentsShort(from) })} cta={tc("bookNow")} />
+    <StickyBookBar
+      watchId="hero-cta"
+      label={t("stickyFrom", { price: formatCentsShort(dayCents ?? 4500) })}
+      cta={tc("bookNow")}
+    />
   );
 }

@@ -72,7 +72,7 @@ tests/             unit/ e integration/ (doble reserva concurrente, webhooks Str
 - **Solo alquiler.** RallyDrop solo alquila la máquina: no hay clases, sesiones de grupo ni coach humano. El coach es el de IA de la Aura S (sección "Your AI coach, included").
 - **Pickleball.** `Settings → Pickleball unlocked` (activado). Si lo apagas, la palabra "pickleball" desaparece del sitio (fichas, footer, FAQ). Los textos legales ya aceptados no cambian; publica una versión nueva si quieres quitarlo también de ahí.
 - **Métricas.** El dashboard muestra la ocupación por máquina (días alquilados ÷ días disponibles del mes, sin contar días bloqueados) y los ingresos del mes por producto. En la ficha de cada máquina, con el costo de compra, ves cuánto has recuperado (**Payback**).
-- **Guía rápida.** `/account/guide` (también en PDF: `public/guides/rallydrop-aura-s-quick-start.pdf`). Si cambias el texto de la guía, vuelve a exportar el PDF imprimiendo esa página (Guardar como PDF).
+- **Guía rápida.** `/guide` (pública, enlazada desde el email de confirmación y el portal; también en PDF: `public/guides/rallydrop-aura-s-quick-start.pdf`). Si cambias el texto de la guía, vuelve a exportar el PDF imprimiendo esa página (Guardar como PDF).
 - **Hora de BC.** Todo el sitio funciona en hora de Victoria: horarios, calendario, emails y admin se calculan en el servidor.
   - Desde el 1 de noviembre de 2026 BC queda en UTC-7 fijo, sin más cambios de hora.
   - `src/lib/time.ts` lo aplica aunque el runtime tenga datos de zona horaria antiguos.
@@ -101,6 +101,14 @@ npm test     # unitarios + integración
 ```
 
 Los tests de integración usan una base aparte, `TEST_DATABASE_URL` en `.env` (por ejemplo `postgresql://…/rallydrop_test`). Se migra sola, se **vacía en cada test** y se omite si la variable no existe.
+
+**Smoke test (Playwright)** contra un build de producción:
+
+```bash
+npm run build && npm run test:e2e   # arranca `next start` en :3200
+```
+
+Carga todas las páginas públicas, la 404, valida el paso de datos de la reserva y marca un alquiler como "Returned – OK" en el admin (comprueba que el depósito queda liberado). Con claves de Stripe test también comprueba que **Pagar** sigue desactivado sin las dos casillas; con `stripe listen --forward-to localhost:3200/api/stripe/webhook` y `E2E_STRIPE=1` completa un alquiler de un día con la tarjeta `4242 4242 4242 4242`.
 
 ## Probar un pago con Stripe (modo test)
 
@@ -142,17 +150,18 @@ Eventos de webhook necesarios:
 
 1. Crea la base en **Neon**. Copia la URL *pooled* a `DATABASE_URL` y la *direct* a `DIRECT_URL`.
 2. Importa el repo en **Vercel** y añade todas las variables de `.env.example`:
-   - `NEXT_PUBLIC_SITE_URL`: tu dominio.
+   - `NEXT_PUBLIC_SITE_URL`: tu dominio (p. ej. `https://rallydrop.ca`). Se usa para las URL canónicas, el sitemap, `robots.txt` y los enlaces de los emails. Sin ella se usa el dominio de Vercel.
    - `AUTH_SECRET`, `PORTAL_SECRET` y `CRON_SECRET`: secretos aleatorios.
    - Las claves de Stripe, Resend y, opcionalmente, Twilio.
 3. *Build command*: `prisma migrate deploy && npm run build`. Para aplicar migraciones a mano en su lugar, ejecuta `npm run db:deploy`.
 4. Ejecuta una vez `npm run db:seed` contra la base de producción, con `SEED_ADMIN_*` propios.
 5. En Stripe (modo live, cuando toque), crea el endpoint `https://TU-DOMINIO/api/stripe/webhook` con los eventos de arriba.
 6. Añade un **Blob store** en Vercel para las fotos de check-in/out. Crea `BLOB_READ_WRITE_TOKEN`.
-7. **Cron** (GitHub Actions, gratis): [`.github/workflows/daily-jobs.yml`](.github/workflows/daily-jobs.yml) llama `GET /api/cron/all` **cada hora** (a los :07). Hace tres cosas:
+7. **Cron** (GitHub Actions, gratis): [`.github/workflows/daily-jobs.yml`](.github/workflows/daily-jobs.yml) llama `GET /api/cron/all` **cada hora** (a los :07). Hace cuatro cosas:
    - **Depósitos**: coloca cada retención 24 h antes del inicio y avisa de las que vencen antes de la devolución.
    - **Recordatorios**: envía el aviso de las reservas de mañana (solo de 7 AM a 9 PM).
    - **Limpieza**: libera las reservas temporales sin pagar.
+   - **Reseñas**: 24 h después de marcar un alquiler como "Returned – OK", pide una reseña por email (una vez, de día). El cliente elige estrellas y escribe un texto en `/review/…`; la reseña queda **oculta** hasta que la publiques en Admin → Reviews.
 
    Configúralo en GitHub → *Settings → Secrets and variables → Actions* con dos secretos:
    - `SITE_URL`: por ejemplo `https://rallydrop.ca`.
@@ -165,7 +174,9 @@ Eventos de webhook necesarios:
 ## Pendiente de configurar antes de lanzar
 
 - [ ] **Cron horario**: el workflow ahora corre cada hora; revisa que los secretos `SITE_URL` y `CRON_SECRET` estén en GitHub.
-- [ ] **Datos reales de contacto** (Admin → Settings → Business details): teléfono, email, dominio, dirección del punto de recogida e Instagram. Mientras estén vacíos, el sitio simplemente no los muestra.
+- [ ] **Datos reales de contacto** (Admin → Settings → Business details): teléfono, email, dominio, dirección del punto de recogida e Instagram. Mientras estén vacíos, el sitio simplemente no los muestra. El **formulario de /contact** envía al email de contacto de Settings (o a `ADMIN_ALERT_EMAIL` si falta); sin ninguno de los dos muestra un aviso en vez de enviar.
+- [ ] **Fotos y vídeos reales**: pon los archivos en `public/photos/` y sus rutas en [`src/config/photos.ts`](src/config/photos.ts) (hero del home, máquina en la cancha y cada paso de `/guide`). Mientras estén vacíos, el home muestra la ilustración y la guía muestra "Photo/Video coming soon". Si cambias el texto de la guía, vuelve a exportar el PDF.
+- [ ] **Pickleball**: `pickleballEnabled` (Settings) está activado; si la máquina no lo hará, desactívalo y desaparece de todo el sitio.
 - [ ] **Revisión legal**: los términos y el waiver son borradores (Admin → Terms & waiver, marcados DRAFT solo en el admin). Un abogado de BC debe revisarlos; publica la versión revisada y pulsa *Mark lawyer-reviewed*.
 - [ ] **Seguro de responsabilidad civil**: mientras no esté en Settings, el dashboard muestra "No liability insurance on file".
 - [ ] **Licencia municipal** (business licence) en Settings.

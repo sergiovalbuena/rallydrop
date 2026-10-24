@@ -4,7 +4,8 @@ import type { BookingStatus, Prisma } from "@/generated/prisma/client";
 import { getSettings } from "@/lib/services/settings";
 import { addLocalDays, localDateMinuteToUtc, toLocalDate } from "@/lib/time";
 import { occupancy as occupancyOf } from "@/lib/domain/occupancy";
-import { holdLapsesBeforeReturn } from "@/lib/domain/deposit";
+import { holdLapsesBeforeReturn, lateFee } from "@/lib/domain/deposit";
+import { seasonalPrice } from "@/lib/domain/season";
 
 export const ACTIVE_STATUSES: BookingStatus[] = [
   "CONFIRMED",
@@ -199,4 +200,27 @@ export async function machineEarnings(machineId: string) {
     damageCents: net(["DEPOSIT_CAPTURE"]),
     maintenanceCents: maintenance._sum.costCents ?? 0,
   };
+}
+
+/** An out-and-overdue rental: how late it is and the late fee per the policy. */
+export async function overdueInfo(booking: { status: string; endsAt: Date; productId: string; startsAt: Date }) {
+  if (booking.status !== "CHECKED_OUT") return null;
+  const now = new Date();
+  if (now <= booking.endsAt) return null;
+  const [settings, day] = await Promise.all([
+    getSettings(),
+    db.product.findFirst({ where: { kind: "DAY", active: true }, orderBy: { sortOrder: "asc" } }),
+  ]);
+  const dayCents = day
+    ? seasonalPrice(day, toLocalDate(booking.startsAt), { start: settings.seasonStart, end: settings.seasonEnd }).cents
+    : 5000;
+  const fee = lateFee({
+    endsAt: booking.endsAt,
+    returnedAt: now,
+    graceMinutes: settings.lateGraceMinutes,
+    hourlyCents: settings.lateHourlyCents,
+    dayCents,
+    unreturnedHours: settings.lateUnreturnedHours,
+  });
+  return fee.hoursLate > 0 ? fee : null;
 }

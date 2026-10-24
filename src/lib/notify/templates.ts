@@ -133,7 +133,7 @@ ${rows([
   ["End", `${formatSlot(d.endsAt)} — ${d.endHow}`],
 ])}
 <p style="font-size:14px">Tips: use pressureless balls, keep the machine dry, and never stand in front of it while it's running.</p>`,
-    { label: "Quick-start guide", url: siteUrl("/account/guide") },
+    { label: "Quick-start guide", url: siteUrl("/guide") },
   );
   return {
     subject: `Reminder: your ${brand.name} rental is tomorrow (${d.code})`,
@@ -293,6 +293,41 @@ export function adminAlertEmail(d: { subject: string; lines: string[]; url?: str
       d.url ? { label: "Open in admin", url: d.url } : undefined,
     ),
     text: [d.subject, ...d.lines, d.url ?? ""].join("\n"),
+  };
+}
+
+export function contactMessageEmail(d: {
+  name: string;
+  email: string | null;
+  phone: string | null;
+  message: string;
+}): EmailContent {
+  const from = [d.email, d.phone].filter(Boolean).join(" · ");
+  return {
+    subject: `[${brand.name}] Message from ${d.name}`,
+    html: layout(
+      `Message from ${d.name}`,
+      `${rows([
+        ["Name", d.name],
+        ...(d.email ? [["Email", d.email] as [string, string]] : []),
+        ...(d.phone ? [["Phone", d.phone] as [string, string]] : []),
+      ])}
+<p style="white-space:pre-wrap;margin-top:20px">${esc(d.message)}</p>`,
+    ),
+    text: `Message from ${d.name} (${from})\n\n${d.message}`,
+  };
+}
+
+export function reviewRequestEmail(d: { customerName: string; productName: string; url: string }): EmailContent {
+  return {
+    subject: "How was your rally?",
+    html: layout(
+      "How was your rally?",
+      `<p>Hi ${esc(d.customerName)}, thanks for renting with ${esc(brand.name)}. We hope the ${esc(d.productName.toLowerCase())} rental got you plenty of balls.</p>
+<p>Would you leave a quick review? Pick the stars and add a line or two — it takes 30 seconds and helps other Victoria players find us.</p>`,
+      { label: "Leave a review", url: d.url },
+    ),
+    text: `Hi ${d.customerName}, thanks for renting with ${brand.name}. Would you leave a quick review? ${d.url}`,
   };
 }
 

@@ -81,9 +81,11 @@ export async function PricingGrid({
                   {perDay && <p className="mt-1 text-xs font-semibold text-success">{perDay}</p>}
                   {other !== now && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {highNow
-                        ? t("offSeasonFrom", { price: formatCentsShort(other) })
-                        : t("highSeasonPrice", { season: highLabel, price: formatCentsShort(other) })}
+                      {t("seasonPair", {
+                        off: formatCentsShort(highNow ? other : now),
+                        season: highLabel,
+                        high: formatCentsShort(highNow ? now : other),
+                      })}
                     </p>
                   )}
                 </div>
@@ -218,13 +220,21 @@ export async function PricingGrid({
         </div>
       )}
 
-      <div className="rounded-2xl border border-dashed bg-muted/40 p-6">
-        <h2 className="font-display text-xl font-bold uppercase">{t("depositTitle")}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {t("depositBody", { short: formatCentsShort(ctx.deposit.short), long: formatCentsShort(ctx.deposit.long) })}
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">{ctx.taxesCharged ? tc("taxesNote") : tc("pricesInCad")}</p>
-      </div>
+      {/* The full page has the Policies block (deposit included) right below. */}
+      {compact ? (
+        <div className="rounded-2xl border border-dashed bg-muted/40 p-6">
+          <h2 className="font-display text-xl font-bold uppercase">{t("depositTitle")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t("depositBody", {
+              short: formatCentsShort(ctx.deposit.short),
+              long: formatCentsShort(ctx.deposit.long),
+            })}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{ctx.taxesCharged ? tc("taxesNote") : tc("pricesInCad")}</p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">{ctx.taxesCharged ? tc("taxesNote") : tc("pricesInCad")}</p>
+      )}
     </div>
   );
 }

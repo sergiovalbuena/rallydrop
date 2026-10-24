@@ -82,7 +82,7 @@ async function Portal({ searchParams }: { searchParams: PageProps<"/account">["s
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline">
-            <Link href="/account/guide">
+            <Link href="/guide">
               <BookOpen /> {t("guide")}
             </Link>
           </Button>

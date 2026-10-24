@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { AtSign, Mail, MapPin, Phone } from "lucide-react";
+import { ContactForm } from "@/components/marketing/contact-form";
 import { PageHero, Section } from "@/components/marketing/section";
 import { revealDelay } from "@/components/marketing/reveal-delay";
 import { getSiteInfo } from "@/lib/services/site-info";
@@ -25,8 +26,8 @@ export default async function ContactPage() {
   return (
     <>
       <PageHero title={t("title")} subtitle={t("subtitle")} />
-      <Section>
-        <ul className="grid gap-4 sm:grid-cols-2">
+      <Section className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
+        <ul className="grid content-start gap-4">
           {items.map((item, i) => (
             <li
               key={item.label}
@@ -48,6 +49,7 @@ export default async function ContactPage() {
             </li>
           ))}
         </ul>
+        <ContactForm />
       </Section>
     </>
   );

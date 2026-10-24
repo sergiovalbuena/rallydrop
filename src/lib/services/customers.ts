@@ -14,7 +14,7 @@ export function normalizeEmail(email: string | null | undefined): string | null 
   return v ? v : null;
 }
 
-/** Normalizes North American numbers to E.164 (+12505550142). */
+/** Normalizes North American numbers to E.164 (+12501234567). */
 export function normalizePhone(phone: string | null | undefined): string | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, "");

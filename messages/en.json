@@ -26,7 +26,9 @@
     "notFoundTitle": "Out of bounds",
     "notFoundBody": "We couldn't find that page. Let's get you back on court.",
     "home": "Home",
-    "pricesInCad": "Prices in CAD."
+    "pricesInCad": "Prices in CAD.",
+    "notFoundEyebrow": "Ball out",
+    "contactUs": "Contact us"
   },
   "nav": {
     "machines": "Machines",
@@ -36,7 +38,7 @@
     "myBookings": "My bookings"
   },
   "footer": {
-    "blurb": "Tennis and pickleball ball machine rentals in Victoria, BC. Grab it downtown or have it dropped at your door or next to your court.",
+    "blurb": "Tennis and pickleball ball machine rentals in Victoria, BC. Pick up downtown free, or we deliver to your door or next to your court.",
     "explore": "Explore",
     "help": "Help",
     "legal": "Legal",
@@ -48,7 +50,8 @@
     "waiver": "Release of liability",
     "insured": "RallyDrop carries commercial general liability insurance.",
     "licence": "{municipality} Business Licence #{number}",
-    "blurbTennis": "AI tennis ball machine rentals in Victoria, BC. Grab it downtown or have it dropped at your door or next to your court."
+    "blurbTennis": "AI tennis ball machine rentals in Victoria, BC. Pick up downtown free, or we deliver to your door or next to your court.",
+    "guide": "Quick-start guide"
   },
   "home": {
     "eyebrow": "Ball machine rentals · Victoria, BC",
@@ -70,7 +73,7 @@
     "machinesTitle": "The machines",
     "machinesSubtitle": "Light enough to carry, smart enough to coach — the AI coach is included with every rental.",
     "pricingTitle": "Simple pricing",
-    "pricingSubtitle": "Everything in Canadian dollars. A refundable deposit is held on your card, never charged unless there's damage.",
+    "pricingSubtitle": "Everything in Canadian dollars. A refundable deposit is held on your card — only charged for damage, loss or a late return.",
     "testimonialsTitle": "Players love it",
     "faqTitle": "Questions, answered",
     "ctaTitle": "Ready to rally?",
@@ -78,7 +81,7 @@
     "ctaButton": "Check availability",
     "trust1": "No account needed",
     "trust2": "Cancel free up to 48 h",
-    "trust3": "Deposit held, only charged if damaged",
+    "trust3": "Deposit held — only charged for damage, loss or a late return",
     "nextAvailable": "Next available",
     "nextNone": "Pick a date",
     "fromLabel": "Day rental from",
@@ -95,9 +98,9 @@
     "score15": "Pick a slot",
     "score15Body": "Choose how long and see real-time availability. No account, two minutes.",
     "score30": "We drop it off",
-    "score30Body": "Fully charged, at a public court or your door — or grab it downtown yourself.",
+    "score30Body": "Fully charged, at your door or next to your court — or grab it downtown yourself.",
     "score40": "Groove your game",
-    "score40Body": "Run drills from your phone. A thousand balls an hour, zero chasing.",
+    "score40Body": "Run drills from the app or by voice, with the AI coach watching. A thousand balls an hour, zero chasing.",
     "scoreGame": "Game",
     "scoreGameBody": "Return it or we collect it, and your deposit is released. Rinse, repeat.",
     "perDay": "≈ {price} / day",
@@ -111,7 +114,7 @@
   },
   "machines": {
     "title": "Our machines",
-    "subtitle": "An AI-coached ball machine, fully charged and ready. Grab it downtown or have it dropped at your door or next to your court.",
+    "subtitle": "An AI-coached ball machine, fully charged and ready. Pick up downtown free, or we deliver to your door or next to your court.",
     "weight": "Weight",
     "maxSpeed": "Max speed",
     "capacity": "Ball capacity",
@@ -162,12 +165,12 @@
     "rentalsTitle": "Rentals",
     "rentalsBody": "The machine is yours for the whole period — play as often as you like.",
     "packagesTitle": "Monthly session packages",
-    "packagesBody": "1.5-hour sessions: pick up and return downtown, or add delivery to your door or next to your court per session. Billed monthly, cancel anytime (effective at the end of the month).",
+    "packagesBody": "1.5-hour sessions. Pick up and return downtown for free, or add delivery to your door or next to your court for your zone's round-trip fee (drop-off and collection), per session. Billed monthly, cancel anytime (effective at the end of the month).",
     "noRollover": "Unused sessions don't roll over to the next month.",
     "rollover": "Unused sessions roll over to the next month.",
     "addOnsTitle": "Add-ons",
     "depositTitle": "About the deposit",
-    "depositBody": "We hold {short} on your card for rentals up to 6 days — released when the machine comes back in good shape. For week and month rentals we securely save your card for up to {long} instead. It's only charged if the machine is damaged, lost or late.",
+    "depositBody": "Day & weekend: {short} hold, placed 24 h before your rental and released when it's back in good shape. Week & month: card saved for up to {long} (no hold). Held on your card — only charged for damage, loss or a late return.",
     "sessions": "{count} sessions / month",
     "sessionLength": "{minutes} min each",
     "popular": "Most popular",
@@ -180,28 +183,35 @@
     "careShort": "Day or weekend",
     "careWeek": "Week",
     "careMonth": "Month",
-    "ballsIncluded": "A full bucket of balls comes with every rental."
+    "ballsIncluded": "A full bucket of balls comes with every rental.",
+    "seasonPair": "Off-season: {off} · {season}: {high}"
   },
   "how": {
     "title": "How it works",
     "subtitle": "Everything you need to know about delivery, the deposit, rain and more.",
     "deliveryTitle": "Drop-off & collection",
-    "deliveryBody": "Grab the machine at our downtown spot for free, or book our trips: we drop it off between 8 AM and 9 PM at any public court or address, and/or collect it when you're done. One trip from {trip}, round trip from {round} — priced by distance from downtown.",
+    "deliveryBody": "Grab the machine at our downtown spot for free, or book our trips: we drop it off between 8 AM and 9 PM at your door (home or club) or in the parking lot or at the curb next to a court, and/or collect it when you're done. One trip from {trip}, round trip from {round} — priced by distance from downtown.",
     "returnTitle": "Returns",
-    "returnBody": "Return it to our downtown spot at the end of your rental, or book collection and we'll come to you. Please have it powered off, with the balls back in the bucket — we check the machine and battery together.",
+    "returnBody": "Return it to our downtown spot at the end of your rental, or book collection and we'll come to you. Please have it powered off, with the balls back in the bucket — we check the machine and battery, then release your deposit. There's a 30-minute grace period; after that late fees apply (see Pricing → Policies).",
     "depositTitle": "The deposit",
-    "depositBody": "Your rental is charged when you book. The deposit is separate: a temporary hold on your card for short rentals, or a saved card for week and month rentals. It's released as soon as the machine is back in good condition.",
+    "depositBody": "Your rental is charged when you book. The deposit is separate and held on your card — only charged for damage, loss or a late return. Day & weekend: a hold placed 24 h before your rental starts (or at checkout if it's sooner), released when the machine is back in good shape. Week & month: your card is saved instead (no hold).",
     "rainTitle": "Rain",
     "rainBody": "This is Victoria — we get it. If it rains on the day your rental starts, tap “Rained out?” in My bookings before your start time: reschedule for free, or take a 100% credit for your next booking.",
     "cancelTitle": "Cancellations",
     "cancelBody": "Cancel 48 hours or more before your start time for a full refund. Inside 48 hours you get 50% back. You can cancel or reschedule anytime from “My bookings”.",
     "ballsTitle": "Which balls?",
-    "ballsBody": "Use pressureless tennis balls — they keep the same bounce for months and feed consistently. Pressurized balls go flat and can jam the feeder. Our ball bucket add-on includes 100–120 pressureless balls.",
+    "ballsBody": "Every rental comes with a full bucket of 100–120 pressureless balls — they keep their bounce and feed consistently. Want more? Add an extra bucket (+50 balls) at checkout. Wet, flat or bald balls can jam the feeder.",
     "faqTitle": "FAQ",
     "zoneTitle": "Delivery zones",
     "zoneBody": "Trips are priced by straight-line distance from downtown Victoria (the rings on the map). Pins are the public courts we serve — or use your own address.",
     "zoneMapLabel": "Map of the delivery zones and courts in Victoria",
-    "courtsTitle": "Courts we serve"
+    "courtsTitle": "Courts we serve",
+    "stepsTitle": "Four points to game",
+    "stepsSubtitle": "Booking to returning, step by step.",
+    "step1Detail": "Pick day, weekend, week or month, a start time and how you want the machine. You pay the rental when you book and tick two boxes for the terms. No account: your booking code and email or phone are enough.",
+    "step2Detail": "Grab it at our downtown spot for free, or we bring it to your door (home or club) or the parking lot next to your court — never onto the court. For day and weekend rentals the {short} deposit hold goes on your card 24 h before you start; week and month rentals just keep your card saved.",
+    "step3Detail": "Power on, pair the PONGBOT app and start a slow drill. The Spotter AI camera tracks your swing and talks you through corrections. The quick-start guide covers jams, voice commands and safety.",
+    "step4Detail": "Bring it back downtown or be there for collection at the agreed time, powered off with the balls in the bucket. We check it and release the deposit. Late? {grace} minutes of grace, then {hourly}/hour up to one day's price. Rain on your start day? Reschedule free or take a credit."
   },
   "contact": {
     "title": "Contact",
@@ -210,10 +220,17 @@
     "phone": "Phone / text",
     "instagram": "Instagram",
     "area": "Service area",
-    "areaBody": "Greater Victoria, BC. Self-serve downtown, or drop-off and collection by zone."
+    "areaBody": "Greater Victoria, BC. Self-serve downtown, or drop-off and collection by zone.",
+    "formTitle": "Send us a message",
+    "name": "Name",
+    "reach": "Email or phone",
+    "message": "Message",
+    "send": "Send message",
+    "sending": "Sending…",
+    "sent": "Thanks — your message is on its way. We'll get back to you soon.",
+    "noDetails": "Use the form and we'll reply by email or text."
   },
   "legal": {
-    "reviewBanner": "Placeholder text — must be reviewed by a lawyer before launch.",
     "termsTitle": "Rental terms",
     "privacyTitle": "Privacy policy",
     "updated": "Last updated: {date}"
@@ -273,11 +290,11 @@
     "total": "Total today",
     "creditApplied": "Your credit",
     "depositLine": "Refundable deposit",
-    "depositHold": "Held on your card, not charged",
-    "depositSaved": "Card saved, charged only if there's damage",
+    "depositHold": "Hold, not a charge — only charged for damage, loss or a late return",
+    "depositSaved": "Card saved (no hold) — only charged for damage, loss or a late return",
     "depositHoldAmount": "a {amount} hold on your card",
     "depositSavedAmount": "your card saved for up to {amount}",
-    "depositScheduled": "Held on your card the day before your rental",
+    "depositScheduled": "Hold placed 24 h before your rental — only charged for damage, loss or a late return",
     "toPayment": "Continue to payment",
     "unavailableTitle": "Online booking opens soon",
     "unavailableBody": "We're putting the final touches on online checkout. In the meantime, call or email us and we'll book your machine by hand.",
@@ -317,7 +334,8 @@
     "ballsIncluded": "A full bucket of balls (100–120) comes with every rental.",
     "careTitle": "RallyDrop Care",
     "careBody": "Accidents happen: with Care, the most you pay for accidental damage is {cap}. Doesn't cover theft, loss, use in the rain or gross negligence.",
-    "awaitingTerms": "Payment received — please accept the terms (we've emailed you a link) to confirm your booking."
+    "awaitingTerms": "Payment received — please accept the terms (we've emailed you a link) to confirm your booking.",
+    "noscript": "Booking needs JavaScript to check live availability and take a secure card payment. Please turn JavaScript on, or contact us to book by phone or email."
   },
   "portal": {
     "title": "My bookings",
@@ -428,7 +446,7 @@
     "how1": "Pick a court or your address at checkout.",
     "how2": "See your zone and exact price before you pay.",
     "how3": "We arrive at your start time and come back at the end.",
-    "packagesNote": "Package members collect downtown for free, or pay their zone's delivery fee per session."
+    "packagesNote": "Package members collect downtown for free, or pay their zone's round-trip fee (drop-off and collection) per session."
   },
   "waitlist": {
     "title": "Coming soon: {name}",
@@ -450,10 +468,10 @@
   "consent": {
     "summaryTitle": "Key terms",
     "depositDefault": "a refundable deposit",
-    "bulletDeposit": "Deposit: {deposit}, only charged if the machine is damaged, lost or late.",
+    "bulletDeposit": "Deposit: {deposit} — only charged for damage, loss or a late return.",
     "bulletDamage": "You're responsible for damage, loss or theft during your rental (RallyDrop Care caps accidental damage at $100).",
     "bulletRain": "Rain on your start day? Reschedule free or get a 100% credit for 6 months.",
-    "bulletLate": "Late return, or not available for collection on time: one extra day is charged.",
+    "bulletLate": "Late return: after a short grace period, an hourly late fee applies, up to one day's price. Not back within a day and no word from you? It counts as not returned and the deposit can be charged.",
     "bulletCancel": "Cancel more than 48 h before for a full refund, 50% within 48 h, none once started.",
     "agree": "I agree to the <terms></terms> and the <waiver></waiver>, and I understand I'm giving up certain legal rights.",
     "termsLink": "Rental Terms",
@@ -514,7 +532,7 @@
     },
     "deposit": {
       "q": "How does the deposit work?",
-      "a": "For rentals up to 6 days we place a temporary hold of {short} on your card — it's not a charge, and it's released as soon as the machine is back in good shape. For week and month rentals we securely save your card for up to {long} instead. We only charge it if the machine is damaged, lost or returned late, and we always explain why."
+      "a": "It's held on your card — only charged for damage, loss or a late return. Day & weekend: a {short} hold, placed 24 h before your rental and released when it's back in good shape. Week & month: your card is saved for up to {long} (no hold). If we ever charge it, we tell you why in writing."
     },
     "care": {
       "q": "What is RallyDrop Care?",
@@ -523,6 +541,10 @@
     "rain": {
       "q": "What if it rains?",
       "a": "Victoria, we know. If it rains on the day your rental starts, open My bookings before your start time and tap “Rained out?”: reschedule for free, or take a credit for 100% of what you paid, valid {months} months and applied automatically to your next booking. On days we declare a rain day, we email you the same options."
+    },
+    "late": {
+      "q": "What if I return it late?",
+      "a": "There's a {grace}-minute grace period. After that it's {hourly} per hour late, up to one day's rental price. If we hear nothing for {hours} hours, the machine counts as not returned and the deposit may be charged. Running late? Tell us early — we're flexible when we can be."
     },
     "breaks": {
       "q": "What if something breaks or jams?",
@@ -534,7 +556,7 @@
     },
     "cancel": {
       "q": "Can I cancel or reschedule?",
-      "a": "Yes, from “My bookings”. Cancel more than 48 hours before the start for a full refund, or within 48 hours for 50% back. Rescheduling is free when the new time is available."
+      "a": "Yes, from “My bookings”. Cancel {hours} hours or more before the start for a full refund, or within {hours} hours for {percent}% back; there's no refund once the rental has started. Rescheduling is free when the new time is available."
     },
     "insured": {
       "q": "Is RallyDrop insured?",
@@ -571,5 +593,19 @@
     "portalTitle": "Spring Pass",
     "portalLeft": "{left} of {total} weekends left · {from} – {to}",
     "bookWeekend": "Book a weekend"
+  },
+  "policies": {
+    "title": "Policies",
+    "subtitle": "The short version. No surprises.",
+    "cancelTitle": "Cancellation",
+    "cancelBody": "Full refund if you cancel {hours} h or more before the start, {percent}% within {hours} h, nothing once the rental has started. Rescheduling is free when the new time is available.",
+    "rainTitle": "Rain",
+    "rainBody": "If it rains on your start day, reschedule free or take a 100% credit (valid {months} months), as long as you tell us before your start time — or we declare a rain day.",
+    "lateTitle": "Late return",
+    "lateBody": "{grace}-minute grace period, then {hourly} per hour late, up to one day's rental price. No word from you for {hours} h after the end and the machine counts as not returned — the deposit may be charged.",
+    "depositTitle": "Deposit",
+    "depositBody": "Held on your card — only charged for damage, loss or a late return. Day & weekend: {short} hold, placed 24 h before your rental and released when it's back in good shape. Week & month: card saved for up to {long} (no hold).",
+    "full": "All the details are in the",
+    "termsLink": "Rental Terms."
   }
 }

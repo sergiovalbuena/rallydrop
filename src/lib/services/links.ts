@@ -28,3 +28,4 @@ export function idFromSigned(purpose: string, token: string): string | null {
 }
 
 export const DEPOSIT_CARD = "deposit-card";
+export const REVIEW = "review";

@@ -1,5 +1,6 @@
 "use server";
 
+import { PUBLIC_TAG } from "@/lib/services/public-data";
 import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -55,6 +56,9 @@ const settings = z.object({
     .min(0)
     .max(24 * 30),
   cancelLatePercent: percent,
+  lateGraceMinutes: z.coerce.number().int().min(0).max(240),
+  lateHourly: z.coerce.number().min(0).max(1000),
+  lateUnreturnedHours: z.coerce.number().int().min(1).max(168),
   deliveryStart: hhmm,
   deliveryEnd: hhmm,
   deliveryHubLat: z.coerce.number().min(-90).max(90),
@@ -139,6 +143,9 @@ export async function saveSettingsAction(_: SettingsState, formData: FormData): 
       depositAuthLeadHours: d.depositAuthLeadHours,
       cancelFullRefundHours: d.cancelFullRefundHours,
       cancelLateRefundBps: d.cancelLatePercent,
+      lateGraceMinutes: d.lateGraceMinutes,
+      lateHourlyCents: Math.round(d.lateHourly * 100),
+      lateUnreturnedHours: d.lateUnreturnedHours,
       deliveryStartMinute: d.deliveryStart,
       deliveryEndMinute: d.deliveryEnd,
       deliveryHubLat: d.deliveryHubLat,
@@ -181,6 +188,7 @@ export async function saveSettingsAction(_: SettingsState, formData: FormData): 
   });
   updateTag(SITE_INFO_TAG);
   revalidatePath("/admin/settings");
+  updateTag(PUBLIC_TAG); // public pages are prerendered from cached data
   return { ok: true, message: "Settings saved." };
 }
 
@@ -240,5 +248,6 @@ export async function saveCourtAction(_: SettingsState, formData: FormData): Pro
   if (id) await db.court.update({ where: { id }, data });
   else await db.court.create({ data: { ...data, active: true } });
   revalidatePath("/admin/settings");
+  updateTag(PUBLIC_TAG); // public pages are prerendered from cached data
   return { ok: true, message: "Court saved." };
 }

@@ -3,98 +3,108 @@
  * licensed in British Columbia before launch.
  *
  * This is the starting text: the first time the app runs it is stored as
- * version DEFAULT_LEGAL_VERSION in the LegalDocument table, and from then on
+ * version DEFAULT_LEGAL_VERSIONS.TERMS in the LegalDocument table, and from then on
  * the owner edits and publishes new versions in Admin → Legal. Amounts are
  * written in plain numbers on purpose (the customer accepts the exact text);
- * publish a new version whenever deposits, Care or the policies change.
+ * publish a new version whenever deposits, Care, late fees or the policies
+ * change. Bumping DEFAULT_LEGAL_VERSIONS.TERMS (lib/services/legal.ts)
+ * publishes this text once on the next deploy.
  */
 
 export const TERMS_TITLE = "Rental Terms";
 
 export const TERMS_BODY = `## 1. About these terms
 
-These Rental Terms are an agreement between you (the "renter") and RallyDrop ("we", "us"), a ball machine rental business in Victoria, British Columbia. They apply to every rental you book with us. By ticking the box at checkout you confirm you have read and agree to them, together with our Release of Liability, Waiver of Claims and Assumption of Risk ("the Waiver").
+These Rental Terms are an agreement between you (the "renter") and RallyDrop ("we", "us"), a ball machine rental business in Victoria, British Columbia. They apply to every rental you book with us. By ticking the boxes at checkout you confirm that you have read and agree to them, together with our Release of Liability, Waiver of Claims and Assumption of Risk ("the Waiver"), and that you are 19 or older.
 
-## 2. What we rent
+## 2. What we rent — and what we don't
 
-- We rent tennis and pickleball ball machines and their accessories (battery, charger, ball bucket, the Spotter AI camera module where included, and any balls supplied).
-- We only rent equipment. We do not provide a venue, coaching or supervision unless a separate lesson is booked.
-- **You decide where to use the equipment** — at home, at your club or at a public court — and you are responsible for following the rules of that place, including posted court time limits, municipal court bookings and any rules about ball machines.
+- **RallyDrop only rents equipment**: a PONGBOT ball machine and its accessories (battery, charger, ball bucket, the Spotter AI camera module and the balls supplied).
+- We do not provide a venue, lessons, coaching or supervision. The AI coach built into the machine is a practice assistant, not a coach.
+- **You decide where to use the equipment** — at home, at your club or at a public court — and you are responsible for the rules of that place, including posted court time limits, court bookings and whether ball machines are allowed.
 
-## 3. Booking and payment
+## 3. Who can rent
+
+- You must be **19 or older** (the age of majority in British Columbia).
+- A parent or guardian may rent for a minor who uses the machine under their supervision.
+- **You are responsible for anyone who uses the machine during your rental**, and for making sure they follow these terms and the safety instructions.
+
+## 4. Booking and payment
 
 - Prices are in Canadian dollars. Any taxes we are registered to charge are shown before you pay.
-- The rental price, any drop-off or collection trips, RallyDrop Care and other extras are charged to your card when you book. Payments are processed by Stripe; we never see or store your full card number.
-- A booking is confirmed when you receive a confirmation email or text with your booking code, and only after you have accepted these Rental Terms and the Waiver.
+- The rental, any drop-off or collection trips, RallyDrop Care and other extras are charged to your card when you book. Payments are processed by Stripe; we never see or store your full card number.
 - Prices follow the season of your rental's start date (high season or off-season prices).
+- A booking is confirmed when you receive a confirmation with your booking code, and only after you have accepted these terms and the Waiver.
 
-## 4. Drop-off, collection and self-serve
+## 5. Drop-off, collection and self-serve
 
-- You can collect and return the equipment at our downtown Victoria pick-up point at no charge, or pay for us to drop it off and/or collect it.
-- Drop-off and collection happen at your address or in the parking lot or at the curb next to a court you choose from our list — never inside the court.
-- Someone aged 19 or older must be present at drop-off and at collection. At the hand-off we show you how to use the machine and record its condition.
+- You can collect and return the equipment at our downtown pick-up point at no charge, or pay for us to drop it off and/or collect it.
+- Drop-off and collection happen at your door (home or club) or in the parking lot or at the curb next to a court you choose — never on the court itself.
+- Someone aged 19 or older must be present at drop-off and collection. We show you how the machine works and record its condition.
 - For week and month rentals we check a government photo ID at hand-off.
 
-## 5. Safe use
+## 6. Safe use
 
 You agree to:
 
-- Read the quick-start guide and follow the instructions we give you at hand-off.
+- Read the quick-start guide and follow the instructions we give you.
 - **Never stand or walk in front of the machine while it is running**, and switch it off before collecting balls, adjusting or moving it.
-- Keep children, pets and bystanders well away from the machine's line of fire.
+- Keep children, pets and bystanders out of the machine's line of fire.
 - **Not use the machine in the rain, on a wet court or in standing water**, and not leave it outside overnight or in the rain.
-- Use only clean pressureless or regular tennis balls (or pickleballs when the machine is set up for pickleball). Do not use damaged, wet or dirty balls.
-- **Not open, repair or modify the machine**, its battery or the Spotter module. If something jams or breaks, stop using it and contact us.
-- Supervise any person under 19 who uses the machine.
+- Use only clean, dry balls in good condition.
+- **Not open, repair or modify the machine**, its battery or the Spotter module. If something jams or breaks, stop and contact us.
 - Keep the equipment secure and never leave it unattended in a public place.
 
-## 6. Security deposit
+## 7. Security deposit
 
-- **Rentals of up to 6 days:** we place a temporary authorization ("hold") of 400 CAD on your card. It is not a charge. We release it when the equipment comes back in good condition.
-- **Week and month rentals:** we save your card securely with Stripe for a deposit of up to 600 CAD instead of a hold, because card holds expire. Nothing is charged unless there is damage, loss or a late return.
-- The deposit amount shown at checkout applies. It may be different if we change our prices; the amount shown when you book is the one that applies to your rental.
+- The deposit is **held on your card — only charged for damage, loss or a late return**.
+- **Day and weekend rentals:** we place a temporary authorization ("hold") of 400 CAD on your card **24 hours before your rental starts** (or at checkout if it starts sooner). It is not a charge, and we release it when the equipment is back in good condition.
+- **Week and month rentals:** card holds expire too soon, so we keep your card saved securely with Stripe for up to 600 CAD instead. There is no hold and nothing is charged unless there is damage, loss or a late return.
+- If the hold can't be placed (for example, the card is declined or expired), we ask you to update your card and we don't hand over the equipment until the deposit is in place.
 
-## 7. Damage, loss and theft
+## 8. Damage, loss and theft
 
 - You are responsible for the equipment from the moment it is handed to you (or dropped off) until it is returned to us (or collected).
-- If the equipment is damaged, lost or stolen during your rental, you agree to pay the reasonable cost of repair or, if it can't be repaired or is not returned, its replacement value, less anything already charged from your deposit. Normal wear and tear is our responsibility.
-- We inspect the equipment at return and record its condition with notes and photos. If we charge you for damage, we will tell you why in writing.
+- **Your responsibility goes up to the equipment's replacement value.** If it is damaged, lost or stolen, you agree to pay the reasonable cost of repair or, if it can't be repaired or isn't returned, its replacement value. **The deposit does not limit this amount**: we may charge the deposit and ask you to pay any difference.
+- Normal wear and tear is our responsibility.
+- We inspect the equipment at return and record its condition with notes and photos. If we charge you, we tell you why in writing.
 - Report theft to the police and to us within 24 hours.
 
-## 8. RallyDrop Care
+## 9. RallyDrop Care
 
 - RallyDrop Care is an optional add-on you can buy at checkout. It is not insurance.
-- With Care, the most you pay for **accidental damage** during your rental is **100 CAD**.
-- Care does **not** cover: theft, loss, use in the rain or on a wet court, or damage caused by gross negligence or deliberate misuse (for example, opening the machine or ignoring the safety instructions). In those cases section 7 applies in full.
-- Care has no cash value and can't be refunded once your rental has started.
+- **With Care, the most you pay for accidental damage during your rental is 100 CAD.**
+- Care does not cover theft, loss, use in the rain or on a wet court, or damage caused by gross negligence or deliberate misuse (for example, opening the machine or ignoring the safety instructions). In those cases section 8 applies in full.
+- Care can't be refunded once your rental has started.
 
-## 9. Late returns
+## 10. Late returns
 
-- If you **don't return the equipment on time**, or **you are not available for collection at the agreed time**, we may charge one extra rental day at the current day price for each 24 hours (or part of 24 hours) the equipment is late, plus any extra trip needed to collect it.
-- If a late return prevents the next customer's rental, we may also charge reasonable costs we incur because of it.
+- There is a **30-minute grace period** after your rental ends (or after the agreed collection time).
+- After that we charge **15 CAD per hour late, up to the price of one rental day**, plus any extra trip needed to collect the equipment.
+- If we hear nothing from you for **24 hours** after your rental ends, the equipment is considered not returned: we may charge the deposit and section 8 applies.
 - Please tell us as early as possible if you're running late.
 
-## 10. Cancellations and changes
+## 11. Cancellations and changes
 
-- Cancel **more than 48 hours** before your rental starts for a **full refund**.
-- Cancel **within 48 hours** of the start for a **50% refund**.
+- Cancel **48 hours or more** before your rental starts for a **full refund**.
+- Cancel **less than 48 hours** before the start for a **50% refund**.
 - **No refund** once the rental has started.
 - You can cancel or reschedule from "My bookings". Rescheduling is free when the new time is available.
 
-## 11. Rain
+## 12. Rain
 
-This is Victoria, so rain happens. If it rains on the day your rental starts and you tell us before your start or drop-off time (or we declare a rain day), you can reschedule for free or take a credit for 100% of what you paid, valid for 6 months.
+This is Victoria, so rain happens. If it rains on the day your rental starts and you tell us before your start time (or we declare a rain day), you can reschedule for free or take a credit for 100% of what you paid, valid for 6 months and applied automatically to your next booking.
 
-## 12. Privacy and the AI camera
+## 13. Privacy and the Spotter AI camera
 
 - We collect the contact details you give us to manage your booking, as described in our Privacy Policy.
-- The Spotter AI camera records video to analyse your play. Recordings are processed by the PONGBOT app on your own phone or tablet; **RallyDrop does not access or store those recordings**. Please read PONGBOT's own privacy policy, and get permission before filming other people.
+- The Spotter camera records video and movement data to analyse your play. It is processed by the PONGBOT app on your own phone or tablet; **RallyDrop does not access or store those recordings**. PONGBOT's own privacy policy applies to the app. Please get permission before filming other people.
 
-## 13. Limitation of liability
+## 14. Limitation of liability
 
 To the extent permitted by the law of British Columbia, our total liability to you for any claim related to a rental is limited to the amount you paid for that rental. Nothing in these terms limits liability that can't be limited by law. The Waiver also applies.
 
-## 14. General
+## 15. General
 
 - These terms are governed by the laws of British Columbia and the federal laws of Canada that apply there. Courts in British Columbia have jurisdiction.
 - If any part of these terms is found unenforceable, the rest still applies.

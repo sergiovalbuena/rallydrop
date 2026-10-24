@@ -58,7 +58,7 @@ export const DEFAULT_PRODUCTS = [
     sessionsPerMonth: 4,
     sessionMinutes: 90,
     description:
-      "4 sessions of 1.5 h per month. Pick up and return downtown, or add delivery to your door or next to your court per session.",
+      "4 sessions of 1.5 h per month. Pick up and return downtown, or add delivery to your door or next to your court (round trip, zone fee) per session.",
   },
   {
     slug: "package-frequent",
@@ -69,7 +69,7 @@ export const DEFAULT_PRODUCTS = [
     sessionsPerMonth: 8,
     sessionMinutes: 90,
     description:
-      "8 sessions of 1.5 h per month. Pick up and return downtown, or add delivery to your door or next to your court per session.",
+      "8 sessions of 1.5 h per month. Pick up and return downtown, or add delivery to your door or next to your court (round trip, zone fee) per session.",
   },
 ] as const;
 

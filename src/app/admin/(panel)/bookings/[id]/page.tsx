@@ -22,6 +22,7 @@ import { getSettings } from "@/lib/services/settings";
 import { acceptanceToken } from "@/lib/services/legal";
 import { siteUrl } from "@/lib/site-url";
 import { holdLapsesBeforeReturn } from "@/lib/domain/deposit";
+import { overdueInfo } from "@/lib/admin/queries";
 import { formatLocal, formatRange } from "@/lib/time";
 
 /** Internal admin: always rendered per request, no instant-navigation shell. */
@@ -47,6 +48,7 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
     },
   });
   if (!b) notFound();
+  const overdue = await overdueInfo(b);
   const settings = await getSettings();
 
   const rental = b.payments.filter(
@@ -289,6 +291,13 @@ export default async function BookingDetailPage({ params }: PageProps<"/admin/bo
                       holdLapsesBeforeReturn(b.deposit.authExpiresAt, b.endsAt) ? " — before the return!" : ""
                     }`}
                   />
+                )}
+                {overdue && (
+                  <p className="rounded-lg bg-warning/15 p-2">
+                    {overdue.unreturned
+                      ? `Not returned: ${overdue.hoursLate} h past the end with no return. The deposit may be charged (note required).`
+                      : `Late: ${overdue.hoursLate} h past the end. Late fee per policy: ${formatCents(overdue.cents)} (charge it from the deposit with a note).`}
+                  </p>
                 )}
                 {b.deposit.status === "FAILED" && (
                   <p className="rounded-lg bg-destructive/10 p-2 text-destructive">

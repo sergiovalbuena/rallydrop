@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { PUBLIC_TAG } from "@/lib/services/public-data";
+import { revalidatePath, updateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { assertAdmin } from "@/lib/admin/guard";
 import { dollarsToCents } from "@/lib/money";
@@ -55,6 +56,7 @@ export async function saveProductAction(_: SaveState, formData: FormData): Promi
     },
   });
   revalidatePath("/admin/products");
+  updateTag(PUBLIC_TAG); // public pages are prerendered from cached data
   // Packages get a new Stripe Price automatically on the next sign-up; existing
   // subscribers keep their price until you migrate them in Stripe.
   return { ok: true, message: `${product.name} saved.` };
@@ -75,5 +77,6 @@ export async function saveAddOnAction(_: SaveState, formData: FormData): Promise
     },
   });
   revalidatePath("/admin/products");
+  updateTag(PUBLIC_TAG); // public pages are prerendered from cached data
   return { ok: true, message: "Add-on saved." };
 }

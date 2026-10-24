@@ -26,7 +26,7 @@ export function localBusinessLd(site: SiteInfo) {
     logo: siteUrl("/icon.svg"),
     priceRange: "$$",
     currenciesAccepted: "CAD",
-    areaServed: { "@type": "City", name: "Victoria, British Columbia" },
+    areaServed: { "@type": "AdministrativeArea", name: "Greater Victoria, BC" },
     address: {
       "@type": "PostalAddress",
       ...(site.hubAddress ? { streetAddress: site.hubAddress } : {}),

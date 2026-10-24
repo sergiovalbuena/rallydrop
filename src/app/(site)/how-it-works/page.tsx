@@ -1,19 +1,16 @@
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/json-ld";
 import { faqPageLd } from "@/lib/services/structured-data";
-import { Suspense } from "react";
-import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { CircleDollarSign, CloudRain, MapPin, RotateCcw, Truck, XCircle } from "lucide-react";
 import { FaqList } from "@/components/marketing/faq-list";
 import { ZoneMap } from "@/components/marketing/zone-map";
 import { DeliveryZoneTable } from "@/components/marketing/delivery-service";
-import { listCourtsWithLocation } from "@/lib/services/catalog";
-import { getSettings } from "@/lib/services/settings";
 import { PageHero, Section, SectionHeading } from "@/components/marketing/section";
-import { Skeleton } from "@/components/ui/skeleton";
 import { revealDelay } from "@/components/marketing/reveal-delay";
 import { faqItems } from "@/lib/services/faq";
+import { publicCatalog, publicCourts, publicPolicies, publicPricing } from "@/lib/services/public-data";
+import { ScoreSteps } from "@/components/marketing/score-steps";
 import { formatCentsShort } from "@/lib/money";
 
 export const metadata: Metadata = {
@@ -28,34 +25,27 @@ export default async function HowItWorksPage() {
   return (
     <>
       <PageHero title={t("title")} subtitle={t("subtitle")} />
-      <Section>
-        <Suspense fallback={<TopicsSkeleton />}>
-          <Topics />
-        </Suspense>
+      <Section id="steps">
+        <SectionHeading title={t("stepsTitle")} subtitle={t("stepsSubtitle")} />
+        <ScoreSteps />
+        <StepDetails />
       </Section>
-      <Suspense
-        fallback={
-          <Section className="pt-0">
-            <Skeleton className="h-96 rounded-2xl" />
-          </Section>
-        }
-      >
-        <DeliveryZone />
-      </Suspense>
+      <Section className="pt-0">
+        <Topics />
+      </Section>
+      <DeliveryZone />
       <Section id="faq" className="max-w-3xl pt-0">
         <SectionHeading title={t("faqTitle")} align="center" />
         <div data-reveal>
-          <Suspense fallback={<Skeleton className="h-96 rounded-2xl" />}>
-            <Faq />
-          </Suspense>
+          <Faq />
         </div>
       </Section>
     </>
   );
 }
 
+// Cached data → the answers are in the server HTML (visible without JavaScript).
 async function Faq() {
-  await connection();
   const items = await faqItems();
   return (
     <>
@@ -65,20 +55,31 @@ async function Faq() {
   );
 }
 
-function TopicsSkeleton() {
+/** The four steps, with the details people ask about (delivery, deposit hold, return, rain). */
+async function StepDetails() {
+  const t = await getTranslations("how");
+  const [ctx, p] = await Promise.all([publicPricing(), publicPolicies()]);
+  const details = [
+    t("step1Detail"),
+    t("step2Detail", { short: formatCentsShort(ctx.deposit.short) }),
+    t("step3Detail"),
+    t("step4Detail", { grace: p.lateGraceMinutes, hourly: formatCentsShort(p.lateHourlyCents) }),
+  ];
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {[0, 1, 2, 3, 4, 5].map((i) => (
-        <Skeleton key={i} className="h-48 rounded-2xl" />
+    <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {details.map((text, i) => (
+        <li key={i} className="text-sm text-muted-foreground">
+          <span className="font-semibold text-foreground">Step {i + 1}. </span>
+          {text}
+        </li>
       ))}
-    </div>
+    </ol>
   );
 }
 
 async function Topics() {
-  await connection();
   const t = await getTranslations("how");
-  const zone1 = (await getSettings()).deliveryZones[0];
+  const zone1 = (await publicCatalog()).deliveryZones[0];
   const prices = {
     trip: formatCentsShort(zone1?.tripCents ?? 1500),
     round: formatCentsShort(zone1?.roundTripCents ?? 2500),
@@ -128,9 +129,8 @@ async function Topics() {
 }
 
 async function DeliveryZone() {
-  await connection();
   const t = await getTranslations("how");
-  const [settings, courts] = await Promise.all([getSettings(), listCourtsWithLocation()]);
+  const [{ deliveryZones, hub }, courts] = await Promise.all([publicCatalog(), publicCourts()]);
   return (
     <Section id="zone" className="pt-0">
       <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
@@ -138,7 +138,7 @@ async function DeliveryZone() {
           <h2 className="font-display text-3xl font-extrabold uppercase">{t("zoneTitle")}</h2>
           <p className="mt-3 text-muted-foreground">{t("zoneBody")}</p>
           <div className="mt-5">
-            <DeliveryZoneTable zones={settings.deliveryZones} />
+            <DeliveryZoneTable zones={deliveryZones} />
           </div>
           <h3 className="mt-6 font-semibold">{t("courtsTitle")}</h3>
           <ul className="mt-2 space-y-1.5 text-sm">
@@ -155,8 +155,8 @@ async function DeliveryZone() {
         </div>
         <ZoneMap
           label={t("zoneMapLabel")}
-          center={{ lat: settings.deliveryHubLat, lng: settings.deliveryHubLng }}
-          radiiKm={settings.deliveryZones.map((z) => z.maxKm)}
+          center={hub}
+          radiiKm={deliveryZones.map((z) => z.maxKm)}
           courts={courts.map((c) => ({ lat: c.lat, lng: c.lng, label: c.name }))}
         />
       </div>

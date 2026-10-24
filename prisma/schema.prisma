@@ -80,6 +80,13 @@ model Settings {
   cancelFullRefundHours Int @default(48)
   cancelLateRefundBps   Int @default(5000) // 50% refund inside the window
 
+  // Late returns: grace period, then an hourly fee capped at one day's
+  // price. With no answer after lateUnreturnedHours the machine counts as
+  // not returned and the deposit can be charged.
+  lateGraceMinutes    Int @default(30)
+  lateHourlyCents     Int @default(1500)
+  lateUnreturnedHours Int @default(24)
+
   // Delivery
   deliveryStartMinute Int     @default(480) // 08:00, minutes from midnight local
   deliveryEndMinute   Int     @default(1260) // 21:00 (Friday-night weekend start)
@@ -543,9 +550,11 @@ model Booking {
   termsAcceptedAt DateTime? @db.Timestamptz
   termsVersion    String?
 
-  cancelledAt    DateTime? @db.Timestamptz
-  cancelReason   String?
-  reminderSentAt DateTime? @db.Timestamptz
+  cancelledAt       DateTime? @db.Timestamptz
+  cancelReason      String?
+  reminderSentAt    DateTime? @db.Timestamptz
+  /// "How was it?" email sent (24 h after a good return).
+  reviewRequestedAt DateTime? @db.Timestamptz
 
   createdAt DateTime @default(now()) @db.Timestamptz
   updatedAt DateTime @updatedAt @db.Timestamptz
@@ -966,6 +975,8 @@ model WaiverAcceptance {
 /// Customer reviews shown on the site (only when 2+ are published).
 model Review {
   id           String   @id @default(cuid())
+  /// Set when the customer left it from the review link of a booking.
+  bookingId    String?  @unique
   customerName String
   text         String
   rating       Int      @default(5)

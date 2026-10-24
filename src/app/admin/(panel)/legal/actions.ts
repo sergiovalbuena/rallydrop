@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { PUBLIC_TAG } from "@/lib/services/public-data";
+import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { assertAdmin } from "@/lib/admin/guard";
@@ -59,6 +60,7 @@ export async function saveLegalVersionAction(_: LegalState, formData: FormData):
     throw e;
   }
   revalidatePath("/admin/legal");
+  updateTag(PUBLIC_TAG); // public pages are prerendered from cached data
   return {
     ok: true,
     message: d.publish ? `Version ${d.version} is now live.` : `Version ${d.version} saved (not published).`,
@@ -70,6 +72,7 @@ export async function publishLegalVersionAction(id: string): Promise<void> {
   await assertAdmin();
   await db.legalDocument.update({ where: { id: z.string().min(1).parse(id) }, data: { publishedAt: new Date() } });
   revalidatePath("/admin/legal");
+  updateTag(PUBLIC_TAG); // public pages are prerendered from cached data
 }
 
 /** Marks a version as reviewed by a lawyer (removes the DRAFT badge in admin). */
@@ -77,4 +80,5 @@ export async function markReviewedAction(id: string): Promise<void> {
   await assertAdmin();
   await db.legalDocument.update({ where: { id: z.string().min(1).parse(id) }, data: { draft: false } });
   revalidatePath("/admin/legal");
+  updateTag(PUBLIC_TAG); // public pages are prerendered from cached data
 }

@@ -56,6 +56,9 @@ type S = {
   depositAuthLeadHours: number;
   cancelFullRefundHours: number;
   cancelLatePercent: number;
+  lateGraceMinutes: number;
+  lateHourly: string;
+  lateUnreturnedHours: number;
   deliveryStart: string;
   deliveryEnd: string;
   deliveryHubLat: number;
@@ -176,6 +179,18 @@ export function SettingsForm({ s }: { s: S }) {
         </F>
         <F label="Late cancellation refund %">
           <Input name="cancelLatePercent" type="number" step="1" defaultValue={s.cancelLatePercent} />
+        </F>
+        <F label="Late return: grace (minutes)" hint="Shown on Pricing and in the FAQ">
+          <Input name="lateGraceMinutes" type="number" min={0} defaultValue={s.lateGraceMinutes} />
+        </F>
+        <F label="Late return: per hour (CAD)" hint="Capped at one day's rental price">
+          <Input name="lateHourly" inputMode="decimal" defaultValue={s.lateHourly} />
+        </F>
+        <F
+          label="Not returned after (hours)"
+          hint="Changing late fees? Publish a new version of the Rental Terms too (they quote these numbers)."
+        >
+          <Input name="lateUnreturnedHours" type="number" min={1} defaultValue={s.lateUnreturnedHours} />
         </F>
       </fieldset>
       <fieldset className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

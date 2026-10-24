@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { PUBLIC_TAG } from "@/lib/services/public-data";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { put } from "@vercel/blob";
 import { z } from "zod";
@@ -115,6 +116,7 @@ export async function saveMachineAction(_: FormState, formData: FormData): Promi
   try {
     const saved = id ? await db.machine.update({ where: { id }, data }) : await db.machine.create({ data });
     revalidatePath("/admin/machines");
+    updateTag(PUBLIC_TAG); // public pages are prerendered from cached data
     if (!id) redirect(`/admin/machines/${saved.id}`);
     return { ok: true, message: "Machine saved." };
   } catch (e) {
@@ -142,5 +144,6 @@ export async function addMaintenanceAction(_: FormState, formData: FormData): Pr
     },
   });
   revalidatePath(`/admin/machines/${machineId}`);
+  updateTag(PUBLIC_TAG); // public pages are prerendered from cached data
   return { ok: true, message: "Maintenance logged." };
 }

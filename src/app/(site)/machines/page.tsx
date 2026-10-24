@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/json-ld";
 import { machineProductLd } from "@/lib/services/structured-data";
-import { Suspense } from "react";
-import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { MachineCardsSkeleton, MachineFeature } from "@/components/marketing/machine-cards";
+import { MachineFeature } from "@/components/marketing/machine-cards";
 import { AiCameraBenefits, AiCoachLine, LevelGuide } from "@/components/marketing/machine-guides";
 import { PageHero, Section } from "@/components/marketing/section";
 import { WaitlistForm } from "@/components/marketing/waitlist-form";
-import { listActiveProducts, listPublicMachines } from "@/lib/services/catalog";
+import { publicCatalog } from "@/lib/services/public-data";
 
 export const metadata: Metadata = {
   title: "PONGBOT Aura S — AI tennis ball machine",
@@ -26,9 +24,7 @@ export default async function MachinesPage() {
         </div>
       </PageHero>
       <Section>
-        <Suspense fallback={<MachineCardsSkeleton />}>
-          <Machines />
-        </Suspense>
+        <Machines />
       </Section>
       <div className="bg-muted/40">
         <Section>
@@ -45,9 +41,9 @@ export default async function MachinesPage() {
   );
 }
 
+// Cached data → the machine card is in the server HTML.
 async function Machines() {
-  await connection();
-  const [machines, products] = await Promise.all([listPublicMachines(), listActiveProducts()]);
+  const { machines, products } = await publicCatalog();
   return (
     <>
       {machines.map((m) => (

@@ -1,35 +1,28 @@
-import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { formatCentsShort } from "@/lib/money";
-import { nextAvailableSlot } from "@/lib/services/availability";
-import { listActiveProducts } from "@/lib/services/catalog";
-import { databaseConfigured } from "@/lib/services/fallback";
-import { getSettings } from "@/lib/services/settings";
+import { heroStats } from "@/lib/services/public-data";
 import { formatLocal } from "@/lib/time";
 
-/** TV-style score overlay with live data: next free slot, price, delivery zone. */
+/**
+ * TV-style score overlay: next free slot, today's day price, cheapest trip.
+ * Cached server data, so the numbers are in the HTML (no JavaScript needed).
+ */
 export async function Scorebug() {
-  await connection();
   const t = await getTranslations("home");
-  const [settings, products] = await Promise.all([getSettings(), listActiveProducts()]);
-  const day = products.find((p) => p.kind === "DAY");
-  const slot =
-    day && databaseConfigured()
-      ? await nextAvailableSlot({ product: day, settings, now: new Date() }).catch(() => null)
-      : null;
+  const stats = await heroStats();
   return (
     <ScorebugFrame
       cells={[
         {
           label: t("nextAvailable"),
-          value: slot ? formatLocal(slot.start, "EEE d MMM") : t("nextNone"),
-          sub: slot ? formatLocal(slot.start, "h:mm a") : undefined,
-          live: !!slot,
+          value: stats.nextStart ? formatLocal(stats.nextStart, "EEE d MMM") : t("nextNone"),
+          sub: stats.nextStart ? formatLocal(stats.nextStart, "h:mm a") : undefined,
+          live: !!stats.nextStart,
         },
-        { label: t("fromLabel"), value: day ? formatCentsShort(day.priceCents) : "—", sub: "CAD" },
+        { label: t("fromLabel"), value: stats.dayCents ? formatCentsShort(stats.dayCents) : "—", sub: "CAD" },
         {
           label: t("zoneLabel"),
-          value: t("zoneValue", { price: formatCentsShort(settings.deliveryZones[0]?.tripCents ?? 1500) }),
+          value: t("zoneValue", { price: formatCentsShort(stats.tripCents) }),
           sub: t("zoneSub"),
         },
       ]}

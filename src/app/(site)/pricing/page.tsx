@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { PricingGrid, PricingGridSkeleton } from "@/components/marketing/pricing-grid";
-import { DeliveryService, DeliveryServiceSkeleton } from "@/components/marketing/delivery-service";
+import { PricingGrid } from "@/components/marketing/pricing-grid";
+import { publicCatalog, publicPricing } from "@/lib/services/public-data";
+import { DeliveryService } from "@/components/marketing/delivery-service";
 import { AiCoachLine } from "@/components/marketing/machine-guides";
+import { PoliciesBlock } from "@/components/marketing/policies";
 import { PageHero, Section, SectionHeading } from "@/components/marketing/section";
-import { getSettings } from "@/lib/services/settings";
-import { pricingContext } from "@/lib/services/pricing-context";
-import { listActiveAddOns, listActiveProducts, listPublicMachines } from "@/lib/services/catalog";
 
 export const metadata: Metadata = {
   title: "Pricing — ball machine rental in Victoria, BC",
@@ -27,9 +24,10 @@ export default async function PricingPage() {
         </div>
       </PageHero>
       <Section>
-        <Suspense fallback={<PricingGridSkeleton />}>
-          <Pricing />
-        </Suspense>
+        <Pricing />
+      </Section>
+      <Section className="pt-0" id="policies">
+        <PoliciesBlock />
       </Section>
       <div className="bg-muted/40">
         <Section id="delivery">
@@ -38,28 +36,20 @@ export default async function PricingPage() {
             title={th("deliveryTitle")}
             subtitle={th("deliverySubtitle")}
           />
-          <Suspense fallback={<DeliveryServiceSkeleton />}>
-            <Delivery />
-          </Suspense>
+          <Delivery />
         </Section>
       </div>
     </>
   );
 }
 
+// Cached data → rendered into the HTML (no JavaScript needed to see prices).
 async function Delivery() {
-  await connection();
-  const settings = await getSettings();
-  return <DeliveryService zones={settings.deliveryZones} />;
+  const { deliveryZones } = await publicCatalog();
+  return <DeliveryService zones={deliveryZones} />;
 }
 
 async function Pricing() {
-  await connection();
-  const [products, addOns, machines] = await Promise.all([
-    listActiveProducts(),
-    listActiveAddOns(),
-    listPublicMachines(),
-  ]);
-  const ctx = await pricingContext(machines);
+  const [{ products, addOns }, ctx] = await Promise.all([publicCatalog(), publicPricing()]);
   return <PricingGrid products={products} addOns={addOns} ctx={ctx} />;
 }
